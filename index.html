@@ -96,6 +96,13 @@
   .style-grid label { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--muted); }
   .chips button.on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
   .reno-list { display: grid; gap: 8px; }
+  .edwin { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; margin-bottom: 10px; border-radius: 10px; background: var(--chip); border: 1px solid var(--line); cursor: pointer; }
+  .edwin input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--accent); }
+  .edwin b { font-size: 14px; }
+  .edwin span { display: flex; flex-direction: column; gap: 2px; }
+  .edwin small { color: var(--muted); font-size: 11.5px; }
+  .edwin:has(input:checked) { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+  .edwin:has(input:checked) small { color: var(--accent-ink); opacity: .85; }
   .reno-list label { display: flex; gap: 8px; align-items: flex-start; }
   .reno-list input { margin-top: 3px; }
   .reno-list span { display: flex; flex-direction: column; gap: 2px; }
@@ -163,6 +170,7 @@
 
     <section>
       <h2>Renovation ideas</h2>
+      <label class="edwin"><input type="checkbox" id="edwin"><span><b>Edwin's decisions</b><small>Open sun room + family room, kitchen remodel, primary bath remodel, mudroom, sun room extension, detached studio.</small></span></label>
       <div class="reno-list">
         <label><input type="checkbox" data-reno="openSun"><span><b>Open sun room to family room</b><small>The single French door becomes an 8½ ft cased opening.</small></span></label>
         <label><input type="checkbox" data-reno="openLiving"><span><b>Open family room to living room</b><small>The French doors become a 9 ft cased opening.</small></span></label>
@@ -172,6 +180,7 @@
         <label><input type="checkbox" data-reno="mud"><span><b>Mudroom</b><small>11 × 11 ft, made from the garage's rear storage bay (no addition). Entered from the garage, driveway side and back yard; opens to the hall by the laundry.</small></span></label>
         <label><input type="checkbox" data-reno="bump"><span><b>Breakfast bump-out</b><small>Nook bay squared off and pushed out 5½ ft (15½ ft wide, ~65 sq ft new). Table for six, slider to the patio, opening to the sun room.</small></span></label>
         <label><input type="checkbox" data-reno="sunext"><span><b>Sun room extension</b><small>6 ft longer (11½ × 16¾ ft, ~70 sq ft new), arched window wall rebuilt, third skylight.</small></span></label>
+        <label><input type="checkbox" data-reno="yard"><span><b>Backyard: pavers &amp; pergola</b><small>Bluestone-look pavers over a larger patio (~1,100 sq ft) with a dark border, and a 13 × 12 ft cedar pergola with string lights over the dining set.</small></span></label>
         <label><input type="checkbox" data-reno="garage2"><span><b>Detached garage / studio</b><small>19 × 24 ft at the end of a longer driveway. Only ~3 ft off the south lot line: check setbacks.</small>
           <select id="garage-use"><option value="golf">Golf simulator</option><option value="pottery">Pottery studio</option><option value="gym">Gym</option></select></span></label>
       </div>
@@ -180,11 +189,11 @@
 
     <section>
       <h2>Basement layout</h2>
-      <div class="views layouts" style="grid-template-columns: 1fr 1fr">
-        <button data-layout="A" class="on">Gym east, TV in bay</button>
-        <button data-layout="B">Gym in storage, media room</button>
+      <div class="reno-list">
+        <label><input type="radio" name="basement-layout" value="A" checked><span><b>Gym east, TV in the bay</b><small>Gym at the east end; 65" TV in the octagonal bay with the couch close in.</small></span></label>
+        <label><input type="radio" name="basement-layout" value="B"><span><b>Gym in storage, media room east</b><small>Gym (with a treadmill and room to run) in the unfinished storage; east end becomes a media room with a 110" screen on the west wall.</small></span></label>
+        <label><input type="radio" name="basement-layout" value="C"><span><b>Gym west, TV in the bay</b><small>Gym in the west end of the rec room; TV in the bay with the couch set back; storage left empty.</small></span></label>
       </div>
-      <p class="muted">The second option moves the gym into the unfinished storage area (with a treadmill and room to run) and turns the east end into a media room with a 110" screen.</p>
     </section>
 
     <section>

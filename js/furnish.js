@@ -1061,21 +1061,36 @@ export function buildFurniture(bats) {
   place('f2', 772, 1045, -135, (k) => armchair(k, { color: '#c7b49b' }));
   place('f2', 818, 1085, 0, (k) => floorLamp(k, 0, 0));
   // ---- bedroom 11'6" (pale yellow): queen bed on the hall wall
-  place('f2', 1440, 885, 90, (k) => rug(k, 5, 8, '#cfd6d8', '#8fa0a6'));
-  place('f2', 1298.4, 885, 90, (k) => bed(k, 'queen', { frame: '#e9e4da', duvet: '#dfe7ea', accent: '#5f7f8c', headboard: '#e9e4da', sham: '#f1f0ec', pillow: '#c9d6db' }));
-  place('f2', 1298.4, 740, 90, (k) => nightstand(k, { color: '#e9e4da' }));
-  place('f2', 1298.4, 1030, 90, (k) => nightstand(k, { color: '#e9e4da' }));
+  place('f2', 1514.5, 965, 0, (k) => rug(k, 5, 8, '#cfd6d8', '#8fa0a6'));
+  // headboard on the front wall between the two windows
+  place('f2', 1514.5, 1095.8, 180, (k) => bed(k, 'queen', { frame: '#e9e4da', duvet: '#dfe7ea', accent: '#5f7f8c', headboard: '#e9e4da', sham: '#f1f0ec', pillow: '#c9d6db' }));
+  place('f2', 1371, 1095.8, 180, (k) => nightstand(k, { color: '#e9e4da' }));
+  place('f2', 1658, 1095.8, 180, (k) => nightstand(k, { color: '#e9e4da' }));
   place('f2', 1719.8, 775, -90, (k) => dresser(k, 4.5, { color: '#e9e4da', front: '#efebe3', lamp: true }));
   // ---- bedroom 10'10" (tan): full bed on the east wall, desk
-  place('f2', 1719.8, 290, -90, (k) => bed(k, 'full', { frame: '#6b4a33', duvet: '#e4dccd', accent: '#8a3f3a', headboard: '#6b4a33' }));
-  place('f2', 1719.8, 154, -90, (k) => nightstand(k));
-  place('f2', 1719.8, 426, -90, (k) => nightstand(k));
+  // headboard on the rear wall, clear of the window
+  place('f2', 1560, 120.7, 0, (k) => bed(k, 'full', { frame: '#6b4a33', duvet: '#e4dccd', accent: '#8a3f3a', headboard: '#6b4a33' }));
+  place('f2', 1430, 120.7, 0, (k) => nightstand(k));
+  place('f2', 1684, 120.7, 0, (k) => nightstand(k));
   place('f2', 1590, 573.6, 180, (k) => desk(k, 4));
   place('f2', 1590, 525, 0, (k) => chair(k, '#3e4a54', '#2b2b2b'));
   // ---- basement, layout A: TV & couch in the octagonal bay, gym at the east end
   const atL = (lay, x, y, rot = 0) => { const [lx, lz] = P('b', x, y); return new Kit(bats['b' + lay], 'b' + lay).at(lx, lz, -9, rot); };
   const placeA = (x, y, rot, fn) => fn(atL('A', x, y, rot));
   const placeB = (x, y, rot, fn) => fn(atL('B', x, y, rot));
+  const placeC = (x, y, rot, fn) => fn(atL('C', x, y, rot));
+  // ---- layout C: gym in the west end of the rec room, TV in the bay with the couch set back, storage left empty
+  placeC(1044, 289.8, 0, (k) => wallTV(k, 65));
+  placeC(1044, 291, 0, (k) => mediaConsole(k, 5.5));
+  placeC(1044, 505, 0, (k) => rug(k, 8, 10, '#bfb3a2', '#8a7d6c'));
+  placeC(1044, 640, 180, (k) => sofa(k, 8, { color: '#5e5348', cushion: '#665a4e', pillows: ['#8b6f4e', '#a1886a'] }));
+  placeC(1044, 515, 0, (k) => coffeeTable(k, 4, 2, '#4b3426'));
+  placeC(772, 600, 0, (k) => rubberFloor(k, 8.6, 14.5));
+  placeC(653.8, 480, 90, (k) => powerRack(k));
+  placeC(830, 480, 90, (k) => liftBench(k));
+  placeC(653.8, 715, 90, (k) => dumbbellRack(k, 5.5));
+  placeC(820, 700, 0, (k) => pelotonBike(k));
+  placeC(772, 407.3, 0, (k) => k.box('mirror', -3.5, 0.6, 0, 3.5, 6.8, 0.06));
   placeA(1044, 289.8, 0, (k) => wallTV(k, 65));
   placeA(1044, 291, 0, (k) => mediaConsole(k, 5.5));
   placeA(1044, 452, 0, (k) => rug(k, 8, 10, '#bfb3a2', '#8a7d6c'));
@@ -1105,15 +1120,16 @@ export function buildFurniture(bats) {
   placeA(800, 1173.7, 180, (k) => shelving(k, 6, 1.5, 6));
   placeA(1400, 1173.7, 180, (k) => shelving(k, 6, 1.5, 6));
   // ---- basement, layout B: media room at the east end, gym (with room to run) in the storage space
-  placeB(1638.2, 340, -90, (k) => projectionScreen(k, 110));
-  placeB(1515, 340, 0, (k) => rug(k, 9, 12, '#bfb3a2', '#8a7d6c'));
-  placeB(1395, 340, 90, (k) => sofa(k, 10, { color: '#5e5348', cushion: '#665a4e', pillows: ['#8b6f4e', '#a1886a'] }));
-  placeB(1452, 150, 45, (k) => armchair(k, { color: '#5e5348' }));
-  placeB(1452, 530, 135, (k) => armchair(k, { color: '#5e5348' }));
-  placeB(1532, 340, 90, (k) => coffeeTable(k, 4.5, 2, '#4b3426'));
-  placeB(1638.2, 115, -90, (k) => towerSpeaker(k));
-  placeB(1638.2, 565, -90, (k) => towerSpeaker(k));
-  placeB(1300, 340, 0, (k) => { k.box('white', -0.7, 6.95, -0.6, 0.7, 7.35, 0.6); k.cyl('black', 0.7, 0, 0.18, 0.18, 7.05, 7.25, 10); });
+  // media room: screen on the west wall (as the house has it today), seating facing west
+  placeB(1481, 57.3, 0, (k) => projectionScreen(k, 110));
+  placeB(1481, 300, 0, (k) => rug(k, 10, 8, '#bfb3a2', '#8a7d6c'));
+  placeB(1481, 372, 180, (k) => sofa(k, 10, { color: '#5e5348', cushion: '#665a4e', pillows: ['#8b6f4e', '#a1886a'] }));
+  placeB(1352, 235, 135, (k) => armchair(k, { color: '#5e5348' }));
+  placeB(1610, 235, -135, (k) => armchair(k, { color: '#5e5348' }));
+  placeB(1481, 240, 0, (k) => coffeeTable(k, 4.5, 2, '#4b3426'));
+  placeB(1331, 57.3, 0, (k) => towerSpeaker(k));
+  placeB(1631, 57.3, 0, (k) => towerSpeaker(k));
+  placeB(1481, 420, 0, (k) => { k.box('white', -0.6, 6.95, -0.7, 0.6, 7.35, 0.7); k.cyl('black', 0, -0.7, 0.18, 0.18, 7.05, 7.25, 10); });
   placeB(1044, 400, 0, (k) => rug(k, 6, 8, '#bfb3a2', '#8a7d6c'));
   placeB(1000, 340, 160, (k) => armchair(k, { color: '#8a6b55' }));
   placeB(1100, 330, -160, (k) => floorLamp(k, 0, 0));

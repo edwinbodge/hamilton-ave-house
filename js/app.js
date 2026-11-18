@@ -69,7 +69,7 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const state = {
   view: 'ext', labels: true, furniture: true, mode: 'orbit', layout: 'A',
-  reno: { openSun: false, openLiving: false, openFoyer: false, kitchen: false, pbath: false, mud: false, bump: false, sunext: false, garage2: false }, garageUse: 'golf',
+  reno: { openSun: false, openLiving: false, openFoyer: false, kitchen: false, pbath: false, mud: false, bump: false, sunext: false, garage2: false, yard: false }, garageUse: 'golf',
   style: { ...STYLE_PRESETS[DEFAULT_PRESET].values },
 };
 try { const saved = JSON.parse(localStorage.getItem('house-options') || 'null'); if (saved) { for (const k of Object.keys(state.reno)) if (saved.reno && typeof saved.reno[k] === 'boolean') state.reno[k] = saved.reno[k]; /* older keys ('open', 'addition') are dropped */ state.garageUse = saved.garageUse || 'golf'; Object.assign(state.style, saved.style); } } catch {}
@@ -124,10 +124,18 @@ function applyReno() {
   document.querySelectorAll('[data-reno]').forEach((el) => { el.checked = !!state.reno[el.dataset.reno]; });
   $('#garage-use').value = state.garageUse;
   $('#garage-use').disabled = !state.reno.garage2;
+  $('#edwin').checked = isEdwin();
   applyView();
   saveOptions();
 }
 document.querySelectorAll('[data-reno]').forEach((el) => el.addEventListener('change', () => { state.reno[el.dataset.reno] = el.checked; applyReno(); }));
+// "Edwin's decisions": one switch for the preferred set of renovations
+const EDWIN = ['openSun', 'openLiving', 'kitchen', 'pbath', 'mud', 'sunext', 'garage2'];
+const isEdwin = () => Object.keys(state.reno).every((k) => !!state.reno[k] === EDWIN.includes(k));
+$('#edwin').addEventListener('change', (e) => {
+  for (const k of Object.keys(state.reno)) state.reno[k] = e.target.checked && EDWIN.includes(k);
+  applyReno();
+});
 $('#garage-use').addEventListener('change', (e) => { state.garageUse = e.target.value; applyReno(); });
 
 // ------------------------------------------------------------------ interior style
@@ -159,10 +167,10 @@ applyStyle(state.style);
 renderStyle();
 function setLayout(l) {
   state.layout = l;
-  layouts.A.visible = l === 'A'; layouts.B.visible = l === 'B';
-  document.querySelectorAll('.layouts button').forEach((b) => b.classList.toggle('on', b.dataset.layout === l));
+  for (const k of ['A', 'B', 'C']) layouts[k].visible = l === k;
+  document.querySelectorAll('[name=basement-layout]').forEach((r) => { r.checked = r.value === l; });
 }
-document.querySelectorAll('.layouts button').forEach((b) => b.addEventListener('click', () => setLayout(b.dataset.layout)));
+document.querySelectorAll('[name=basement-layout]').forEach((r) => r.addEventListener('change', () => setLayout(r.value)));
 
 // ------------------------------------------------------------------ sun
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -202,7 +210,7 @@ const EYE = 5.4, RADIUS = 0.8, STEP = 1.35;
 function activeTag(tag) {
   if (tag.startsWith('on:') || tag.startsWith('off:')) { const [st, name] = tag.split(':'); return st === 'on' ? !!state.reno[name] : !state.reno[name]; }
   if (tag.startsWith('g2:')) return state.reno.garage2 && tag === 'g2:' + state.garageUse;
-  if (tag === 'bA' || tag === 'bB') return state.furniture && tag === 'b' + state.layout;
+  if (tag === 'bA' || tag === 'bB' || tag === 'bC') return state.furniture && tag === 'b' + state.layout;
   if (tag.endsWith('F')) return state.furniture;
   return true;
 }

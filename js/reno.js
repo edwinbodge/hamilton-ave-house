@@ -233,7 +233,7 @@ function buildPrimaryBath() {
   for (const w of [
     [673, 111.5, 673, 477, 'i'],                                              // closet wall (unchanged position)
     [384, 111.5, 403, 111.5, 'i'],                                            // short return at the bump corner
-    [400, 111.5, 400, 300, 'i', [[205, 293, 'd', { hinge: 'lo', into: '+x' }]]], // water closet, door swings out
+    [400, 111.5, 400, 300, 'i', [[205, 293, 'p']]],                            // water closet, pocket door
     [270, 300, 403, 300, 'i'],
     [512, 295, 673, 295, 'i'],                                                // shower valve wall; the vanity dies into it
   ]) buildWall(L, [...w.slice(0, 5), w[5] || [], { rs }], bat);
@@ -255,23 +255,19 @@ function buildPrimaryBath() {
     const nk = at(666.6, 400, -90); nk.box('col:#c9c6bf', -0.6, 3.6, 0, 0.6, 4.8, 0.02); nk.box('col:#f4f3ef', -0.6, 4.18, 0, 0.6, 4.22, 0.05); // niche
     at(592.5, 420, 0).box('col:#7d8083', -1.7, 0.036, -0.08, 1.7, 0.045, 0.08);                                               // linear drain
   }
-  { // window seat in the bump, under the (existing) window: the dry zone
-    const k = at(497, 61.7, 0);
-    k.box('cab', -2.55, 0, 0, 2.55, 1.4, 1.3); k.box('cabDoor', -2.55, 1.4, 0, 2.55, 1.5, 1.36);
-    k.soft(fab('#d9d2c2'), -2.45, 1.5, 0.08, 2.45, 1.75, 1.3, 0.08);
-    k.solid(-2.55, 0, 2.55, 1.3, 0, 1.6);
-  }
   // 72" double vanity on the closet wall, side-lit by the window
   vanity(at(663.8, 175.5, -90), 6, 2, { mirrorTop: 7.0, faucet: 'black', frame: 'black' });
   lightBar(at(663.8, 175.5, -90), 5.0, 7.3, 3, 'black');
   toilet(at(338, 120.7, 0));
   { const k = at(279.2, 190, 90); k.box('black', -0.15, 2.2, 0, 0.15, 2.26, 0.3); k.cyl('white', 0, 0.3, 0.2, 0.2, 2.03, 2.43, 10); } // paper holder
-  { // built-in linen cabinet on the south wall, between the water closet and the bedroom wall
+  { // upholstered bench on the south wall by the entry (instead of a tall linen cabinet), towel hooks above
     const k = at(279.2, 392, 90), w = 1.9, d = 1.4;
-    k.box('cab', -w, 0.35, 0, w, 7.4, d); k.box('blackMatte', -w, 0, 0, w, 0.35, d - 0.2);
-    for (const [a, b] of [[-w + 0.03, -0.02], [0.02, w - 0.03]]) { k.box('cabDoor', a, 3.3, d, b, 7.35, d + 0.07); k.box('cabDoor', a, 0.4, d, b, 3.2, d + 0.07); }
-    for (const x of [-0.14, 0.14]) { k.box('black', x - 0.025, 4.0, d + 0.07, x + 0.025, 4.7, d + 0.13); k.box('black', x - 0.025, 2.2, d + 0.07, x + 0.025, 2.9, d + 0.13); }
-    k.solid(-w, 0, w, d, 0, 7.4); }
+    for (const x of [-w + 0.2, w - 0.2]) for (const z of [0.2, d - 0.2]) k.cyl('wood:#5a3f2e', x, z, 0.05, 0.07, 0, 1.15, 8);
+    k.soft('wood:#5a3f2e', -w, 1.1, 0.05, w, 1.25, d, 0.04);
+    k.soft(fab('#cfc7b8'), -w + 0.05, 1.25, 0.1, w - 0.05, 1.6, d - 0.05, 0.12);
+    k.box('black', -w + 0.2, 5.3, 0, w - 0.2, 5.4, 0.1);
+    for (const x of [-1.2, 0, 1.2]) { k.box('black', x - 0.03, 5.0, 0.1, x + 0.03, 5.4, 0.35); k.soft(fab('#ece8de'), x - 0.45, 3.1, 0.15, x + 0.45, 5.15, 0.4, 0.08); }
+    k.solid(-w, 0, w, d, 0, 1.6); }
   for (const [x, y] of [[592.5, 385], [470, 170], [470, 330], [335, 215], [380, 420]]) recessed(at(x, y), 8);
 }
 
@@ -477,7 +473,46 @@ function buildDetachedGarage() {
   gym(-3.3, -9, -90, (k) => k.box('mirror', -4, 0.6, 0, 4, 7.0, 0.06));
 }
 
+// ------------------------------------------------------------------ backyard: pavers + pergola
+// Bluestone-look pavers over (and beyond) the existing concrete patio with a darker soldier-course
+// border, and a 13 x 12 ft cedar pergola over the dining set, with planters at two posts.
+function buildYard() {
+  const rs = 'on:yard', bat = renoBat(rs, 'site');
+  const cx = 30.5, cz = 2, rx = 19.5, rz = 16;
+  const arc = [];
+  for (let i = 0; i <= 40; i++) { const a = (i / 40) * Math.PI; arc.push([cx + rx * Math.cos(a), cz - rz * Math.sin(a)]); }
+  const poly = [...arc, [11, 14.55], [25, 14.55], [25, 12.95], [33.7, 12.95], [33.7, 11.0], [36.2, 8.5], [42.5, 8.5], [44.9, 11.05], [49, 11.05], [49, 2]];
+  bat.prism({ top: 'pavers', side: 'foundation' }, poly, -1, -0.58);
+  addFloorPoly(poly, [], -0.58, rs);
+  // soldier-course border along the curved edge
+  for (let i = 0; i < arc.length - 1; i++) {
+    const [ax, az] = arc[i], [bx, bz] = arc[i + 1];
+    const ia = [cx + (rx - 1.1) * Math.cos((i / 40) * Math.PI), cz - (rz - 1.1) * Math.sin((i / 40) * Math.PI)];
+    const ib = [cx + (rx - 1.1) * Math.cos(((i + 1) / 40) * Math.PI), cz - (rz - 1.1) * Math.sin(((i + 1) / 40) * Math.PI)];
+    bat.face('tile:#57534d', [V(ax, -0.575, az), V(bx, -0.575, bz), V(ib[0], -0.575, ib[1]), V(ia[0], -0.575, ia[1])], V(0, 1, 0));
+  }
+  // pergola
+  const W = 'wood:#6b4a33', x0 = 12.2, x1 = 25.2, z0 = 0.4, z1 = 12.4, top = 8.6;
+  const k = new Kit(bat, rs).at(0, 0, -0.58, 0);
+  for (const x of [x0, x1]) for (const z of [z0, z1]) {
+    k.cbox(W, x, z, 0.5, 0.5, 0, top + 0.6); k.cbox('foundation', x, z, 0.9, 0.9, 0, 0.35);
+    addSolid(V(x - 0.3, 0, z - 0.3), V(0.6, 0, 0), V(0, 0, 0.6), -0.58, top, rs);
+  }
+  for (const z of [z0, z1]) for (const dz of [-0.33, 0.33]) k.box(W, x0 - 1.2, top - 0.2, z + dz - 0.08, x1 + 1.2, top + 0.65, z + dz + 0.08);
+  for (let x = x0 - 0.9; x <= x1 + 0.9; x += 1.4) k.box(W, x - 0.08, top + 0.65, z0 - 1.4, x + 0.08, top + 1.25, z1 + 1.4);
+  for (let z = z0 - 1.0; z <= z1 + 1.0; z += 0.9) k.box(W, x0 - 1.3, top + 1.25, z - 0.06, x1 + 1.3, top + 1.4, z + 0.06);
+  for (const [x, z] of [[x0 + 1.4, z0], [x1 - 1.4, z0]]) {
+    k.cbox('cedar', x, z, 2.2, 1.4, 0, 1.8);
+    for (let i = 0; i < 4; i++) k.cyl(i % 2 ? 'col:#5d8a3e' : 'col:#7a9a4b', x - 0.75 + i * 0.5, z, 0.32, 0.08, 1.8, 2.6 + (i % 2) * 0.4, 6);
+    addSolid(V(x - 1.1, 0, z - 0.7), V(2.2, 0, 0), V(0, 0, 1.4), -0.58, 1.8, rs);
+  }
+  // string lights between the beams
+  for (let x = x0; x <= x1; x += 1.3) for (const z of [z0 + 3, z0 + 6, z0 + 9]) k.cyl('bulb', x, z, 0.08, 0.08, top - 0.25, top - 0.1, 6);
+  for (const z of [z0 + 3, z0 + 6, z0 + 9]) k.box('black', x0, top - 0.06, z - 0.01, x1, top - 0.04, z + 0.01);
+}
+
 export function buildRenovations() {
+  buildYard();
   buildOpenings();
   buildKitchenRemodel();
   buildPrimaryBath();

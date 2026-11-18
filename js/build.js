@@ -299,6 +299,11 @@ export function buildWall(L, w, bat) {
         slider(s + ft, pw, 0.08 * kInside, pw - 0.35, sill, head, (k) => slidePanel(k, pw, sill + ft, head - ft, false));
         break;
       }
+      case 'p': { // pocket door: slides into the wall toward the opening's start end
+        const w = e - s - 2 * ft;
+        slider(s + ft, w, 0, -(w - 0.25), sill, head, (k) => sixPanel(k, w, head - ft - sill, sill, 'door', 0));
+        break;
+      }
       case 'c': { // bypass closet doors, 6-panel cherry
         // the room-side panel slides over the closet-side one
         const mid = (s + e) / 2, side = kp.room && !kp.room.noLabel ? 1 : -1;
@@ -868,7 +873,7 @@ export function buildHouse() {
   LEVELS.forEach(prepLevel);
   const groups = { b: new THREE.Group(), f1: new THREE.Group(), f2: new THREE.Group(), roof: new THREE.Group() };
   const furn = {};
-  const bats = { b: new Batcher(), f1: new Batcher(), f2: new Batcher(), roof: new Batcher(), bF: new Batcher(), f1F: new Batcher(), f2F: new Batcher(), bA: new Batcher(), bB: new Batcher() };
+  const bats = { b: new Batcher(), f1: new Batcher(), f2: new Batcher(), roof: new Batcher(), bF: new Batcher(), f1F: new Batcher(), f2F: new Batcher(), bA: new Batcher(), bB: new Batcher(), bC: new Batcher() };
   for (const L of LEVELS) {
     for (const w of L.walls) buildWall(L, w, bats[L.id]);
     buildFloors(L, bats);
@@ -910,10 +915,10 @@ export function buildHouse() {
   const renos = [];
   for (const g of RENO_GROUPS.values()) { levelGroup(g.userData.level).add(g); renos.push(g); }
   // alternative basement layouts (A: gym at the east end, TV in the bay; B: gym in storage, media room east)
-  const layouts = { A: new THREE.Group(), B: new THREE.Group() };
-  bats.bA.build(layouts.A); bats.bB.build(layouts.B);
-  layouts.B.visible = false;
-  furn.b.add(layouts.A, layouts.B);
+  const layouts = { A: new THREE.Group(), B: new THREE.Group(), C: new THREE.Group() };
+  bats.bA.build(layouts.A); bats.bB.build(layouts.B); bats.bC.build(layouts.C);
+  layouts.B.visible = false; layouts.C.visible = false;
+  furn.b.add(layouts.A, layouts.B, layouts.C);
   Object.values(groups).forEach((g) => house.add(g));
   return { house, groups, furn, labels, levels: LV, layouts, renos };
 }

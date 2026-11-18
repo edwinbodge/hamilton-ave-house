@@ -311,6 +311,24 @@ export function tex(name) {
         noise(g, w, h, 900, 0.05);
       }, [1.4, 1.4]);
       break;
+    case 'pavers': // bluestone-look rectangular pavers in a running ashlar pattern
+      t = canvasTex(256, 256, (g, w, h) => {
+        g.fillStyle = '#6f6c66'; g.fillRect(0, 0, w, h);
+        const rows = [64, 42, 64, 86];
+        let y = 0;
+        for (const rh of rows) {
+          let x = -Math.random() * 60;
+          while (x < w) {
+            const pw = [64, 86, 106][Math.floor(Math.random() * 3)];
+            g.fillStyle = `hsl(${200 + Math.random() * 25},${6 + Math.random() * 6}%,${52 + Math.random() * 12}%)`;
+            wrapDraw(w, h, x, y, (xx, yy) => g.fillRect(xx + 2, yy + 2, pw - 4, rh - 4));
+            x += pw;
+          }
+          y += rh;
+        }
+        noise(g, w, h, 2500, 0.07);
+      }, [6, 6]);
+      break;
     case 'felt':
       t = canvasTex(64, 64, (g, w, h) => { g.fillStyle = '#1f6b46'; g.fillRect(0, 0, w, h); noise(g, w, h, 900, 0.08, 1); }, [2, 2]);
       break;
