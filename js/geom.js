@@ -8,6 +8,28 @@ const UP = V(0, 1, 0);
 
 // ---------------------------------------------------------------- materials
 const MATS = {};
+// Themeable materials: walls ('W:<room>'), floors ('F:<group>') and these finish roles. Their
+// look is set with applyFinish(); ORIGIN holds the as-listed finish of each.
+export const ORIGIN = {
+  trim: '#a5652c', door: '#8a3f1f', doorPanel: '#9b4a25', doorLine: '#1b1b1d', cab: '#a8682f', cabDoor: '#b5743a',
+  cabPanel: '#bf7e42', counter: '#f1eee6', vanityTop: '#eee6d6', backsplash: 'backsplash', splashTrim: '#7d6a58',
+  fpBrick: 'brick', mantel: '#b5743a', mantelPanel: '#bf7e42', stairCarpet: '#d8d1c4', 'W:wainscot': '#2c3a55', island: '#a8682f',
+};
+export const THEMED = new Map();
+function roughFor(key, spec) {
+  if (key.startsWith('F:')) return /carpet|berber/.test(spec) ? 0.95 : 0.4;
+  if (key === 'counter' || key === 'vanityTop') return /marble|plank/.test(spec) ? 0.3 : 0.25;
+  if (key === 'backsplash') return 0.3;
+  if (key.startsWith('W:') || key === 'fpBrick') return 0.9;
+  return 0.45;
+}
+export function applyFinish(key, spec) {
+  const m = material(key);
+  if (!spec) return;
+  if (spec.startsWith('#')) { m.map = null; m.color.set(spec); } else { m.map = tex(spec); m.color.set('#ffffff'); }
+  m.roughness = roughFor(key, spec);
+  m.needsUpdate = true;
+}
 // flat colors (roughness)
 const FLAT = {
   white: ['#f6f6f2', 0.6], trim: ['#a5652c', 0.45], oakLight: ['#c08a4e', 0.45], cut: ['#4a4744', 0.9],
@@ -22,6 +44,12 @@ const GLOW = { bulb: '#fff3d6', shade: '#f6efe0', recessed: '#fffaf0', screen: '
 export function material(key) {
   if (MATS[key]) return MATS[key];
   let m;
+  if (/^[WF]:/.test(key) || key in ORIGIN) {
+    m = new THREE.MeshStandardMaterial({ roughness: 0.9 });
+    MATS[key] = m; THEMED.set(key, m);
+    applyFinish(key, ORIGIN[key]);
+    return m;
+  }
   const [kind, arg] = key.split(':');
   if (kind === 'wall' || kind === 'col') {
     m = new THREE.MeshStandardMaterial({ color: arg, roughness: 0.9 });
@@ -112,6 +140,11 @@ export class Batcher {
     for (const [p, u] of [[a, ua], [b, ub], [c, uc]]) {
       bk.p.push(p.x, p.y, p.z); bk.n.push(n.x, n.y, n.z); bk.uv.push(u[0], u[1]);
     }
+  }
+  // triangle with explicit (smooth) vertex normals
+  triN(key, a, b, c, na, nb, nc) {
+    const bk = this.bucket(key);
+    for (const [p, n] of [[a, na], [b, nb], [c, nc]]) { bk.p.push(p.x, p.y, p.z); bk.n.push(n.x, n.y, n.z); bk.uv.push(p.x, p.z + p.y); }
   }
   // convex polygon (3+ points) oriented to face nOut
   face(key, pts, nOut, uvs) {
@@ -224,6 +257,34 @@ export class Kit {
   }
   // centered box helper: center (x, z), size (w, d), from y0 to y1
   cbox(key, x, z, w, d, y0, y1) { return this.box(key, x - w / 2, y0, z - d / 2, x + w / 2, y1, z + d / 2); }
+  // rounded ("soft") box: a superellipsoid filling [x0,x1]x[y0,y1]x[z0,z1]; r = corner radius (ft)
+  soft(key, x0, y0, z0, x1, y1, z1, r = 0.15, nu = 14, nv = 8) {
+    const a = (x1 - x0) / 2, b = (y1 - y0) / 2, c = (z1 - z0) / 2;
+    if (a <= 0 || b <= 0 || c <= 0) return this;
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, cz = (z0 + z1) / 2;
+    const e1 = Math.min(1, Math.max(0.08, (2 * r) / (2 * b))), e2 = Math.min(1, Math.max(0.08, (2 * r) / (2 * Math.min(a, c))));
+    const sp = (v, e) => Math.sign(v) * Math.pow(Math.abs(v), e);
+    const pt = (eta, om) => {
+      const ce = Math.cos(eta), se = Math.sin(eta), co = Math.cos(om), so = Math.sin(om);
+      const p = this.P(cx + a * sp(ce, e1) * sp(co, e2), cy + b * sp(se, e1), cz + c * sp(ce, e1) * sp(so, e2));
+      const nl = [sp(ce, 2 - e1) * sp(co, 2 - e2) / a, sp(se, 2 - e1) / b, sp(ce, 2 - e1) * sp(so, 2 - e2) / c];
+      const n = V(nl[0] * this.c + nl[2] * this.s, nl[1], -nl[0] * this.s + nl[2] * this.c).normalize();
+      return [p, n];
+    };
+    const grid = [];
+    for (let i = 0; i <= nv; i++) {
+      const eta = -Math.PI / 2 + (Math.PI * i) / nv, row = [];
+      for (let j = 0; j <= nu; j++) row.push(pt(eta, -Math.PI + (2 * Math.PI * j) / nu));
+      grid.push(row);
+    }
+    for (let i = 0; i < nv; i++) for (let j = 0; j < nu; j++) {
+      const [p00, n00] = grid[i][j], [p01, n01] = grid[i][j + 1], [p10, n10] = grid[i + 1][j], [p11, n11] = grid[i + 1][j + 1];
+      this.bat.triN(key, p00, p10, p11, n00, n10, n11);
+      this.bat.triN(key, p00, p11, p01, n00, n11, n01);
+    }
+    return this;
+  }
+  csoft(key, x, z, w, d, y0, y1, r = 0.15) { return this.soft(key, x - w / 2, y0, z - d / 2, x + w / 2, y1, z + d / 2, r); }
   // vertical frustum / elliptic cylinder centered at (x, z)
   cyl(key, x, z, r0, r1, y0, y1, seg = 16, sz = 1, caps = true) {
     const ring = (r, y) => [...Array(seg)].map((_, i) => {

@@ -5,6 +5,8 @@ import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { buildHouse, roomAtPoint, DOORS } from './build.js';
+import { CONTROLS, PRESETS as STYLE_PRESETS, DEFAULT_PRESET, applyStyle } from './themes.js';
+import { RENO_LABELS, RENO_ROOMS } from './reno.js';
 import { buildSite } from './site.js';
 import { PHYS, pip, V, addSolid, addFloorPoly } from './geom.js';
 import { LOT, LATITUDE, toFt } from './data.js';
@@ -55,7 +57,7 @@ const fill = new THREE.AmbientLight('#fff8ee', 0.2); // a little extra interior 
 scene.add(fill);
 
 // ------------------------------------------------------------------ model
-const { house, groups, furn, labels, layouts } = buildHouse();
+const { house, groups, furn, labels, layouts, renos } = buildHouse();
 scene.add(house);
 const site = buildSite();
 scene.add(site);
@@ -65,7 +67,13 @@ const lotLines = site.getObjectByName('lotLines');
 // ------------------------------------------------------------------ state & UI wiring
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
-const state = { view: 'ext', labels: true, furniture: true, mode: 'orbit', layout: 'A' };
+const state = {
+  view: 'ext', labels: true, furniture: true, mode: 'orbit', layout: 'A',
+  reno: { open: false, kitchen: false, pbath: false, addition: false, garage2: false }, garageUse: 'golf',
+  style: { ...STYLE_PRESETS[DEFAULT_PRESET].values },
+};
+try { const saved = JSON.parse(localStorage.getItem('house-options') || 'null'); if (saved) { Object.assign(state.reno, saved.reno); state.garageUse = saved.garageUse || 'golf'; Object.assign(state.style, saved.style); } } catch {}
+const saveOptions = () => { try { localStorage.setItem('house-options', JSON.stringify({ reno: state.reno, garageUse: state.garageUse, style: state.style })); } catch {} };
 
 function isVisible(o) {
   for (let p = o; p; p = p.parent) if (!p.visible) return false;
@@ -89,10 +97,12 @@ function applyView() {
   groups.f2.visible = v === 'ext' || v === 'f2';
   groups.f1.visible = v !== 'b';
   groups.b.visible = true;
+  const showLabels = (lv) => state.labels && state.mode === 'orbit' && v === lv;
   for (const id of ['b', 'f1', 'f2']) {
     furn[id].visible = state.furniture;
-    for (const l of labels[id]) l.visible = state.labels && state.mode === 'orbit' && v === id;
+    for (const l of labels[id]) l.visible = showLabels(id) && !(state.reno.pbath && l.userData.name === 'Primary Bath');
   }
+  for (const l of RENO_LABELS) l.visible = showLabels(l.userData.level) && activeTag(l.userData.rs);
   $$('.views button').forEach((b) => b.classList.toggle('on', b.dataset.view === v));
 }
 function setView(v, fly = true) {
@@ -106,6 +116,47 @@ $('#tgl-labels').addEventListener('change', (e) => { state.labels = e.target.che
 $('#tgl-trees').addEventListener('change', (e) => { trees.visible = e.target.checked; });
 $('#tgl-lot').addEventListener('change', (e) => { lotLines.visible = e.target.checked; });
 $('#panel-toggle').addEventListener('click', () => document.body.classList.toggle('collapsed'));
+
+// ------------------------------------------------------------------ renovations
+const renoSets = [...renos, ...(site.userData.renos || [])];
+function applyReno() {
+  for (const g of renoSets) g.visible = activeTag(g.userData.rs);
+  document.querySelectorAll('[data-reno]').forEach((el) => { el.checked = !!state.reno[el.dataset.reno]; });
+  $('#garage-use').value = state.garageUse;
+  $('#garage-use').disabled = !state.reno.garage2;
+  applyView();
+  saveOptions();
+}
+document.querySelectorAll('[data-reno]').forEach((el) => el.addEventListener('change', () => { state.reno[el.dataset.reno] = el.checked; applyReno(); }));
+$('#garage-use').addEventListener('change', (e) => { state.garageUse = e.target.value; applyReno(); });
+
+// ------------------------------------------------------------------ interior style
+function renderStyle() {
+  const pre = $('#style-presets');
+  pre.innerHTML = '';
+  for (const [id, p] of Object.entries(STYLE_PRESETS)) {
+    const b = document.createElement('button');
+    b.textContent = p.label;
+    const match = Object.entries(p.values).every(([k, v]) => state.style[k] === v);
+    b.className = match ? 'on' : '';
+    b.addEventListener('click', () => { state.style = { ...p.values }; applyStyle(state.style); renderStyle(); saveOptions(); });
+    pre.appendChild(b);
+  }
+  const box = $('#style-controls');
+  box.innerHTML = '';
+  for (const c of CONTROLS) {
+    const lab = document.createElement('label');
+    lab.textContent = c.label;
+    const sel = document.createElement('select');
+    for (const [val, name] of c.options) { const o = document.createElement('option'); o.value = val; o.textContent = name; sel.appendChild(o); }
+    sel.value = state.style[c.id];
+    sel.addEventListener('change', () => { state.style[c.id] = sel.value; applyStyle(state.style); renderStyle(); saveOptions(); });
+    lab.appendChild(sel);
+    box.appendChild(lab);
+  }
+}
+applyStyle(state.style);
+renderStyle();
 function setLayout(l) {
   state.layout = l;
   layouts.A.visible = l === 'A'; layouts.B.visible = l === 'B';
@@ -149,6 +200,8 @@ const walk = { feet: -1, vy: 0, camY: 4.4, saved: null };
 const EYE = 5.4, RADIUS = 0.8, STEP = 1.35;
 
 function activeTag(tag) {
+  if (tag.startsWith('on:') || tag.startsWith('off:')) { const [st, name] = tag.split(':'); return st === 'on' ? !!state.reno[name] : !state.reno[name]; }
+  if (tag.startsWith('g2:')) return state.reno.garage2 && tag === 'g2:' + state.garageUse;
   if (tag === 'bA' || tag === 'bB') return state.furniture && tag === 'b' + state.layout;
   if (tag.endsWith('F')) return state.furniture;
   return true;
@@ -206,14 +259,21 @@ function exitWalk() {
   if (state.mode !== 'walk') return;
   state.mode = 'orbit';
   if (plc.isLocked) plc.unlock();
-  document.body.classList.remove('walking', 'draglook');
+  document.body.classList.remove('walking', 'draglook', 'walk-panel');
   orbit.enabled = true;
   camera.position.copy(walk.saved.pos);
   orbit.target.copy(walk.saved.tgt);
   setView(walk.saved.view, false);
   applyView();
 }
-plc.addEventListener('unlock', () => { if (state.mode === 'walk') { walk.paused = true; $('#walk-paused').hidden = false; } });
+plc.addEventListener('unlock', () => { if (state.mode === 'walk' && !document.body.classList.contains('walk-panel')) { walk.paused = true; $('#walk-paused').hidden = false; } });
+function toggleWalkPanel(force) {
+  const on = force ?? !document.body.classList.contains('walk-panel');
+  document.body.classList.toggle('walk-panel', on);
+  if (on && plc.isLocked) plc.unlock();
+  if (!on && state.mode === 'walk' && !document.body.classList.contains('draglook')) { try { plc.lock(); } catch {} }
+}
+$('#hud-options').addEventListener('click', () => toggleWalkPanel());
 plc.addEventListener('lock', () => { walk.paused = false; $('#walk-paused').hidden = true; });
 // Pointer lock isn't available everywhere (embedded previews, some browsers): fall back to drag-to-look.
 document.addEventListener('pointerlockerror', () => { walk.paused = false; document.body.classList.add('draglook'); });
@@ -263,7 +323,8 @@ function updateWalk(dt) {
   camera.position.set(p.x, walk.camY, p.z);
   // HUD
   const lvl = walk.feet < -4 ? 'b' : walk.feet < 5 ? 'f1' : 'f2';
-  const r = roomAtPoint(lvl, p.x, p.z);
+  const rr = RENO_ROOMS.find((q) => q.level === lvl && activeTag(q.rs) && pip(q.room.pts, p.x, p.z));
+  const r = rr ? rr.room : roomAtPoint(lvl, p.x, p.z);
   const lvlName = { b: 'Basement', f1: '1st floor', f2: '2nd floor' }[lvl];
   $('#hud-room').textContent = r ? `${r.name} · ${lvlName}` : walk.feet < 4 && walk.feet > -2 && !r ? 'Outside' : lvlName;
   const di = doorAhead(7);
@@ -493,6 +554,7 @@ function onKey(e) {
   if (state.mode === 'walk') {
     if (e.code === 'Escape' && !plc.isLocked) exitWalk();
     if (e.code === 'KeyE') { const i = doorAhead(); if (i >= 0) toggleDoor(i); }
+    if (e.code === 'KeyO') toggleWalkPanel();
     return;
   }
   if (e.code === 'Digit1') setView('ext');
@@ -566,4 +628,5 @@ function simWalk(path, start) {
   state.mode = 'orbit';
   return out;
 }
-window.__house = { scene, camera, orbit, PHYS, setView, state, simWalk, floorAt, DOORS, setAllDoors, setLayout };
+window.__house = { scene, camera, orbit, PHYS, setView, state, simWalk, floorAt, DOORS, setAllDoors, setLayout, applyReno, applyStyle };
+applyReno();

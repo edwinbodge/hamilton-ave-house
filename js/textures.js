@@ -251,6 +251,66 @@ export function tex(name) {
         g.fillStyle = '#d8ccb6'; g.fillRect(0, 0, w, 2); g.fillRect(0, 0, 2, h);
       }, [2, 2]);
       break;
+    case 'plank': // wide-plank hardwood in a given base color (5" boards)
+      t = canvasTex(256, 256, (g, w, h) => {
+        const rows = 10, rh = h / rows;
+        for (let r = 0; r < rows; r++) {
+          let x = -Math.random() * 200;
+          while (x < w + 200) {
+            const len = 140 + Math.random() * 220;
+            g.fillStyle = shade(arg, (Math.random() - 0.5) * 0.08);
+            wrapDraw(w, h, x, r * rh, (xx, yy) => g.fillRect(xx, yy, len, rh));
+            g.fillStyle = 'rgba(40,25,10,0.28)';
+            wrapDraw(w, h, x, r * rh, (xx, yy) => g.fillRect(xx, yy, 1, rh));
+            x += len;
+          }
+          g.fillStyle = 'rgba(40,25,10,0.22)'; g.fillRect(0, r * rh, w, 1);
+        }
+        for (let i = 0; i < 380; i++) {
+          g.strokeStyle = `rgba(60,35,15,${Math.random() * 0.1})`;
+          g.beginPath(); const y = Math.random() * h; g.moveTo(0, y); g.bezierCurveTo(w / 3, y + 2, (2 * w) / 3, y - 2, w, y); g.stroke();
+        }
+      }, [5, 4.2]);
+      break;
+    case 'tile': // large-format 2 ft tile in a given color
+      t = canvasTex(128, 128, (g, w, h) => {
+        g.fillStyle = arg; g.fillRect(0, 0, w, h); noise(g, w, h, 1200, 0.05);
+        g.fillStyle = shade(arg, -0.1); g.fillRect(0, 0, w, 2); g.fillRect(0, 0, 2, h);
+      }, [2, 2]);
+      break;
+    case 'marble': // white quartz/marble with soft gray veining
+    case 'marbleTile':
+      t = canvasTex(256, 256, (g, w, h) => {
+        g.fillStyle = '#f2f1ee'; g.fillRect(0, 0, w, h);
+        for (let i = 0; i < 9; i++) {
+          g.strokeStyle = `rgba(120,120,125,${0.08 + Math.random() * 0.18})`; g.lineWidth = 0.6 + Math.random() * 1.6;
+          let x = Math.random() * w, y = Math.random() * h;
+          g.beginPath(); g.moveTo(x, y);
+          for (let s = 0; s < 8; s++) { x += 20 + Math.random() * 30; y += (Math.random() - 0.4) * 40; g.lineTo(x % (w + 40), y); }
+          g.stroke();
+        }
+        if (kind === 'marbleTile') { g.fillStyle = '#d6d6d2'; g.fillRect(0, 0, w, 2); g.fillRect(0, 0, 2, h); g.fillRect(0, h / 2, w, 2); }
+      }, kind === 'marble' ? [4, 4] : [2, 2]);
+      break;
+    case 'subway': // 3x6 subway / zellige tile in a given color
+      t = canvasTex(128, 128, (g, w, h) => {
+        g.fillStyle = shade(arg, -0.15); g.fillRect(0, 0, w, h);
+        for (let r = 0; r < 4; r++) for (let c = -1; c < 3; c++) {
+          g.fillStyle = shade(arg, (Math.random() - 0.5) * 0.07);
+          g.fillRect(c * 64 + (r % 2) * 32 + 1.5, r * 32 + 1.5, 61, 29);
+        }
+      }, [1, 1]);
+      break;
+    case 'paintbrick': // painted / limewashed brick
+      t = canvasTex(128, 128, (g, w, h) => {
+        g.fillStyle = shade(arg, -0.08); g.fillRect(0, 0, w, h);
+        for (let r = 0; r < 8; r++) for (let c = -1; c < 3; c++) {
+          g.fillStyle = shade(arg, (Math.random() - 0.5) * 0.06);
+          g.fillRect(c * 64 + (r % 2) * 32 + 2, r * 16 + 2, 60, 13);
+        }
+        noise(g, w, h, 900, 0.05);
+      }, [1.4, 1.4]);
+      break;
     case 'felt':
       t = canvasTex(64, 64, (g, w, h) => { g.fillStyle = '#1f6b46'; g.fillRect(0, 0, w, h); noise(g, w, h, 900, 0.08, 1); }, [2, 2]);
       break;

@@ -3,12 +3,13 @@
 // the front at +z, y = up. Wall-mounted pieces have their back at z = 0.
 import { LEVELS, toFt } from './data.js';
 import { Kit, V } from './geom.js';
+import { renoBat } from './build.js';
 
 const LV = Object.fromEntries(LEVELS.map((L) => [L.id, L]));
 const P = (lv, x, y) => toFt(LV[lv].map(x, y));
 const fab = (c) => 'fab:' + c;
 const wood = (c) => 'wood:' + c;
-const OAKCAB = wood('#a8682f'), OAKDOOR = wood('#b5743a'), OAKPANEL = wood('#bf7e42');
+const OAKCAB = 'cab', OAKDOOR = 'cabDoor', OAKPANEL = 'cabPanel'; // themeable cabinet finishes
 const DARKWOOD = wood('#4e3324'), MIDWOOD = wood('#7a5234');
 
 // ------------------------------------------------------------------ small parts
@@ -37,55 +38,67 @@ function plant(k, x, z, h = 5.5) {
   }
 }
 
+
+// darken/lighten a #hex color by factor f (e.g. 0.85 = 15% darker)
+function shadeHex(hex, f) {
+  const n = parseInt(hex.slice(1), 16);
+  const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => Math.max(0, Math.min(255, Math.round(v * f))));
+  return '#' + c.map((v) => v.toString(16).padStart(2, '0')).join('');
+}
+function taperLeg(k, key, x, z, h, r0 = 0.07, r1 = 0.1) { k.cyl(key, x, z, r0, r1, 0, h, 8); }
+
 // ------------------------------------------------------------------ beds & bedroom
 const BEDS = { king: [6.33, 6.67, 4.4], queen: [5.0, 6.67, 4.0], full: [4.5, 6.25, 3.8] }; // mattress w x l, headboard h
 function bed(k, size, o = {}) {
   const [mw, ml, hh] = BEDS[size];
   const frame = o.frame || '#5b3a26', duvet = o.duvet || '#ece7dc', accent = o.accent || '#7d6a5a';
-  const W = mw + 0.35, z0 = 0.25, z1 = z0 + ml + 0.3, zc = (z0 + z1) / 2;
-  // headboard (upholstered panel in a wood frame)
-  k.box(wood(frame), -W / 2 - 0.12, 0, 0, W / 2 + 0.12, hh, z0);
-  k.box(fab(o.headboard || '#cfc6b8'), -W / 2 + 0.15, 1.9, z0, W / 2 - 0.15, hh - 0.25, z0 + 0.07);
-  // frame, legs, mattress
-  for (const [x, z] of [[-W / 2 + 0.15, z0 + 0.2], [W / 2 - 0.15, z0 + 0.2], [-W / 2 + 0.15, z1 - 0.2], [W / 2 - 0.15, z1 - 0.2]]) k.cbox(wood(frame), x, z, 0.22, 0.22, 0, 0.35);
-  k.box(wood(frame), -W / 2, 0.35, z0, W / 2, 1.0, z1);
-  k.box(fab('#f4f2ed'), -mw / 2, 1.0, z0 + 0.12, mw / 2, 1.95, z1 - 0.1);
-  // duvet draping over sides and foot, turned back at the pillows
-  const dz0 = z0 + 1.55;
-  k.box(fab(duvet), -mw / 2 - 0.08, 1.95, dz0, mw / 2 + 0.08, 2.1, z1);
-  k.box(fab(duvet), -mw / 2 - 0.08, 1.15, dz0, -mw / 2, 1.95, z1);
-  k.box(fab(duvet), mw / 2, 1.15, dz0, mw / 2 + 0.08, 1.95, z1);
-  k.box(fab(duvet), -mw / 2 - 0.08, 1.15, z1 - 0.08, mw / 2 + 0.08, 1.95, z1);
-  k.box(fab('#ffffff'), -mw / 2 - 0.06, 1.95, dz0 - 0.25, mw / 2 + 0.06, 2.14, dz0 + 0.05);
-  // throw across the foot
-  k.box(fab(accent), -mw / 2 - 0.1, 2.1, z1 - 1.5, mw / 2 + 0.1, 2.14, z1 - 0.6);
-  k.box(fab(accent), -mw / 2 - 0.1, 1.4, z1 - 1.5, -mw / 2 - 0.08, 2.14, z1 - 0.6);
-  k.box(fab(accent), mw / 2 + 0.08, 1.4, z1 - 1.5, mw / 2 + 0.1, 2.14, z1 - 0.6);
-  // sleeping pillows + shams + throw pillows
+  const hb = o.headboard || '#cfc6b8';
+  const W = mw + 0.35, z0 = 0.3, z1 = z0 + ml + 0.25;
+  // channel-tufted upholstered headboard on wood legs
+  k.box(wood(frame), -W / 2 - 0.05, 0, 0.05, -W / 2 + 0.12, 1.0, z0 - 0.05);
+  k.box(wood(frame), W / 2 - 0.12, 0, 0.05, W / 2 + 0.05, 1.0, z0 - 0.05);
+  k.soft(fab(hb), -W / 2 - 0.1, 0.95, 0, W / 2 + 0.1, hh, z0, 0.14);
+  const ch = Math.max(4, Math.round(W / 1.1));
+  for (let i = 1; i < ch; i++) { const x = -W / 2 + (W * i) / ch; k.box(fab(shadeHex(hb, 0.82)), x - 0.02, 1.15, z0 - 0.01, x + 0.02, hh - 0.18, z0 + 0.012); }
+  // upholstered platform frame on tapered legs
+  for (const [x, z] of [[-W / 2 + 0.2, z0 + 0.25], [W / 2 - 0.2, z0 + 0.25], [-W / 2 + 0.2, z1 - 0.25], [W / 2 - 0.2, z1 - 0.25]]) taperLeg(k, wood(frame), x, z, 0.45);
+  k.soft(fab(o.base || hb), -W / 2, 0.42, z0, W / 2, 1.05, z1, 0.08);
+  // mattress, duvet draped over the sides and foot, folded-back sheet
+  k.soft(fab('#f4f2ed'), -mw / 2, 0.98, z0 + 0.08, mw / 2, 1.9, z1 - 0.08, 0.22);
+  const dz0 = z0 + 1.6;
+  k.soft(fab(duvet), -mw / 2 - 0.13, 1.22, dz0, mw / 2 + 0.13, 2.07, z1 + 0.05, 0.2);
+  k.soft(fab('#fbfaf6'), -mw / 2 - 0.1, 1.84, dz0 - 0.38, mw / 2 + 0.1, 2.12, dz0 + 0.16, 0.13);
+  k.soft(fab(accent), -mw / 2 - 0.17, 1.45, z1 - 1.6, mw / 2 + 0.17, 2.13, z1 - 0.55, 0.14); // throw
+  // sleeping pillows, standing shams, throw pillows (slightly angled)
   const n = 2, pw = (mw - 0.2) / n;
   for (let i = 0; i < n; i++) {
     const x = -mw / 2 + 0.1 + pw * i;
-    k.box(fab('#fbfaf7'), x + 0.04, 1.95, z0 + 0.2, x + pw - 0.04, 2.4, z0 + 1.15);
-    k.box(fab(o.sham || '#e2d8c9'), x + 0.08, 1.95, z0 + 0.12, x + pw - 0.08, 3.15, z0 + 0.45);
+    k.soft(fab('#fbfaf7'), x + 0.05, 1.84, z0 + 0.22, x + pw - 0.05, 2.36, z0 + 1.22, 0.24);
+    k.soft(fab(o.sham || '#e2d8c9'), x + 0.1, 1.86, z0 + 0.1, x + pw - 0.1, 3.3, z0 + 0.5, 0.22);
   }
   const tp = Math.min(3, Math.floor(mw / 1.6));
   for (let i = 0; i < tp; i++) {
     const x = -((tp - 1) * 1.45) / 2 + i * 1.45;
-    k.cbox(fab(i === Math.floor(tp / 2) ? accent : o.pillow || '#b49a7c'), x, z0 + 1.35, 1.3, 0.35, 1.95, 2.95);
+    const p = k.P(x, 0, z0 + 1.42);
+    const sub = new Kit(k.bat, k.tag).at(p.x, p.z, k.oy, k.rot + (i - (tp - 1) / 2) * 9);
+    sub.soft(fab(i === Math.floor(tp / 2) ? accent : o.pillow || '#b49a7c'), -0.64, 1.88, -0.17, 0.64, 2.98, 0.17, 0.2);
   }
   k.solid(-W / 2 - 0.12, 0, W / 2 + 0.12, z1, 0, 2.2);
   return z1;
 }
+
 function nightstand(k, o = {}) {
   const w = 1.9, d = 1.5, h = 2.15, c = wood(o.color || '#5b3a26');
-  k.box(c, -w / 2, 0.3, 0, w / 2, h, d);
-  for (const x of [-w / 2 + 0.1, w / 2 - 0.1]) for (const z of [0.1, d - 0.1]) k.cbox(c, x, z, 0.12, 0.12, 0, 0.3);
-  k.box(wood('#6d4630'), -w / 2 + 0.08, 1.5, d, w / 2 - 0.08, 2.05, d + 0.04);
-  k.box(wood('#6d4630'), -w / 2 + 0.08, 0.45, d, w / 2 - 0.08, 1.4, d + 0.04);
-  knob(k, 0, 1.78, d + 0.04);
+  for (const x of [-w / 2 + 0.12, w / 2 - 0.12]) for (const z of [0.12, d - 0.12]) taperLeg(k, c, x, z, 0.35, 0.05, 0.07);
+  k.soft(c, -w / 2, 0.33, 0, w / 2, h - 0.08, d, 0.05);
+  k.soft(c, -w / 2 - 0.03, h - 0.1, -0.02, w / 2 + 0.03, h, d + 0.03, 0.03);
+  k.soft(wood(o.front || '#6d4630'), -w / 2 + 0.08, 1.5, d - 0.02, w / 2 - 0.08, 2.0, d + 0.04, 0.03);
+  k.soft(wood(o.front || '#6d4630'), -w / 2 + 0.08, 0.45, d - 0.02, w / 2 - 0.08, 1.42, d + 0.04, 0.03);
+  knob(k, 0, 1.75, d + 0.04);
   tableLamp(k, 0, d / 2, h);
   k.solid(-w / 2, 0, w / 2, d, 0, h);
 }
+
 function dresser(k, w, o = {}) {
   const d = 1.65, h = o.h || 2.9, c = wood(o.color || '#5b3a26'), f = wood(o.front || '#6b442d');
   k.box(c, -w / 2, 0.3, 0, w / 2, h, d);
@@ -105,10 +118,11 @@ function dresser(k, w, o = {}) {
   k.solid(-w / 2, 0, w / 2, d, 0, h);
 }
 function bench(k, w, d, color) {
-  k.box(fab(color), -w / 2, 1.15, -d / 2, w / 2, 1.55, d / 2);
-  for (const x of [-w / 2 + 0.15, w / 2 - 0.15]) for (const z of [-d / 2 + 0.15, d / 2 - 0.15]) k.cbox(DARKWOOD, x, z, 0.12, 0.12, 0, 1.15);
-  k.solid(-w / 2, -d / 2, w / 2, d / 2, 0, 1.55);
+  for (const x of [-w / 2 + 0.18, w / 2 - 0.18]) for (const z of [-d / 2 + 0.18, d / 2 - 0.18]) taperLeg(k, DARKWOOD, x, z, 1.1, 0.05, 0.08);
+  k.soft(fab(color), -w / 2, 1.05, -d / 2, w / 2, 1.6, d / 2, 0.14);
+  k.solid(-w / 2, -d / 2, w / 2, d / 2, 0, 1.6);
 }
+
 function desk(k, w = 4) {
   const d = 2, h = 2.5;
   k.box(wood('#f1ede4'), -w / 2, h - 0.12, 0, w / 2, h, d);
@@ -121,61 +135,71 @@ function desk(k, w = 4) {
 
 // ------------------------------------------------------------------ seating & tables
 function sofa(k, len, o = {}) {
-  const d = 3.1, c = fab(o.color || '#dcd3c6'), arm = 0.55;
-  for (const x of [-len / 2 + 0.25, len / 2 - 0.25]) for (const z of [0.3, d - 0.3]) k.cbox(DARKWOOD, x, z, 0.15, 0.15, 0, 0.35);
-  k.box(c, -len / 2, 0.35, 0, len / 2, 1.05, d);                 // base
-  k.box(c, -len / 2, 1.05, 0, len / 2, 2.85, 0.75);              // back
-  k.box(c, -len / 2, 1.05, 0, -len / 2 + arm, 2.05, d);          // arms
-  k.box(c, len / 2 - arm, 1.05, 0, len / 2, 2.05, d);
+  const d = 3.15, base = fab(o.color || '#dcd3c6'), cush = fab(o.cushion || o.color || '#e3dbcf'), arm = 0.62;
+  for (const x of [-len / 2 + 0.3, len / 2 - 0.3]) for (const z of [0.3, d - 0.3]) taperLeg(k, DARKWOOD, x, z, 0.4, 0.05, 0.08);
+  k.soft(base, -len / 2, 0.38, 0.05, len / 2, 1.15, d, 0.12);                      // base
+  k.soft(base, -len / 2 + 0.05, 0.9, 0, len / 2 - 0.05, 2.75, 0.85, 0.24);          // back frame
+  k.soft(base, -len / 2, 0.9, 0.05, -len / 2 + arm, 2.12, d, 0.26);                 // rolled arms
+  k.soft(base, len / 2 - arm, 0.9, 0.05, len / 2, 2.12, d, 0.26);
   const seats = len > 6.5 ? 3 : 2, sw = (len - 2 * arm) / seats;
   for (let i = 0; i < seats; i++) {
     const x = -len / 2 + arm + i * sw;
-    k.box(fab(o.cushion || o.color || '#e3dbcf'), x + 0.03, 1.05, 0.75, x + sw - 0.03, 1.5, d - 0.02);
-    k.box(fab(o.cushion || o.color || '#e3dbcf'), x + 0.05, 1.5, 0.72, x + sw - 0.05, 2.65, 1.15);
+    k.soft(cush, x + 0.02, 1.05, 0.72, x + sw - 0.02, 1.58, d + 0.03, 0.16);       // seat cushion
+    k.soft(cush, x + 0.04, 1.45, 0.6, x + sw - 0.04, 2.72, 1.25, 0.28);            // back cushion
   }
   const pc = o.pillows || ['#a77b6b', '#c9b49a', '#8d6e5d'];
   for (let i = 0; i < 2; i++) {
-    const x = (i ? 1 : -1) * (len / 2 - arm - 0.75);
-    k.cbox(fab(pc[i % pc.length]), x, 1.3, 1.3, 0.35, 1.5, 2.75);
+    const p = k.P((i ? 1 : -1) * (len / 2 - arm - 0.8), 0, 1.4);
+    const sub = new Kit(k.bat, k.tag).at(p.x, p.z, k.oy, k.rot + (i ? -20 : 20));
+    sub.soft(fab(pc[i % pc.length]), -0.66, 1.52, -0.17, 0.66, 2.8, 0.17, 0.22);
   }
   k.solid(-len / 2, 0, len / 2, d, 0, 2.85);
 }
+
 function armchair(k, o = {}) { // centered, faces +z
   const w = 2.7, d = 2.9, c = fab(o.color || '#ebe6dc');
-  for (const x of [-w / 2 + 0.2, w / 2 - 0.2]) for (const z of [-d / 2 + 0.2, d / 2 - 0.2]) k.cbox(DARKWOOD, x, z, 0.14, 0.14, 0, 0.5);
-  k.box(c, -w / 2, 0.5, -d / 2, w / 2, 1.5, d / 2);
-  k.box(c, -w / 2, 1.5, -d / 2, w / 2, 2.8, -d / 2 + 0.55);
-  k.box(c, -w / 2, 1.5, -d / 2, -w / 2 + 0.4, 2.15, d / 2);
-  k.box(c, w / 2 - 0.4, 1.5, -d / 2, w / 2, 2.15, d / 2);
-  if (o.pillow) k.cbox(fab(o.pillow), 0, -d / 2 + 0.75, 1.2, 0.35, 1.5, 2.6);
+  for (const x of [-w / 2 + 0.22, w / 2 - 0.22]) for (const z of [-d / 2 + 0.22, d / 2 - 0.22]) taperLeg(k, DARKWOOD, x, z, 0.5, 0.05, 0.08);
+  k.soft(c, -w / 2, 0.48, -d / 2, w / 2, 1.2, d / 2, 0.12);
+  k.soft(c, -w / 2 + 0.05, 1.0, -d / 2, w / 2 - 0.05, 2.85, -d / 2 + 0.6, 0.24);
+  k.soft(c, -w / 2, 1.0, -d / 2, -w / 2 + 0.45, 2.2, d / 2, 0.2);
+  k.soft(c, w / 2 - 0.45, 1.0, -d / 2, w / 2, 2.2, d / 2, 0.2);
+  k.soft(c, -w / 2 + 0.43, 1.1, -d / 2 + 0.5, w / 2 - 0.43, 1.6, d / 2 + 0.02, 0.15);
+  if (o.pillow) k.soft(fab(o.pillow), -0.6, 1.55, -d / 2 + 0.58, 0.6, 2.62, -d / 2 + 0.92, 0.2);
   k.solid(-w / 2, -d / 2, w / 2, d / 2, 0, 2.8);
 }
+
 function coffeeTable(k, w = 4, d = 2, color = '#cbbba5') {
-  k.box(wood(color), -w / 2, 1.3, -d / 2, w / 2, 1.42, d / 2);
-  k.box(wood(color), -w / 2, 0, -d / 2, -w / 2 + 0.12, 1.3, d / 2);
-  k.box(wood(color), w / 2 - 0.12, 0, -d / 2, w / 2, 1.3, d / 2);
-  k.cyl('col:#e9e5dc', 0.3, 0, 0.3, 0.25, 1.42, 2.4, 10);
-  k.solid(-w / 2, -d / 2, w / 2, d / 2, 0, 1.42);
+  k.soft(wood(color), -w / 2, 1.28, -d / 2, w / 2, 1.44, d / 2, 0.05);
+  k.soft(wood(color), -w / 2, 0, -d / 2, -w / 2 + 0.14, 1.32, d / 2, 0.04);
+  k.soft(wood(color), w / 2 - 0.14, 0, -d / 2, w / 2, 1.32, d / 2, 0.04);
+  k.cyl('col:#e9e5dc', 0.3, 0, 0.22, 0.28, 1.44, 1.95, 12);
+  k.cyl('col:#e9e5dc', 0.3, 0, 0.28, 0.12, 1.95, 2.35, 12);
+  k.cyl('col:#cfc7b8', -0.9, 0.15, 0.45, 0.4, 1.44, 1.6, 16);
+  k.solid(-w / 2, -d / 2, w / 2, d / 2, 0, 1.44);
 }
+
 function sideTable(k, s = 1.6) {
-  k.cbox(wood('#5b3a26'), 0, 0, s, s, 1.85, 1.95);
-  for (const x of [-s / 2 + 0.08, s / 2 - 0.08]) for (const z of [-s / 2 + 0.08, s / 2 - 0.08]) k.cbox(wood('#5b3a26'), x, z, 0.1, 0.1, 0, 1.85);
+  k.cyl(wood('#5b3a26'), 0, 0, s / 2, s / 2, 1.85, 1.95, 20);
+  k.cyl(wood('#5b3a26'), 0, 0, 0.08, 0.1, 0.1, 1.85, 8);
+  k.cyl(wood('#5b3a26'), 0, 0, 0.5, 0.55, 0, 0.1, 16);
   tableLamp(k, 0, 0, 1.95);
   k.solid(-s / 2, -s / 2, s / 2, s / 2, 0, 1.95);
 }
+
 function rug(k, w, d, field, border) {
   k.box(fab(border), -w / 2, 0.003, -d / 2, w / 2, 0.025, d / 2);
   k.box(fab(field), -w / 2 + 0.5, 0.004, -d / 2 + 0.5, w / 2 - 0.5, 0.028, d / 2 - 0.5);
 }
 function chair(k, color = '#a59f94', woodc = '#6b4a33') { // dining chair, centered, faces +z
   const w = 1.55, d = 1.65;
-  for (const x of [-w / 2 + 0.1, w / 2 - 0.1]) for (const z of [-d / 2 + 0.1, d / 2 - 0.1]) k.cbox(wood(woodc), x, z, 0.12, 0.12, 0, 1.45);
-  k.box(fab(color), -w / 2, 1.45, -d / 2, w / 2, 1.65, d / 2);
-  k.box(fab(color), -w / 2 + 0.05, 1.65, -d / 2, w / 2 - 0.05, 3.1, -d / 2 + 0.22);
+  for (const x of [-w / 2 + 0.12, w / 2 - 0.12]) for (const z of [-d / 2 + 0.12, d / 2 - 0.12]) taperLeg(k, wood(woodc), x, z, 1.48, 0.05, 0.07);
+  k.soft(fab(color), -w / 2, 1.42, -d / 2, w / 2, 1.72, d / 2, 0.1);
+  k.soft(fab(color), -w / 2 + 0.04, 1.65, -d / 2 - 0.02, w / 2 - 0.04, 3.15, -d / 2 + 0.26, 0.11);
 }
+
 function diningTable(k, w, d, o = {}) { // centered; long side along local x
   const top = wood(o.color || '#6b4a33');
-  k.box(top, -w / 2, 2.38, -d / 2, w / 2, 2.5, d / 2);
+  k.soft(top, -w / 2, 2.36, -d / 2, w / 2, 2.5, d / 2, 0.05);
   k.box(top, -w / 2 + 0.3, 2.1, -d / 2 + 0.3, w / 2 - 0.3, 2.38, d / 2 - 0.3);
   for (const x of [-w / 2 + 0.4, w / 2 - 0.4]) for (const z of [-d / 2 + 0.4, d / 2 - 0.4]) k.cbox(top, x, z, 0.25, 0.25, 0, 2.1);
   k.solid(-w / 2, -d / 2, w / 2, d / 2, 0, 2.5);
@@ -418,8 +442,8 @@ function officeChair(k) { // centered, faces +z
     sub.cyl('black', 0, 1.1, 0.1, 0.1, 0, 0.15, 8);
   }
   k.cyl('chrome', 0, 0, 0.08, 0.08, 0.28, 1.45, 8);
-  k.box('col:#2b2b2b', -0.85, 1.45, -0.8, 0.85, 1.75, 0.85);
-  k.box('col:#2b2b2b', -0.8, 1.9, -0.95, 0.8, 3.7, -0.75);
+  k.soft('col:#2b2b2b', -0.85, 1.42, -0.8, 0.85, 1.8, 0.85, 0.14);
+  k.soft('col:#2b2b2b', -0.8, 1.9, -0.98, 0.8, 3.75, -0.72, 0.16);
   k.box('black', -0.08, 1.6, -0.9, 0.08, 2.0, -0.75);
   for (const s of [-1, 1]) { k.box('black', s * 0.85 - 0.06, 1.75, -0.4, s * 0.85 + 0.06, 2.4, -0.3); k.box('black', s * 0.85 - 0.12, 2.4, -0.5, s * 0.85 + 0.12, 2.48, 0.35); }
   k.solid(-1, -1, 1, 1, 0, 3.7);
@@ -468,7 +492,7 @@ function hangingClothes(k, len, seed, mix, opts = {}) { // rod at z ~0.9 from a 
     x += th + 0.1 + rnd() * 0.08;
   }
   // folded sweaters on the shelf above, shoes on the floor
-  for (let sx = 0.4; sx < len - 1.2; sx += 1.5) for (let j = 0; j < 3; j++) k.box('fab:' + shirts[(Math.floor(sx) + j * 3) % shirts.length], sx, 5.66 + j * 0.2, 0.15, sx + 1.0, 5.85 + j * 0.2, 1.0);
+  for (let sx = 0.4; sx < len - 1.2; sx += 1.5) for (let j = 0; j < 3; j++) k.soft('fab:' + shirts[(Math.floor(sx) + j * 3) % shirts.length], sx, 5.66 + j * 0.2, 0.15, sx + 1.0, 5.86 + j * 0.2, 1.0, 0.06);
   for (let sx = 0.4; sx < len - 0.6; sx += 0.8) { const c = 'col:' + ['#3b2a20', '#111111', '#7a5a3a', '#c9c2b5'][Math.floor(sx * 3) % 4]; k.box(c, sx, 0, 0.3, sx + 0.3, 0.35, 1.25); k.box(c, sx + 0.35, 0, 0.3, sx + 0.65, 0.35, 1.25); }
 }
 
@@ -480,7 +504,7 @@ function linenShelves(k, len, seed = 5) { // back at z = 0: four shelves of fold
     k.box('white', 0, y - 0.06, 0, len, y, 1.4);
     for (let x = 0.15; x < len - 0.9; x += 1.05) {
       const c = 'fab:' + cols[Math.floor(rnd() * cols.length)], n = 2 + Math.floor(rnd() * 3);
-      for (let j = 0; j < n; j++) k.box(c, x, y + j * 0.22, 0.2, x + 0.95, y + j * 0.22 + 0.2, 1.2);
+      for (let j = 0; j < n; j++) k.soft(c, x, y + j * 0.22, 0.2, x + 0.95, y + j * 0.22 + 0.21, 1.2, 0.07);
     }
   }
 }
@@ -516,8 +540,8 @@ function patioDining(k) { // centered: 48" round table, umbrella, four chairs
 }
 function patioChair(k) { // black metal sling chair, centered, faces +z
   for (const x of [-0.85, 0.85]) { k.box('black', x - 0.05, 0, -0.9, x + 0.05, 1.5, -0.8); k.box('black', x - 0.05, 0, 0.8, x + 0.05, 2.2, 0.9); k.box('black', x - 0.05, 2.1, -0.9, x + 0.05, 2.2, 0.9); }
-  k.box('fab:#8f8a7d', -0.82, 1.4, -0.8, 0.82, 1.55, 0.8);
-  k.box('fab:#8f8a7d', -0.82, 1.55, -0.95, 0.82, 3.1, -0.82);
+  k.soft('fab:#8f8a7d', -0.82, 1.38, -0.8, 0.82, 1.6, 0.8, 0.08);
+  k.soft('fab:#8f8a7d', -0.82, 1.55, -0.98, 0.82, 3.1, -0.8, 0.08);
   k.solid(-0.9, -0.95, 0.9, 0.9, 0, 3.1);
 }
 
@@ -645,7 +669,7 @@ function counter(k, x0, x1, o = {}) {
   if (o.splash) {
     for (const [a, b, top] of o.splash) {
       k.box('backsplash', a, 3.05, 0, b, top - 0.18, 0.04);
-      k.box('col:#7d6a58', a, top - 0.18, 0, b, top, 0.05); // decorative border
+      k.box('splashTrim', a, top - 0.18, 0, b, top, 0.05); // decorative border
     }
   }
 }
@@ -766,8 +790,8 @@ function vanity(k, w, sinks = 1, o = {}) { // back at z = 0
   k.box('blackMatte', -w / 2, 0, 0, w / 2, 0.33, d - 0.25);
   const n = Math.max(2, Math.round(w / 1.3)), cw = w / n;
   for (let i = 0; i < n; i++) { const a = -w / 2 + i * cw + 0.03, b = -w / 2 + (i + 1) * cw - 0.03; raisedPanel(k, a, b, 0.42, h - 0.08, d); knob(k, i % 2 ? a + 0.2 : b - 0.2, h - 0.4, d + 0.09); }
-  k.box('cultured', -w / 2 - 0.04, h, 0, w / 2 + 0.04, h + 0.12, d + 0.08);
-  k.box('cultured', -w / 2 - 0.04, h + 0.12, 0, w / 2 + 0.04, h + 0.45, 0.06);
+  k.box('vanityTop', -w / 2 - 0.04, h, 0, w / 2 + 0.04, h + 0.12, d + 0.08);
+  k.box('vanityTop', -w / 2 - 0.04, h + 0.12, 0, w / 2 + 0.04, h + 0.45, 0.06);
   const xs = sinks === 2 ? [-w / 4, w / 4] : [o.sinkX ?? 0];
   for (const x of xs) {
     k.cyl('col:#e2dbcd', x, 0.95, 0.65, 0.65, h + 0.121, h + 0.126, 18, 0.75);
@@ -805,16 +829,16 @@ function laundrySink(k) {
   k.solid(-1, 0, 1, 1.9, 0, 3);
 }
 function fireplace(k) { // oak mantel + brick surround + raised brick hearth; back at z = 0
-  k.box('brick', -2.75, 0, 0, 2.75, 3.8, 0.35);
+  k.box('fpBrick', -2.75, 0, 0, 2.75, 3.8, 0.35);
   k.box('black', -1.45, 0.55, 0.35, 1.45, 2.95, 0.37);
   k.box('brass', -1.55, 2.95, 0.35, 1.55, 3.05, 0.4);
   k.box('brass', -1.55, 0.55, 0.35, -1.45, 3.05, 0.4); k.box('brass', 1.45, 0.55, 0.35, 1.55, 3.05, 0.4);
   k.box('col:#4b2f22', -0.8, 0.65, 0.2, 0.8, 0.95, 0.34);
-  for (const s of [-1, 1]) { k.box(OAKDOOR, s * 2.75 - 0.35, 0, 0, s * 2.75 + 0.35, 4.35, 0.55); k.box(OAKPANEL, s * 2.75 - 0.2, 0.6, 0.55, s * 2.75 + 0.2, 3.9, 0.6); }
-  k.box(OAKDOOR, -3.1, 3.8, 0, 3.1, 4.35, 0.55);
-  k.box(OAKPANEL, -2.2, 3.9, 0.55, 2.2, 4.25, 0.6);
-  k.box(OAKDOOR, -3.35, 4.35, 0, 3.35, 4.5, 0.95);
-  k.box('brick', -3.0, 0, 0.35, 3.0, 0.55, 1.9);
+  for (const s of [-1, 1]) { k.box('mantel', s * 2.75 - 0.35, 0, 0, s * 2.75 + 0.35, 4.35, 0.55); k.box('mantelPanel', s * 2.75 - 0.2, 0.6, 0.55, s * 2.75 + 0.2, 3.9, 0.6); }
+  k.box('mantel', -3.1, 3.8, 0, 3.1, 4.35, 0.55);
+  k.box('mantelPanel', -2.2, 3.9, 0.55, 2.2, 4.25, 0.6);
+  k.box('mantel', -3.35, 4.35, 0, 3.35, 4.5, 0.95);
+  k.box('fpBrick', -3.0, 0, 0.35, 3.0, 0.55, 1.9);
   k.solid(-3.35, 0, 3.35, 1.9, 0, 4.5);
 }
 function wicRun(k, len) { // closet shelf + rod along a wall, back at z = 0
@@ -831,7 +855,7 @@ export function buildFixtures(bats) {
     return new Kit(B(lv), lv).at(lx, lz, LV[lv].floor + extraY, rot);
   };
   // ---- kitchen
-  buildKitchen(bats.f1, 'f1');
+  buildKitchen(renoBat('off:kitchen', 'f1'), 'off:kitchen'); // as-built kitchen (replaced by the kitchen remodel)
   // ---- half bath (fixtures on the left wall, face at x 717.1)
   toilet(at('f1', 717.1, 432, 90));
   pedestalSink(at('f1', 717.1, 515, 90));
@@ -847,7 +871,7 @@ export function buildFixtures(bats) {
   sconce(at('f1', 1697.6, 375, -90), 5.6);
   sconce(at('f1', 1697.6, 549, -90), 5.6);
   // oak column at the end of the nook rail
-  { const k = at('f1', 1312, 368); k.cbox('trim', 0, 0, 0.55, 0.55, 0, 8); k.cbox('trim', 0, 0, 0.75, 0.75, 7.55, 8); k.cbox('trim', 0, 0, 0.7, 0.7, 0, 0.5); }
+  { const [cx, cz] = P('f1', 1312, 368); const k = new Kit(renoBat('off:open', 'f1'), 'off:open').at(cx, cz, 0); k.cbox('trim', 0, 0, 0.55, 0.55, 0, 8); k.cbox('trim', 0, 0, 0.75, 0.75, 7.55, 8); k.cbox('trim', 0, 0, 0.7, 0.7, 0, 0.5); }
   // ---- lights, 1st floor
   chandelier(at('f1', 988, 866), 8, 2.6);
   sconce(at('f1', 845.1, 770, 90), 5.7); sconce(at('f1', 845.1, 962, 90), 5.7);
@@ -864,16 +888,19 @@ export function buildFixtures(bats) {
     k.box('trim', xc - 0.3, ridge - 0.8, z0, xc + 0.3, ridge, z1);
     ceilingFan(new Kit(bats.f1, 'f1').at(xc, (z0 + z1) / 2 - 1.5, 0), ridge - 0.8, { body: 'white', blade: 'white', drop: 1.6 });
   }
+  // ---- 2nd floor: primary bath as built (replaced by the bath remodel)
+  const PB = renoBat('off:pbath', 'f2');
+  const atPB = (x, y, rot = 0) => { const [lx, lz] = P('f2', x, y); return new Kit(PB, 'off:pbath').at(lx, lz, 9, rot); };
   // ---- 2nd floor: primary bath
-  vanity(at('f2', 279.2, 361, 90), 5.4, 2, { mirrorTop: 7.0 });
-  lightBar(at('f2', 279.2, 361, 90), 5.0, 7.35, 6);
-  toilet(at('f2', 279.2, 160, 90));
+  vanity(atPB(279.2, 361, 90), 5.4, 2, { mirrorTop: 7.0 });
+  lightBar(atPB(279.2, 361, 90), 5.0, 7.35, 6);
+  toilet(atPB(279.2, 160, 90));
   { // corner whirlpool on a tiled platform, with two steps
     const plat = [[384, 62], [664, 62], [664, 236], [505, 236], [384, 128]].map(([x, y]) => P('f2', x, y));
-    const k = new Kit(bats.f2, 'f2').at(0, 0, 9, 0);
+    const k = new Kit(PB, 'off:pbath').at(0, 0, 9, 0);
     k.prism({ top: 'tile4', side: 'tile4' }, plat, 0, 1.85);
     const [tx, tz] = P('f2', 535, 140);
-    const kt = new Kit(bats.f2, 'f2').at(tx, tz, 9, -25);
+    const kt = new Kit(PB, 'off:pbath').at(tx, tz, 9, -25);
     kt.cyl('porcelain', 0, 0, 2.7, 2.7, 1.85, 1.9, 28, 0.55);
     kt.cyl('col:#e7eef0', 0, 0, 2.35, 2.35, 1.9, 1.905, 28, 0.5);
     kt.cyl('brass', 0, -1.35, 0.06, 0.06, 1.9, 2.5, 8);
@@ -892,17 +919,17 @@ export function buildFixtures(bats) {
   }
   { // neo-angle shower: tiled curb, glass with brass frame on the diagonal
     const sh = [[512, 382], [563, 332], [673, 332], [673, 477], [512, 477]].map(([x, y]) => P('f2', x, y));
-    const k = new Kit(bats.f2, 'f2').at(0, 0, 9, 0);
+    const k = new Kit(PB, 'off:pbath').at(0, 0, 9, 0);
     k.prism({ top: 'tile4', side: 'tile4' }, sh, 0, 0.35);
     const A = P('f2', 512, 382), Bp = P('f2', 563, 332);
-    const { k: g, len } = runKit(bats.f2, 'f2', A, Bp, [1, 1], 9);
+    const { k: g, len } = runKit(PB, 'off:pbath', A, Bp, [1, 1], 9);
     g.box('showerGlass', 0, 0.35, 0.0, len, 6.6, 0.04);
     for (const x of [0, len - 0.06, len / 2 - 0.03]) g.box('brass', x, 0.35, -0.02, x + 0.06, 6.6, 0.06);
     g.box('brass', 0, 6.55, -0.02, len, 6.62, 0.06);
     g.box('brass', len / 2 + 0.2, 3.2, 0.04, len / 2 + 0.25, 4.0, 0.14);
     g.solid(0, -0.1, len, 0.1, 0.35, 6.6);
     const [hx, hz] = P('f2', 666, 405);
-    new Kit(bats.f2, 'f2').at(hx, hz, 9, -90).box('chrome', -0.05, 6.0, 0, 0.05, 6.1, 0.6).cyl('chrome', 0, 0.6, 0.18, 0.12, 5.9, 6.05, 10);
+    new Kit(PB, 'off:pbath').at(hx, hz, 9, -90).box('chrome', -0.05, 6.0, 0, 0.05, 6.1, 0.6).cyl('chrome', 0, 0.6, 0.18, 0.12, 5.9, 6.05, 10);
   }
   // ---- 2nd floor: hall bath
   vanity(at('f2', 949.4, 345, 90), 6.4, 1, { faucet: 'chrome', mirrorW: 3.4, frame: 'col:#7d776c', sinkX: 0 });
@@ -927,14 +954,16 @@ export function buildFixtures(bats) {
   { const { k, len } = runKit(bats.f1, 'f1', P('f1', 1417.9, 870), P('f1', 1417.9, 1022.6), [-1, 0], 0); wicRun(k, len); hangingClothes(k, len, 67, 0, { coats: true }); }
   { const { k, len } = runKit(bats.f2, 'f2', P('f2', 1227.4, 386.4), P('f2', 1308.6, 386.4), [0, 1], 9); linenShelves(k, len, 7); }
   { const { k, len } = runKit(bats.f2, 'f2', P('f2', 1125.4, 306.4), P('f2', 1214.6, 306.4), [0, 1], 9); linenShelves(k, len, 13); }
-  { const { k, len } = runKit(bats.f2, 'f2', P('f2', 666.6, 246.4), P('f2', 666.6, 325.6), [-1, 0], 9); linenShelves(k, len, 19); }
+  { const { k, len } = runKit(renoBat('off:pbath', 'f2'), 'off:pbath', P('f2', 666.6, 246.4), P('f2', 666.6, 325.6), [-1, 0], 9); linenShelves(k, len, 19); }
   flushDome(at('f2', 808, 290), 8);
   ceilingFan(at('f2', 556, 820), 8, { body: 'brass', blade: wood('#9b6a3c') });
   ceilingFan(at('f2', 1510, 885), 8, { body: 'col:#8c8f91', blade: wood('#c0844a') });
   ceilingFan(at('f2', 1520, 340), 8, { body: 'col:#5f6163', blade: wood('#5a3524') });
   for (const [x, y] of [[1050, 540], [1210, 1110], [1000, 1110]]) recessed(at('f2', x, y), 8);
   // ---- basement
-  for (const [x, y] of [[760, 644], [990, 644], [1100, 568]]) { const k = at('b', x, y); k.cbox('trim', 0, 0, 0.6, 0.6, 0, 7.4); k.cbox('trim', 0, 0, 0.8, 0.8, 0, 0.4); k.cbox('trim', 0, 0, 0.8, 0.8, 7.0, 7.4); k.solid(-0.3, -0.3, 0.3, 0.3, 0, 7.4); }
+  // drop-ceiling bulkhead over the main beam, ~2 ft off the stair wall; posts sit under it near the walls
+  { const [x0, z] = P('b', 649, 762), [x1] = P('b', 1193, 762); new Kit(bats.b, 'b').box('droptile', x0, -2.3, z - 0.45, x1, -1.6, z + 0.45); }
+  for (const [x, y] of [[1010, 762], [1150, 762], [690, 850]]) { const k = at('b', x, y); k.cbox('trim', 0, 0, 0.6, 0.6, 0, 7.4); k.cbox('trim', 0, 0, 0.8, 0.8, 0, 0.4); k.cbox('trim', 0, 0, 0.8, 0.8, 7.0, 7.4); k.solid(-0.3, -0.3, 0.3, 0.3, 0, 7.4); }
   { // electrical panel + tall oak cabinet (theater photos)
     const k = at('b', 653.8, 470, 90); k.box('col:#b9bcbd', -0.8, 4.2, 0, 0.8, 6.6, 0.25);
     const c = at('b', 760, 407.3, 0); c.box(wood('#c08a52'), -1.4, 0, 0, 1.4, 7.0, 2.0); raisedPanel(c, -1.35, -0.02, 0.2, 5.3, 2.0, wood('#c08a52'), wood('#cc9862')); raisedPanel(c, 0.02, 1.35, 0.2, 5.3, 2.0, wood('#c08a52'), wood('#cc9862')); c.solid(-1.4, 0, 1.4, 2, 0, 7);
@@ -964,8 +993,8 @@ export function buildFixtures(bats) {
   for (const [x, y] of [[900, 1040], [1350, 1040], [1500, 780]]) { const [lx, lz] = P('b', x, y); new Kit(bats.b, 'b').at(lx, lz, -9).cyl('bulb', 0, 0, 0.12, 0.12, 6.9, 7.1, 8); }
   // ---- exterior lights
   for (const x of [1178, 1350]) exteriorLantern(at('f1', x, 1034.4, 0), 6.0);
-  exteriorLantern(at('f1', 560, 386.6, 180), 6.6);
-  exteriorLantern(at('f1', 1048.1, 334, -90), 6.6);
+  { const B = renoBat('off:addition', 'f1');
+    for (const [x, y, r] of [[560, 386.6, 180], [1048.1, 334, -90]]) { const [lx, lz] = P('f1', x, y); exteriorLantern(new Kit(B, 'off:addition').at(lx, lz, 0, r), 6.6); } }
   exteriorLantern(at('f1', 254.6, 530, -90), 6.6);
   exteriorLantern(at('f1', 254.6, 1150, -90), 7.4);
 }
@@ -1059,14 +1088,15 @@ export function buildFurniture(bats) {
   placeA(1455, 470, 90, (k) => bodyPumpArea(k));
   placeA(1638.2, 470, -90, (k) => k.box('mirror', -3.6, 0.6, 0, 3.6, 6.8, 0.06));
   // ---- patio: fire pit with four Adirondack chairs, and a dining set by the family-room windows
-  const patio = (x, z, rot, fn) => fn(new Kit(bats.f1F, 'f1F').at(x, z, -0.62, rot));
+  const PATIO = renoBat('off:addition', 'f1');
+  const patio = (x, z, rot, fn) => fn(new Kit(PATIO, 'off:addition').at(x, z, -0.62, rot));
   patio(33, -1, 0, firePit);
   for (const [dx, dz] of [[-3.8, -3.8], [3.8, -3.8], [-3.8, 3.8], [3.8, 3.8]]) {
     const rot = (Math.atan2(-dx, -dz) * 180) / Math.PI;
     patio(33 + dx, -1 + dz, rot, (k) => adirondack(k));
   }
   {
-    const k = new Kit(bats.f1F, 'f1F').at(18.5, 6.5, -0.62, 0);
+    const k = new Kit(PATIO, 'off:addition').at(18.5, 6.5, -0.62, 0);
     for (const [cx, cz, r] of patioDining(k)) patio(18.5 + cx, 6.5 + cz, r, patioChair);
   }
   placeA(800, 1173.7, 180, (k) => shelving(k, 6, 1.5, 6));
@@ -1095,3 +1125,10 @@ export function buildFurniture(bats) {
   placeB(1450, 1173.7, 180, (k) => k.box('mirror', -3.6, 0.6, 0, 3.6, 6.8, 0.06));
 }
 export { exteriorLantern, raisedPanel };
+
+export {
+  bed, nightstand, dresser, bench, sofa, armchair, coffeeTable, sideTable, rug, chair, diningTable, roundTable, buffet, plant,
+  floorLamp, tableLamp, knob, toilet, vanity, lightBar, wicRun, linenShelves, hangingClothes, recessed, flushDome, globePendant,
+  chandelier, ceilingFan, firePit, adirondack, patioDining, patioChair, powerRack, liftBench, dumbbellRack, pelotonBike,
+  bodyPumpArea, treadmill, rubberFloor, shelving, runKit, disc, bar, officeChair, officeDesk, bookcase, IRON, RUBBER, shadeHex, taperLeg,
+};

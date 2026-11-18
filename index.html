@@ -89,6 +89,18 @@
   #hud-help { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); background: rgba(20,20,20,.55); color: #fff; padding: 5px 12px; border-radius: 999px; font-size: 12px; }
   #hud-door { position: absolute; top: 56%; left: 50%; transform: translateX(-50%); background: rgba(20,20,20,.6); color: #fff; padding: 4px 10px; border-radius: 999px; font-size: 12px; }
   #hud-door[hidden] { display: none; }
+  #hud-options { position: absolute; top: 12px; left: 12px; pointer-events: auto; border: 0; background: rgba(20,20,20,.6); color: #fff; padding: 6px 12px; border-radius: 999px; font-weight: 500; }
+  body.walking.walk-panel #panel { display: flex; z-index: 8; }
+  body.walking.walk-panel #hud-options { left: 336px; }
+  .style-grid { display: grid; gap: 6px; margin-top: 8px; }
+  .style-grid label { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--muted); }
+  .chips button.on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+  .reno-list { display: grid; gap: 8px; }
+  .reno-list label { display: flex; gap: 8px; align-items: flex-start; }
+  .reno-list input { margin-top: 3px; }
+  .reno-list span { display: flex; flex-direction: column; gap: 2px; }
+  .reno-list small { color: var(--muted); font-size: 11.5px; line-height: 1.35; }
+  .reno-list select { margin-top: 4px; }
   #hud-exit { position: absolute; top: 12px; right: 12px; pointer-events: auto; border: 0; background: rgba(20,20,20,.6); color: #fff; padding: 6px 12px; border-radius: 999px; font-weight: 500; }
   .draghelp { display: none; }
   body.draglook .draghelp { display: inline; }
@@ -138,6 +150,28 @@
       <h2>Walk through</h2>
       <button class="btn primary" id="btn-walk">Walk through at eye level</button>
       <p class="muted">Starts on the front walk. <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to move, mouse to look, <kbd>Shift</kbd> to hurry, <kbd>E</kbd> to open or close the door in front of you, <kbd>Esc</kbd> to pause. Stairs work.</p>
+    </section>
+
+    <section>
+      <h2>Interior style</h2>
+      <div class="chips" id="style-presets"></div>
+      <details style="margin-top:8px">
+        <summary>Fine-tune finishes</summary>
+        <div id="style-controls" class="style-grid"></div>
+      </details>
+    </section>
+
+    <section>
+      <h2>Renovation ideas</h2>
+      <div class="reno-list">
+        <label><input type="checkbox" data-reno="open"><span><b>Open floor plan</b><small>Takes out the sun room, family/living and living/foyer walls; dropped beams stay.</small></span></label>
+        <label><input type="checkbox" data-reno="kitchen"><span><b>Kitchen remodel</b><small>Shaker cabinets, 36" range with hood, fridge &amp; pantry wall, 9 ft island with seating. Peninsula goes.</small></span></label>
+        <label><input type="checkbox" data-reno="pbath"><span><b>Primary bath remodel</b><small>Tub out. Curbless walk-in shower, private water closet, 66" double vanity, linen tower.</small></span></label>
+        <label><input type="checkbox" data-reno="addition"><span><b>Rear addition</b><small>Mudroom + scullery behind the garage (~300 sq ft), dining addition off the kitchen (~365 sq ft), sun room 12 ft longer, new patio.</small></span></label>
+        <label><input type="checkbox" data-reno="garage2"><span><b>Detached garage / studio</b><small>19 × 24 ft at the end of a longer driveway. Only ~3 ft off the south lot line: check setbacks.</small>
+          <select id="garage-use"><option value="golf">Golf simulator</option><option value="pottery">Pottery studio</option><option value="gym">Gym</option></select></span></label>
+      </div>
+      <p class="muted">Options carry into the walk-through: press <kbd>O</kbd> or tap Options while walking.</p>
     </section>
 
     <section>
@@ -242,6 +276,7 @@
   <div id="hud-door" hidden></div>
   <div id="hud-help"><span class="lockhelp">WASD move · mouse look · E or click: doors · Esc pause</span><span class="draghelp">WASD / arrows move · drag to look · E: doors · Esc exits</span></div>
   <button id="hud-exit">Exit walk-through</button>
+  <button id="hud-options">Options (O)</button>
 </div>
 <div id="walk-paused" hidden>
   <div>
