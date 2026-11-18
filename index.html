@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Harrison Ave House</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f6f2; --panel: rgba(250, 249, 246, 0.94); --ink: #22231f; --muted: #6c6b64;
+    --line: #dddad1; --accent: #2f5d50; --accent-ink: #ffffff; --chip: #ecebe5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17181a; --panel: rgba(30, 31, 33, 0.94); --ink: #ecebe6; --muted: #a3a29a;
+      --line: #3a3b3d; --accent: #7fbfa8; --accent-ink: #10201b; --chip: #2a2b2d;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17181a; --panel: rgba(30, 31, 33, 0.94); --ink: #ecebe6; --muted: #a3a29a;
+    --line: #3a3b3d; --accent: #7fbfa8; --accent-ink: #10201b; --chip: #2a2b2d;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink);
+    font: 13px/1.45 Inter, system-ui, -apple-system, sans-serif; }
+  #app, #app canvas { position: fixed; inset: 0; }
+  .labels { position: fixed !important; inset: 0; pointer-events: none; }
+  body.measuring #app canvas { cursor: crosshair; }
+
+  .room-label { text-align: center; color: #1f2420; background: rgba(255,255,255,.82); border-radius: 6px;
+    padding: 2px 7px; font-size: 11px; line-height: 1.25; box-shadow: 0 1px 3px rgba(0,0,0,.15); white-space: nowrap; }
+  .room-label b { display: block; font-weight: 600; font-size: 11.5px; }
+  .room-label span { color: #5d625c; }
+  .measure-label { background: #e0412b; color: #fff; font-weight: 600; padding: 2px 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; }
+  .north { color: #fff; font-weight: 700; font-size: 18px; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
+  .street { color: #fff; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; font-size: 11px; text-shadow: 0 1px 3px rgba(0,0,0,.7); }
+
+  #panel { position: fixed; top: 12px; left: 12px; bottom: 12px; width: 312px; background: var(--panel);
+    backdrop-filter: blur(10px); border: 1px solid var(--line); border-radius: 14px; display: flex; flex-direction: column;
+    box-shadow: 0 8px 30px rgba(0,0,0,.12); transition: transform .25s ease; z-index: 5; }
+  body.collapsed #panel { transform: translateX(calc(-100% - 20px)); }
+  #panel header { padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
+  #panel h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  #panel header p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+  .scroll { overflow-y: auto; padding: 4px 16px 16px; flex: 1; }
+  section { padding: 12px 0; border-bottom: 1px solid var(--line); }
+  section:last-child { border-bottom: 0; }
+  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 0 0 8px; font-weight: 600; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  .views { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; background: var(--chip); padding: 3px; border-radius: 9px; }
+  .views button { border: 0; background: transparent; padding: 7px 0; border-radius: 7px; font-weight: 500; font-size: 12px; }
+  .views button.on { background: var(--panel); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+  .btn { width: 100%; border: 1px solid var(--line); background: var(--panel); border-radius: 9px; padding: 8px 10px; font-weight: 500; text-align: left; }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; text-align: center; }
+  .btn.on { outline: 2px solid #e0412b; }
+  .row { display: flex; gap: 6px; }
+  .toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+  .toggles label { display: flex; align-items: center; gap: 6px; }
+  .muted { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  select, input[type=text], input[type=number] { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 5px 7px; width: 100%; }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .chips button { border: 1px solid var(--line); background: var(--chip); border-radius: 999px; padding: 4px 10px; font-size: 12px; }
+  #add-list { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+  .add-row { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 6px 8px; text-align: left; }
+  .add-row.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .add-row i { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+  .add-row span { flex: 1; }
+  .add-row small { color: var(--muted); }
+  #add-editor { margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+  #add-editor .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 6px 0; }
+  #add-editor label { font-size: 11px; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
+  .add-stats { font-size: 12px; margin: 6px 0 8px; }
+  details summary { cursor: pointer; font-weight: 500; }
+  details ul { padding-left: 18px; margin: 8px 0 0; color: var(--muted); font-size: 12px; }
+  details li { margin-bottom: 4px; }
+  kbd { font: 11px ui-monospace, monospace; background: var(--chip); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+
+  #panel-toggle { position: fixed; top: 12px; left: 336px; z-index: 6; border: 1px solid var(--line); background: var(--panel);
+    border-radius: 9px; width: 34px; height: 34px; transition: left .25s ease; }
+  body.collapsed #panel-toggle { left: 12px; }
+
+  #hud { position: fixed; inset: 0; pointer-events: none; display: none; z-index: 4; }
+  body.walking #hud { display: block; }
+  body.walking #panel, body.walking #panel-toggle { display: none; }
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: rgba(255,255,255,.9); box-shadow: 0 0 0 1px rgba(0,0,0,.4); }
+  #hud-room { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); background: rgba(20,20,20,.6); color: #fff; padding: 5px 12px; border-radius: 999px; font-weight: 500; }
+  #hud-help { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); background: rgba(20,20,20,.55); color: #fff; padding: 5px 12px; border-radius: 999px; font-size: 12px; }
+  #hud-door { position: absolute; top: 56%; left: 50%; transform: translateX(-50%); background: rgba(20,20,20,.6); color: #fff; padding: 4px 10px; border-radius: 999px; font-size: 12px; }
+  #hud-door[hidden] { display: none; }
+  #hud-exit { position: absolute; top: 12px; right: 12px; pointer-events: auto; border: 0; background: rgba(20,20,20,.6); color: #fff; padding: 6px 12px; border-radius: 999px; font-weight: 500; }
+  .draghelp { display: none; }
+  body.draglook .draghelp { display: inline; }
+  body.draglook .lockhelp { display: none; }
+  body.draglook #crosshair { display: none; }
+  body.draglook #app canvas { cursor: grab; }
+  #walk-paused { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.35); z-index: 7; }
+  #walk-paused[hidden] { display: none; }
+  #walk-paused div { background: var(--panel); padding: 18px; border-radius: 14px; width: 280px; text-align: center; display: grid; gap: 8px; }
+
+  @media (max-width: 640px) {
+    #panel { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; height: 46vh; }
+    body.collapsed #panel { transform: translateY(calc(100% + 20px)); }
+    #panel-toggle { left: auto; right: 8px; top: 8px; }
+    body.collapsed #panel-toggle { left: auto; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="app"></div>
+
+<button id="panel-toggle" title="Show / hide panel" aria-label="Toggle panel">&#9776;</button>
+<aside id="panel">
+  <header>
+    <h1>Harrison Ave house</h1>
+    <p>3 bed · 2.5 bath · 3,303 sq ft · 0.39 acre lot</p>
+  </header>
+  <div class="scroll">
+    <section>
+      <h2>View</h2>
+      <div class="views">
+        <button data-view="ext">Outside</button>
+        <button data-view="f2">2nd</button>
+        <button data-view="f1">1st</button>
+        <button data-view="b">Base&shy;ment</button>
+      </div>
+      <p class="muted">Drag to orbit · right-drag to pan · scroll to zoom · keys <kbd>1</kbd>–<kbd>4</kbd></p>
+    </section>
+
+    <section>
+      <h2>Walk through</h2>
+      <button class="btn primary" id="btn-walk">Walk through at eye level</button>
+      <p class="muted">Starts on the front walk. <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to move, mouse to look, <kbd>Shift</kbd> to hurry, <kbd>E</kbd> to open or close the door in front of you, <kbd>Esc</kbd> to pause. Stairs work.</p>
+    </section>
+
+    <section>
+      <h2>Basement layout</h2>
+      <div class="views layouts" style="grid-template-columns: 1fr 1fr">
+        <button data-layout="A" class="on">Gym east, TV in bay</button>
+        <button data-layout="B">Gym in storage, media room</button>
+      </div>
+      <p class="muted">The second option moves the gym into the unfinished storage area (with a treadmill and room to run) and turns the east end into a media room with a 110" screen.</p>
+    </section>
+
+    <section>
+      <h2>Doors</h2>
+      <div class="row">
+        <button class="btn" id="doors-open">Open all</button>
+        <button class="btn" id="doors-close">Close all</button>
+      </div>
+      <p class="muted">Click any door, including closet and patio sliders, to open or close it. Outside doors and closets start closed.</p>
+    </section>
+
+    <section>
+      <h2>Show</h2>
+      <div class="toggles">
+        <label><input type="checkbox" id="tgl-furn" checked> Furniture</label>
+        <label><input type="checkbox" id="tgl-labels" checked> Room labels</label>
+        <label><input type="checkbox" id="tgl-trees" checked> Trees</label>
+        <label><input type="checkbox" id="tgl-lot" checked> Lot lines</label>
+      </div>
+    </section>
+
+    <section>
+      <h2>Sun &amp; shadows</h2>
+      <select id="sun-month">
+        <option value="0">January</option><option value="1">February</option><option value="2">March</option>
+        <option value="3">April</option><option value="4">May</option><option value="5">June</option>
+        <option value="6">July</option><option value="7">August</option><option value="8">September</option>
+        <option value="9">October</option><option value="10">November</option><option value="11">December</option>
+      </select>
+      <input type="range" id="sun-hour" min="5" max="21" step="0.25" value="14">
+      <p class="muted" id="sun-label"></p>
+    </section>
+
+    <section>
+      <h2>Measure</h2>
+      <div class="row">
+        <button class="btn" id="btn-measure">Measure (<kbd>M</kbd>)</button>
+        <button class="btn" id="btn-measure-clear" style="width:auto">Clear</button>
+      </div>
+      <p class="muted" id="measure-hint"></p>
+    </section>
+
+    <section>
+      <h2>Try an addition</h2>
+      <div class="chips">
+        <button data-add="room">Bump-out room</button>
+        <button data-add="deck">Deck</button>
+        <button data-add="bay">3rd garage bay</button>
+        <button data-add="overGarage">Suite over garage</button>
+        <button data-add="shed">Shed</button>
+        <button data-add="box">Blank box</button>
+      </div>
+      <div id="add-list"></div>
+      <div id="add-editor" hidden>
+        <input type="text" name="name" aria-label="Name">
+        <div class="grid">
+          <label>East-west (ft)<input type="number" name="w" step="0.5"></label>
+          <label>North-south (ft)<input type="number" name="d" step="0.5"></label>
+          <label>Height (ft)<input type="number" name="h" step="0.5"></label>
+          <label>Base elev.<input type="number" name="y" step="0.5"></label>
+          <label>Rotate °<input type="number" name="rot" step="5"></label>
+          <label>Color<input type="color" name="color"></label>
+        </div>
+        <div class="add-stats"></div>
+        <div class="row">
+          <button class="btn" id="add-dup">Duplicate</button>
+          <button class="btn" id="add-delete">Delete</button>
+        </div>
+        <p class="muted">Drag the arrows to move it. Base elevation: −1 = ground, 0 = 1st floor, 9 = 2nd floor. Anything 3 ft tall or less is walkable (decks).</p>
+      </div>
+    </section>
+
+    <section>
+      <details>
+        <summary>How this model was made</summary>
+        <ul>
+          <li>Walls, doors, windows and room sizes come from the listing's CubiCasa floor plans (1st floor 23.55 px/ft, 2nd 36.75, basement 27.2). Expect a few inches of error.</li>
+          <li>Floors are aligned on the main stair and the fireplace chase.</li>
+          <li>Assumed heights: 8 ft ceilings on both floors, 9 ft floor to floor, ~7′5″ basement drop ceiling, vaulted sun room.</li>
+          <li>Roof pitches are estimated from the photos: main hip 7/12, garage 8/12, sun room 10/12, front &amp; rear gables 12/12.</li>
+          <li>The lot is drawn as a 99.5 × 170.6 ft rectangle (0.39 ac) from the aerial. The real Harrison Ave line curves, and the house's exact setbacks are estimated. Get a plat of survey before planning anything near a lot line.</li>
+          <li>Wall colors, wallpaper, trim, cabinets, tile and fixtures follow the listing photos. Door swings follow the floor plans.</li>
+          <li>Furniture is staged at real sizes for scale: king bed in the primary, queen in the 11′6″ bedroom, full in the 10′10″ bedroom, a 6-seat dining table, and two cars in the garage. Turn it off under Show.</li>
+        </ul>
+      </details>
+    </section>
+  </div>
+</aside>
+
+<div id="hud">
+  <div id="crosshair"></div>
+  <div id="hud-room"></div>
+  <div id="hud-door" hidden></div>
+  <div id="hud-help"><span class="lockhelp">WASD move · mouse look · E or click: doors · Esc pause</span><span class="draghelp">WASD / arrows move · drag to look · E: doors · Esc exits</span></div>
+  <button id="hud-exit">Exit walk-through</button>
+</div>
+<div id="walk-paused" hidden>
+  <div>
+    <b>Walk-through paused</b>
+    <button class="btn primary" id="walk-resume">Keep walking</button>
+    <button class="btn" id="walk-exit">Back to overview</button>
+  </div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
