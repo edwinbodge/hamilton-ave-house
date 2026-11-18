@@ -4,7 +4,7 @@ A walkable 3D model of the house, built from the listing's CubiCasa floor plans 
 
 - Orbit around it, look floor by floor, or walk through at eye level (stairs, doors you can open, sliding closets).
 - **Interior style:** presets (As listed, Warm modern, Coastal light, Classic moody, Scandi oak) plus fine-tune controls for walls, trim, doors, floors, tile, cabinets, counters, backsplash and fireplace.
-- **Renovation ideas** you can switch on and off, also from inside the walk-through (press `O`): open floor plan, kitchen remodel, primary bath remodel, rear addition (mudroom, scullery, dining addition, longer sun room), and a detached garage/studio (golf simulator, pottery studio or gym).
+- **Renovation ideas** you can switch on and off, also from inside the walk-through (press `O`): three separate wall openings (sun room/family, family/living, a foyer colonnade), kitchen remodel, primary bath remodel, a mudroom in the garage's rear bay, a breakfast bump-out, a sun room extension, and a detached garage/studio (golf simulator, pottery studio or gym).
 - Measuring, sun and shadow study, a basement layout switch, and an additions sandbox.
 
 ## Open it

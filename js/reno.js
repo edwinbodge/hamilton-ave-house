@@ -1,19 +1,42 @@
 // Renovation options. Each one adds geometry to an 'on:<name>' set; the as-built parts it replaces
 // are tagged 'off:<name>' elsewhere (data.js walls, furnish.js fixtures, build.js roofs, site.js).
-//   open      open floor plan: sun room / family / living / foyer walls come out, beams stay
-//   kitchen   kitchen remodel: shaker cabinets, 36" range + hood, built-in fridge wall, 9 ft island
-//   pbath     primary bath remodel: walk-in shower, water closet, 66" double vanity, linen tower
-//   addition  rear addition: mudroom + scullery behind the garage, dining addition off the kitchen,
-//             sun room stretched 12 ft, new patio
-//   garage2   detached 2-car garage/studio at the end of a longer driveway (golf / pottery / gym)
+// Every option is independent: any combination can be on.
+//
+// Wall openings (no new floor area; each keeps wing walls / a header so the rooms still read as rooms)
+//   openSun     sun room <-> family room: the single French door becomes an 8'6" cased opening.
+//   openLiving  family room <-> living room: the French pair becomes a 9 ft cased opening.
+//   openFoyer   living room <-> foyer: the wall goes; a colonnade takes its place: two tapered square
+//               columns on paneled pedestals under a cased beam, ~5'10" clear between them.
+//   (The short oak rail + column between the nook and family room belongs to none of these walls and stays.)
+// Interiors
+//   kitchen     shaker cabinets, 36" range + hood, built-in fridge wall, 9 ft island (unchanged).
+//   pbath       primary bath, same footprint and door (the walk-in closet is left alone; the small linen
+//               closet and the corner tub are absorbed). Fixtures stay near their existing drains:
+//               water closet 3'1" x 4'8" where the toilet is (door swings out, ~29" clear in front);
+//               shower 4'0" x 4'7" where the old shower + linen closet were, 6 ft from the window, with a
+//               30" walk-in entry beside the valve wall; 72" double vanity on the closet wall, side-lit by
+//               the window; window seat in the bump (dry zone); built-in linen cabinet by the door.
+//               3 ft clear between water closet wall and shower glass, 5 ft in front of the vanity.
+// Additions (were one 'rear addition' of ~950 sq ft; now three pieces, ~135 sq ft of new foundation in all)
+//   mud         mudroom, 11'0" x 10'11", made from the garage's rear storage bay: no new footprint or roof.
+//               Garage door, the existing driveway-side door and a new back-yard door all arrive here;
+//               a new door at the end of the hall leads to laundry / half bath / kitchen. The old
+//               garage-to-hall door is closed and the laundry's back door becomes a window, so every
+//               family entry passes the lockers. It opens to the hall, not to a pantry.
+//   bump        breakfast bump-out: the angled bay is squared off and pushed to 5'6" beyond the rear wall,
+//               15'7" wide (~65 sq ft new). Seats six at a 7 ft table next to the island; slider to the
+//               patio; the sun room's slider wall becomes a cased opening into it.
+//   sunext      sun room 6 ft longer (11'6" x 16'9", ~70 sq ft new): the arched gable wall moves west,
+//               roof and ridge beam continue, one more skylight.
+//   garage2     detached 2-car garage/studio at the end of a longer driveway (golf / pottery / gym).
 import * as THREE from 'three';
-import { toFt, LEVELS } from './data.js';
+import { toFt, F2 } from './data.js';
 import { Kit, V, addFloorPoly, addSolid, pip } from './geom.js';
 import { LV, P, CTX, renoBat, renoGroup, roleRoom, buildWall, buildLabels, gableRoof, leanRoof, gableTri, buildSunroomGable, ROOFT } from './build.js';
 import {
   toilet, vanity, lightBar, diningTable, chair, buffet, firePit, adirondack, patioDining, patioChair, powerRack, liftBench, dumbbellRack,
   pelotonBike, rubberFloor, shelving, recessed, flushDome, rug, sofa, armchair, coffeeTable, floorLamp, plant, runKit, IRON, RUBBER, disc,
-  bar, taperLeg, knob, bench,
+  bar, taperLeg, knob, bench, exteriorLantern,
 } from './furnish.js';
 
 const fab = (c) => 'fab:' + c;
@@ -162,157 +185,235 @@ function buildKitchenRemodel() {
   }
 }
 
-// ------------------------------------------------------------------ open plan
-function buildOpenPlan() {
-  const bat = renoBat('on:open', 'f1');
-  const k = new Kit(bat, 'on:open');
-  const f = (x, y) => toFt([x, y]);
-  // dropped beams where the bearing walls were
-  const [a0, za] = f(1420.5, 310.5), [a1] = f(1703.5, 0);
-  k.box('ceiling', a0, 7.25, za - 0.3, a1, 8.0, za + 0.3);
-  const [b0, zb] = f(1422, 626.5), [b1] = f(1703.5, 0);
-  k.box('ceiling', b0, 7.4, zb - 0.3, b1, 8.0, zb + 0.3);
-  const [xc, zc0] = f(1422, 626.5), [, zc1] = f(0, 866);
-  k.box('ceiling', xc - 0.3, 7.4, zc0, xc + 0.3, 8.0, zc1);
-  for (const [x, z] of [[a0, za], [a1, za], [b1, zb]]) { k.cbox('trim', x + (x > 55 ? -0.3 : 0.3), z, 0.6, 0.6, 0, 7.3); addSolid(V(x - 0.3, 0, z - 0.3), V(0.6, 0, 0), V(0, 0, 0.6), 0, 8, 'on:open'); }
+// ------------------------------------------------------------------ wall openings (three separate options)
+function buildOpenings() {
+  const L = LV.f1;
+  // sun room <-> family room: the French-door wall becomes an 8'6" cased opening (wing walls stay)
+  buildWall(L, [1420.5, 310.5, 1703.5, 310.5, 'i', [[1462, 1662, 'o', { cased: true }]], { rs: 'on:openSun' }]);
+  // family room <-> living room: the French pair becomes a 9 ft cased opening
+  buildWall(L, [1422, 626.5, 1703.5, 626.5, 'i', [[1455, 1670, 'o', { cased: true }]], { rs: 'on:openLiving' }]);
+  // living room <-> foyer: colonnade. Tapered square columns on paneled pedestals carry a cased beam.
+  const rs = 'on:openFoyer', bat = renoBat(rs, 'f1'), k = new Kit(bat, rs);
+  const [x, zN] = toFt([1422, 626.5]), [, zM] = toFt([0, 704]), [, zS] = toFt([0, 866]);
+  k.box('trim', x - 0.42, 7.25, zN - 0.17, x + 0.42, 8.0, zS + 0.17);       // beam
+  k.box('trim', x - 0.5, 7.17, zN - 0.17, x + 0.5, 7.25, zS + 0.17);
+  const pedestal = (z0, z1, colZ) => {
+    k.box('trim', x - 0.5, 0, z0, x + 0.5, 3.0, z1);
+    k.box('trim', x - 0.56, 0, z0 - 0.04, x + 0.56, 0.45, z1 + 0.04);      // base
+    k.box('trim', x - 0.62, 3.0, z0 - 0.1, x + 0.62, 3.14, z1 + 0.1);      // cap
+    for (const s of [-1, 1]) k.box('trim', x + s * 0.5 - 0.02, 0.75, z0 + 0.22, x + s * 0.5 + 0.02, 2.7, z1 - 0.22); // panel
+    k.solid(x - 0.5, z0, x + 0.5, z1, 0, 3.1);
+    const c = new Kit(bat, rs).at(x, colZ, 0, 45), R = Math.SQRT1_2;
+    c.cyl('trim', 0, 0, 0.84 * R, 0.84 * R, 3.14, 3.34, 4);                // plinth
+    c.cyl('trim', 0, 0, 0.74 * R, 0.52 * R, 3.34, 7.0, 4);                 // tapered shaft
+    c.cyl('trim', 0, 0, 0.7 * R, 0.7 * R, 7.0, 7.17, 4);                   // capital
+    k.solid(x - 0.37, colZ - 0.37, x + 0.37, colZ + 0.37, 3.1, 7.2);
+  };
+  pedestal(zN + 0.17, zM + 0.3, zM - 0.15); // fills the short bay beside the family-room passage
+  pedestal(zS - 0.75, zS + 0.1, zS - 0.33); // at the coat-closet corner
 }
 
 // ------------------------------------------------------------------ primary bath remodel
+// Plan (2nd-floor px, 36.75 px/ft). Same room, same door; the wet fixtures stay near their drains:
+//   water closet 3'1" x 4'8" in the south-west corner where the toilet already is (door swings out)
+//   shower 4'0" x 4'7" in the corner where the old shower + linen closet were, glass toward the room
+//   72" double vanity on the closet wall between the window bump and the shower's valve wall
+//   window seat under the window (dry zone), built-in linen cabinet on the south wall by the door
 function buildPrimaryBath() {
   const L = LV.f2, rs = 'on:pbath', bat = renoBat(rs, 'f2');
+  const TILE = 'tile:#ecebe7';
   const rooms = [
-    { name: 'Shower', floor: 'tile4', wall: 'tile:#ecebe7', noLabel: true, poly: [[384, 52.5], [673, 52.5], [673, 240], [400, 240], [400, 111.5], [384, 111.5]] },
-    { name: 'Water Closet', dims: "3'7\" x 4'4\"", floor: 'tileBeige', wall: 'paint:#f2f0ea', poly: [[270, 111.5], [400, 111.5], [400, 270], [270, 270]] },
-    { name: 'Primary Bath', dims: 'remodel: walk-in shower, WC, double vanity', floor: 'tileBeige', wall: 'paint:#f2f0ea', poly: [[270, 270], [400, 270], [400, 240], [673, 240], [673, 477], [270, 477]] },
+    { name: 'Shower', floor: 'tile4', wall: TILE, noLabel: true, poly: [[512, 295], [673, 295], [673, 477], [512, 477]] },
+    { name: 'Water Closet', dims: "3'1\" x 4'8\"", floor: 'tileBeige', wall: 'paint:#f2f0ea', poly: [[270, 111.5], [400, 111.5], [400, 300], [270, 300]] },
+    { name: 'Primary Bath', dims: "remodel: 4'0\" x 4'7\" shower, WC, 72\" vanity", floor: 'tileBeige', wall: 'paint:#f2f0ea',
+      poly: [[384, 52.5], [673, 52.5], [673, 295], [512, 295], [512, 477], [270, 477], [270, 300], [400, 300], [400, 111.5], [384, 111.5]] },
   ].map((r, i) => roleRoom(L, r, i, 'pb'));
   const drop = new Set(['Shower', 'Primary Bath']);
   CTX.rooms = [...rooms, ...L._rooms.filter((r) => !drop.has(r.name) && !(r.name === 'Linen' && r.poly[0][0] === 581))];
   for (const w of [
-    [673, 111.5, 673, 477, 'i'],
-    [400, 111.5, 400, 270, 'i'],
-    [270, 270, 400, 270, 'i', [[292, 378, 'd', { hinge: 'lo', into: '+y' }]]],
+    [673, 111.5, 673, 477, 'i'],                                              // closet wall (unchanged position)
+    [384, 111.5, 403, 111.5, 'i'],                                            // short return at the bump corner
+    [400, 111.5, 400, 300, 'i', [[205, 293, 'd', { hinge: 'lo', into: '+x' }]]], // water closet, door swings out
+    [270, 300, 403, 300, 'i'],
+    [512, 295, 673, 295, 'i'],                                                // shower valve wall; the vanity dies into it
   ]) buildWall(L, [...w.slice(0, 5), w[5] || [], { rs }], bat);
   CTX.rooms = null;
   for (const r of rooms) { bat.poly(r.floorKey, r.pts, 9.035); RENO_ROOMS.push({ rs, level: 'f2', room: r }); }
   RENO_LABELS.push(...buildLabels(L, renoGroup(rs, 'f2'), rooms).map((l) => ((l.userData.rs = rs), l)));
   const at = (x, y, rot = 0) => { const [lx, lz] = P(L, x, y); return new Kit(bat, rs).at(lx, lz, 9, rot); };
-  // curbless walk-in shower: glass panel with a black frame, open entry at the vanity end, bench, rain head
-  {
-    const A = P(L, 400, 240), B = P(L, 600, 240);
-    const { k, len } = runKit(bat, rs, A, B, [0, -1], 9);
+  { // curbless shower: 30" walk-in entry beside the valve wall, fixed glass panel beyond it, bench at the back
+    const { k, len } = runKit(bat, rs, P(L, 512, 393.5), P(L, 512, 470.6), [-1, 0], 9);
     k.box('showerGlass', 0, 0.05, -0.02, len, 7.0, 0.02);
+    k.box('black', 0, 0, -0.03, len, 0.05, 0.03); k.box('black', 0, 7.0, -0.03, len, 7.05, 0.03);
     for (const x of [0, len - 0.05]) k.box('black', x, 0.05, -0.03, x + 0.05, 7.0, 0.03);
-    k.box('black', 0, 7.0, -0.03, len, 7.05, 0.03);
+    k.box('black', 0.35, 3.3, 0.02, len - 0.35, 3.36, 0.14); k.soft(fab('#e9e5dc'), 0.5, 2.0, 0.1, len - 0.5, 3.4, 0.22, 0.05); // towel bar on the glass
     k.solid(0, -0.05, len, 0.05, 0, 7);
-    const bk = at(560, 58.9, 0); bk.box('tile:#ecebe7', -2.6, 0, 0, 2.6, 1.5, 1.3); bk.solid(-2.6, 0, 2.6, 1.3, 0, 1.5);
-    const hk = at(536, 160, 0); hk.cyl('black', 0, 0, 0.02, 0.02, 7.3, 8, 4); hk.cyl('chrome', 0, 0, 0.55, 0.55, 7.25, 7.3, 18);
-    const vk = at(666.6, 160, -90); vk.box('black', -0.1, 3.4, 0, 0.1, 3.8, 0.12); vk.box('black', -0.04, 3.6, 0.12, 0.04, 5.6, 0.16);
+    const bk = at(592.5, 470.6, 180); bk.box(TILE, -2.0, 0, 0, 2.0, 1.5, 1.2); bk.solid(-2.0, 0, 2.0, 1.2, 0, 1.5);
+    const hk = at(592.5, 375, 0); hk.cyl('black', 0, 0, 0.02, 0.02, 7.3, 8, 4); hk.cyl('chrome', 0, 0, 0.55, 0.55, 7.25, 7.3, 18); // rain head
+    const vk = at(560, 301.4, 0); vk.cyl('black', 0, 0.06, 0.2, 0.2, 3.7, 3.72, 12); vk.box('black', -0.04, 3.9, 0, 0.04, 4.0, 0.14); // valve, reachable from the entry
+    vk.box('black', 1.4, 3.4, 0, 1.46, 6.2, 0.06); vk.box('chrome', 1.33, 5.5, 0.06, 1.53, 6.1, 0.14);                          // hand shower on a rail
+    const nk = at(666.6, 400, -90); nk.box('col:#c9c6bf', -0.6, 3.6, 0, 0.6, 4.8, 0.02); nk.box('col:#f4f3ef', -0.6, 4.18, 0, 0.6, 4.22, 0.05); // niche
+    at(592.5, 420, 0).box('col:#7d8083', -1.7, 0.036, -0.08, 1.7, 0.045, 0.08);                                               // linear drain
   }
-  toilet(at(279.2, 190, 90));
-  vanity(at(666.6, 362, -90), 5.6, 2, { mirrorTop: 7.0, faucet: 'black', frame: 'black' });
-  lightBar(at(666.6, 362, -90), 5.0, 7.3, 3, 'black');
-  { const k = at(279.2, 330, 90); k.box('cab', -1.1, 0.35, 0, 1.1, 7.3, 1.6); k.box('blackMatte', -1.1, 0, 0, 1.1, 0.35, 1.4);
-    k.box('cabDoor', -1.08, 3.7, 1.6, -0.01, 7.25, 1.67); k.box('cabDoor', 0.01, 3.7, 1.6, 1.08, 7.25, 1.67); k.box('cabDoor', -1.08, 0.4, 1.6, 1.08, 3.6, 1.67);
-    k.solid(-1.1, 0, 1.1, 1.6, 0, 7.3); }
-  recessed(at(536, 160), 8); recessed(at(470, 380), 8); recessed(at(335, 190), 8);
+  { // window seat in the bump, under the (existing) window: the dry zone
+    const k = at(497, 61.7, 0);
+    k.box('cab', -2.55, 0, 0, 2.55, 1.4, 1.3); k.box('cabDoor', -2.55, 1.4, 0, 2.55, 1.5, 1.36);
+    k.soft(fab('#d9d2c2'), -2.45, 1.5, 0.08, 2.45, 1.75, 1.3, 0.08);
+    k.solid(-2.55, 0, 2.55, 1.3, 0, 1.6);
+  }
+  // 72" double vanity on the closet wall, side-lit by the window
+  vanity(at(663.8, 175.5, -90), 6, 2, { mirrorTop: 7.0, faucet: 'black', frame: 'black' });
+  lightBar(at(663.8, 175.5, -90), 5.0, 7.3, 3, 'black');
+  toilet(at(338, 120.7, 0));
+  { const k = at(279.2, 190, 90); k.box('black', -0.15, 2.2, 0, 0.15, 2.26, 0.3); k.cyl('white', 0, 0.3, 0.2, 0.2, 2.03, 2.43, 10); } // paper holder
+  { // built-in linen cabinet on the south wall, between the water closet and the bedroom wall
+    const k = at(279.2, 392, 90), w = 1.9, d = 1.4;
+    k.box('cab', -w, 0.35, 0, w, 7.4, d); k.box('blackMatte', -w, 0, 0, w, 0.35, d - 0.2);
+    for (const [a, b] of [[-w + 0.03, -0.02], [0.02, w - 0.03]]) { k.box('cabDoor', a, 3.3, d, b, 7.35, d + 0.07); k.box('cabDoor', a, 0.4, d, b, 3.2, d + 0.07); }
+    for (const x of [-0.14, 0.14]) { k.box('black', x - 0.025, 4.0, d + 0.07, x + 0.025, 4.7, d + 0.13); k.box('black', x - 0.025, 2.2, d + 0.07, x + 0.025, 2.9, d + 0.13); }
+    k.solid(-w, 0, w, d, 0, 7.4); }
+  for (const [x, y] of [[592.5, 385], [470, 170], [470, 330], [335, 215], [380, 420]]) recessed(at(x, y), 8);
 }
 
-// ------------------------------------------------------------------ rear addition
-const ADD_ROOMS = [
-  { name: 'Mudroom', dims: "12'8\" x 11'9\" (addition)", floor: 'slate', wall: 'paint:#ece4d4', poly: [[260.5, 115.5], [560, 115.5], [560, 392.5], [260.5, 392.5]] },
-  { name: 'Scullery / Pantry', dims: "12'1\" x 11'9\" (addition)", floor: 'oak', wall: 'paint:#ece4d4', poly: [[560, 115.5], [845, 115.5], [845, 392.5], [560, 392.5]] },
-  { name: 'Dining (addition)', dims: "24'5\" x 15' added", floor: 'oak', wall: 'paint:#ece4d4',
-    poly: [[845, -100], [1420.5, -100], [1420.5, 310.5], [1308, 310.5], [1250, 250], [1112, 250], [1054, 308], [1054, 354.5], [845, 354.5]] },
-  { name: 'Sun Room (extended)', dims: "11'6\" x 22'9\"", floor: 'slate', wall: 'paint:#c3d0c6', poly: [[1420.5, -238], [1703.5, -238], [1703.5, 49.5], [1420.5, 49.5]] },
-];
-const ADD_FOOT = [[[255, 110], [851, 110], [851, 392.5], [255, 392.5]], [[839.5, -105.5], [1426, -105.5], [1426, 360], [839.5, 360]], [[1415, -243], [1709, -243], [1709, 60], [1415, 60]]];
-const ADD_WALLS = [
-  [260.5, 110, 260.5, 392.5, 'e', [[150, 215, 'x', { hinge: 'lo', into: '+x', style: 'half', color: '#f2f2ee' }], [270, 340, 'w']]],
-  [255, 115.5, 851, 115.5, 'e', [[320, 400, 'w'], [640, 720, 'w', { g: 'cs2', sill: 3.6, head: 6.8 }]]],
-  [560, 115.5, 560, 392.5, 'i', [[200, 310, 'o']]],
-  [255, 392.5, 847, 392.5, 'i', [[300, 365, 'd', { hinge: 'lo', into: '-y' }], [587, 649, 'd', { hinge: 'lo', into: '+y' }]]],
-  [845, 115.5, 845, 392.5, 'i', [[170, 330, 'o']]],
-  [845, -105.5, 845, 115.5, 'e', [[-60, 20, 'w'], [35, 100, 'w']]],
-  [839.5, -100, 1426, -100, 'e', [[880, 990, 'w', { sill: 1.6, g: 'cs2', rows: 5 }], [1050, 1230, 's'], [1280, 1390, 'w', { sill: 1.6, g: 'cs2', rows: 5 }]]],
-  [1420.5, -100, 1420.5, 310.5, 'i', [[-40, 280, 'o']]],
-  [1420.5, -243, 1420.5, -100, 'e', [[-215, -125, 'w', { g: 'cs', rows: 5, sill: 1.6, head: 7.4 }]]],
-  [1703.5, -243, 1703.5, 44, 'e', [[-205, -115, 'w', { g: 'cs', rows: 5, sill: 1.6, head: 7.4 }], [-60, 30, 'w', { g: 'cs', rows: 5, sill: 1.6, head: 7.4 }]]],
-];
-function buildAddition() {
-  const L = LV.f1, rs = 'on:addition', bat = renoBat(rs, 'f1');
-  const rooms = ADD_ROOMS.map((r, i) => roleRoom(L, r, i, 'add'));
+// ------------------------------------------------------------------ additions (three separate options)
+function lockers(k, len, n) { // back at z = 0: open lockers over a bench, cubbies above
+  const cw = len / n;
+  k.box('cab', 0, 0, 0, len, 7.2, 0.15);
+  for (let i = 0; i <= n; i++) k.box('cabDoor', i * cw - 0.04, 0, 0, i * cw + 0.04, 7.2, 1.6);
+  k.box('cabDoor', 0, 1.45, 0, len, 1.6, 1.6); k.soft('fab:#7c8a8f', 0.05, 1.6, 0.25, len - 0.05, 1.8, 1.55, 0.06);
+  k.box('cabDoor', 0, 5.6, 0, len, 5.7, 1.6); k.box('cabDoor', 0, 7.1, 0, len, 7.25, 1.7);
+  for (let i = 0; i < n; i++) { k.box('brass', i * cw + cw / 2 - 0.15, 4.6, 0.15, i * cw + cw / 2 + 0.15, 4.7, 0.4); k.box('fab:#6b5a48', i * cw + 0.2, 0.05, 0.25, i * cw + cw - 0.2, 1.0, 1.4); }
+  k.solid(0, 0, len, 1.6, 0, 7.2);
+}
+// shared by the room-building options: walls, floor (finish + structure + physics), labels
+function addRooms(L, rs, prefix, defs, foot, walls, floorBase = -1) {
+  const bat = renoBat(rs, L.id);
+  const rooms = defs.map((r, i) => roleRoom(L, r, i, prefix));
   CTX.rooms = [...rooms, ...L._rooms];
-  CTX.foot = ADD_FOOT.map((poly) => poly.map(([x, y]) => toFt([x, y])));
-  for (const w of ADD_WALLS) buildWall(L, [...w.slice(0, 5), w[5] || [], { rs }], bat);
+  CTX.foot = foot.map((poly) => poly.map(([x, y]) => toFt([x, y])));
+  for (const w of walls) buildWall(L, [...w.slice(0, 5), w[5] || [], { rs, ...(w[6] || {}) }], bat);
   CTX.rooms = null; CTX.foot = null;
   for (const r of rooms) {
-    RENO_ROOMS.push({ rs, level: 'f1', room: r });
-    bat.prism({ top: 'subfloor', side: 'foundation' }, r.pts, -1, 0);
+    RENO_ROOMS.push({ rs, level: L.id, room: r });
+    bat.prism({ top: 'subfloor', side: 'foundation' }, r.pts, floorBase, 0);
     bat.poly(r.floorKey, r.pts, 0.03);
     addFloorPoly(r.pts, [], 0, rs);
   }
-  RENO_LABELS.push(...buildLabels(L, renoGroup(rs, 'f1'), rooms).map((l) => ((l.userData.rs = rs), l)));
-  // ceilings (flat) for the mudroom wing and the dining addition; the sun room stays vaulted
-  const cb = renoBat(rs, 'f2');
-  cb.poly('ceiling', [[255, 110], [851, 110], [851, 392.5], [255, 392.5]].map(([x, y]) => toFt([x, y])), 8, [], true);
-  cb.poly('ceiling', [[845, -100], [1420.5, -100], [1420.5, 392], [1031, 392], [1031, 354.5], [845, 354.5]].map(([x, y]) => toFt([x, y])), 8, [], true);
-  // roofs
+  RENO_LABELS.push(...buildLabels(L, renoGroup(rs, L.id), rooms).map((l) => ((l.userData.rs = rs), l)));
+  return bat;
+}
+const ftPoly = (pts) => pts.map(([x, y]) => toFt([x, y]));
+const WHITE = '#f2f2ee';
+
+// Mudroom: the garage's rear storage bay (behind the car bays, beside the laundry) is finished as an
+// 11 x 11 ft family entry. No new foundation or roof. Garage, driveway-side door and a new back-yard
+// door all arrive here; a new door at the end of the hall leads on to laundry / half bath / kitchen.
+function buildMudroom() {
+  const L = LV.f1, rs = 'on:mud';
+  const poly = [[260.5, 392.5], [524.5, 392.5], [524.5, 654.5], [260.5, 654.5]];
+  const bat = addRooms(L, rs, 'mud', [{ name: 'Mudroom', dims: "11'0\" x 10'11\" (in the garage's rear bay)", floor: 'slate', wall: 'paint:#e6e2d6', poly }], [], [
+    [260.5, 387, 260.5, 654.5, 'e', [[557, 619, 'x', { hinge: 'lo', into: '+x', style: 'half', color: WHITE }]]],            // driveway-side door (existing)
+    [255, 392.5, 847, 392.5, 'e', [[385, 450, 'x', { hinge: 'hi', into: '+y', style: 'half', color: WHITE }],                   // new back-yard door
+      [587, 649, 'w', { g: 'cs', sill: 3.7, head: 6.6 }], [743, 805, 'w', { g: 'cs', sill: 3.7, head: 6.6 }]]],                  // laundry door becomes a window
+    [524.5, 392.5, 524.5, 654.5, 'i', [[583, 648, 'd', { hinge: 'lo', into: '-x' }]]],                                        // new door at the end of the hall
+    [255, 654.5, 524.5, 654.5, 'i', [[415, 480, 'd', { hinge: 'lo', into: '-y' }]]],                                          // from the garage (one step up)
+    [524.5, 654.5, 841, 654.5, 'i'],                                                                                          // old garage-to-hall door closed up
+  ], -0.5);
+  const pts = ftPoly(poly);
+  renoBat(rs, 'f2').poly('ceiling', pts, 8, [], true);
+  { // close the garage's open rafters above the new partition
+    const [xa, z] = toFt([260.5, 654.5]), [xb] = toFt([524.5, 0]), top = (x) => 9 + x * (8 / 12) - ROOFT - 0.02;
+    const q = [V(xa, 8, z), V(xb, 8, z), V(xb, top(xb), z), V(xa, top(xa), z)];
+    bat.face('paint:#dcd7ca', q, V(0, 0, 1)); bat.face('paint:#dcd7ca', q, V(0, 0, -1));
+  }
+  // lockers on the south wall, bench + hooks on the laundry wall; the door end stays clear
+  { const { k, len } = runKit(bat, rs, toFt([266.4, 400]), toFt([266.4, 548]), [1, 0]); lockers(k, len, 4); }
+  {
+    const { k, len } = runKit(bat, rs, toFt([520.4, 400]), toFt([520.4, 566]), [-1, 0]);
+    k.box('cab', 0, 0, 0, len, 1.45, 1.4); k.box('cabDoor', 0, 1.45, 0, len, 1.6, 1.5);
+    for (let i = 1; i < 4; i++) k.box('cabDoor', (len * i) / 4 - 0.03, 0, 0, (len * i) / 4 + 0.03, 1.45, 1.42);
+    k.soft('fab:#7c8a8f', 0.05, 1.6, 0.2, len - 0.05, 1.8, 1.45, 0.06);
+    k.box('cabDoor', 0, 3.0, 0, len, 5.6, 0.06); k.box('cabDoor', 0, 5.6, 0, len, 5.7, 0.9);
+    for (let i = 0; i < 5; i++) { const x = 0.6 + (i * (len - 1.2)) / 4; k.box('brass', x - 0.04, 4.9, 0.06, x + 0.04, 5.0, 0.3); if (i % 2 === 0) k.soft(fab(['#5d6b73', '#a9895f', '#7a4f44'][i / 2]), x - 0.35, 2.6, 0.08, x + 0.35, 4.95, 0.34, 0.08); }
+    k.solid(0, 0, len, 1.5, 0, 1.8);
+  }
+  const at = (x, y, rot = 0, y0 = 0) => { const [lx, lz] = toFt([x, y]); return new Kit(bat, rs).at(lx, lz, y0, rot); };
+  rug(at(400, 520, 0), 6, 4, '#4f5a5e', '#3a4245');
+  for (const [x, y] of [[330, 470], [455, 470], [392, 590]]) recessed(at(x, y), 8);
+  // outside: landing at the yard door joining the patio, wall lantern
+  const landing = [[4.2, 14.55], [12.05, 14.55], [12.05, 9.8], [4.2, 9.8]];
+  bat.prism({ top: 'paving', side: 'foundation' }, landing, -1, -0.62);
+  addFloorPoly(landing, [], -0.62, rs);
+  exteriorLantern(at(470, 386.6, 180), 6.6);
+}
+
+// Breakfast bump-out: the angled nook bay is squared off and pushed out to 5'6" beyond the rear wall,
+// 15'7" wide (kitchen corner to the sun room). About 65 sq ft of new floor, enough to seat six at a real
+// table beside the island. Patio slider on the kitchen side; the sun room's old slider wall becomes a
+// cased opening so the sun room joins the kitchen circuit.
+function buildBumpOut() {
+  const L = LV.f1, rs = 'on:bump';
+  const poly = [[1054, 180], [1420.5, 180], [1420.5, 310.5], [1054, 310.5]];
+  const bat = addRooms(L, rs, 'bump', [{ name: 'Breakfast Nook (bump-out)', dims: "15'1\" x 5'6\" added", floor: 'oak', wall: 'ivy', crown: true, poly }],
+    [[[1048.5, 174.5], [1426, 174.5], [1426, 316], [1048.5, 316]]], [
+      [1054, 360, 1054, 174.5, 'e', [[212, 288, 'w', { g: 'cs2', rows: 5, sill: 2.6 }]]],
+      [1048.5, 180, 1420.5, 180, 'e', [[1085, 1205, 's'], [1243, 1319, 'w', { g: 'cs2', rows: 5, sill: 2.6 }], [1331, 1407, 'w', { g: 'cs2', rows: 5, sill: 2.6 }]]],
+      // sun room side wall: exterior west of the bump-out (window replaces the slider), cased opening inside it
+      [1420.5, 310.5, 1420.5, 44, 'e', [[210, 292, 'o', { cased: true }], [72, 152, 'w', { g: 'cs2', rows: 5, sill: 1.6, head: 7.4 }]]],
+    ]);
+  const pts = ftPoly(poly), k = new Kit(bat, rs);
+  renoBat(rs, 'f2').poly('ceiling', pts, 7.996, [], true);
+  const [x0, zE] = toFt([1054, 180]), [x1, zW] = toFt([1420.5, 310.5]);
+  k.box('ceiling', x0, 7.25, zW - 0.3, x1 - 0.25, 8.0, zW + 0.3);           // dropped beam on the old wall line
+  k.cbox('white', x0 - 0.23, zE - 0.23, 0.6, 0.6, -0.9, 9);                  // corner board
+  // roof: one lean-to from the 2nd-floor wall, same top line as the old nook roof (4:12)
+  const mz0 = toFt(F2(0, 111.5))[1];
+  leanRoof(renoBat(rs, 'roof'), { x0, x1, zWall: mz0, zEave: zE, y: 9, p: (12 - 9) / (mz0 - zE), o: 1.0, hip0: true, hip1: false });
+  const at = (x, y, rot = 0, y0 = 0) => { const [lx, lz] = toFt([x, y]); return new Kit(bat, rs).at(lx, lz, y0, rot); };
+  { // 7 ft table for six, centered on the old wall line: it only fits because of the bump-out
+    const t = at(1240, 308, 0);
+    rug(at(1240, 308, 0), 9.5, 7, '#cfc7ba', '#9c9284');
+    for (const [cx, cz, r] of diningTable(t, 7, 3.5, { color: '#6e5038' })) { if (Math.abs(cx) > 3.5) continue; const p = t.P(cx, 0, cz); chair(new Kit(bat, rs).at(p.x, p.z, 0, r), '#cfc6b6'); }
+    for (const dx of [-1.7, 1.7]) pendant(new Kit(bat, rs).at(t.ox + dx, t.oz, 0), 8, 2.4);
+  }
+  for (const x of [1110, 1370]) recessed(at(x, 215), 8);
+  exteriorLantern(at(1225, 174.1, 180), 6.6);
+  // fire pit group slides south so the new slider opens onto clear patio
+  const pk = (x, z, rot, fn) => fn(new Kit(bat, rs).at(x, z, -0.62, rot));
+  pk(29.5, -1.4, 0, firePit);
+  for (const [dx, dz] of [[-3.8, -3.8], [3.8, -3.8], [-3.8, 3.8], [3.8, 3.8]]) pk(29.5 + dx, -1.4 + dz, (Math.atan2(-dx, -dz) * 180) / Math.PI, (c) => adirondack(c));
+}
+
+// Sun room extension: 6 ft longer (11'6" x 16'9", about +70 sq ft). The arched gable wall is rebuilt
+// 6 ft west, the vaulted roof and ridge beam carry on, one more skylight, a window each side.
+const SUN_EXT = 6;
+function buildSunExt() {
+  const L = LV.f1, rs = 'on:sunext', d = SUN_EXT * 23.55, yG = 49.5 - d, yW = 44 - d;
+  const win = [yW + 34, yW + 110, 'w', { g: 'cs', rows: 5, sill: 1.6, head: 7.4 }];
+  const bat = addRooms(L, rs, 'sx', [{ name: 'Sun Room extension', dims: `+${SUN_EXT} ft: 11'6" x 16'9" overall`, floor: 'slate', wall: 'paint:#c3d0c6', vaulted: true,
+    poly: [[1420.5, yG], [1703.5, yG], [1703.5, 49.5], [1420.5, 49.5]] }],
+    [[[1415, yW], [1709, yW], [1709, 60], [1415, 60]]], [
+      [1420.5, 44, 1420.5, yW, 'e', [win]],
+      [1703.5, yW, 1703.5, 44, 'e', [win]],
+    ]);
+  buildSunroomGable(renoGroup(rs, 'f1'), yG, rs);
+  const [sx0, zG] = toFt([1420.5, yG]), [sx1, z0] = toFt([1703.5, 49.5]), mz0 = toFt(F2(0, 111.5))[1], sp = 10 / 12;
   const rb = renoBat(rs, 'roof');
-  const [gx0] = toFt([255, 0]), [gx1] = toFt([847, 0]), [, gz0] = toFt([0, 115.5]), [, gzBack] = toFt([0, 392.5]);
-  gableRoof(rb, { x0: gx0, x1: gx1, z0: gz0, z1: gzBack + 0.5, y: 9, p: 8 / 12, o: 1.0, rake: [1.0, 0], gable: [true, false] });
-  const [dx0, dz1a] = toFt([845, 354.5]), [dxm] = toFt([1032, 0]), [dx1] = toFt([1420.5, 0]), [, dzE] = toFt([0, -100]), [, mz0] = toFt([0, 392]);
-  const pp = 0.14;
-  leanRoof(rb, { x0: dx0, x1: dxm, zWall: dz1a, zEave: dzE, y: 9, p: pp, o: 1.0, hip0: false, hip1: false });
-  leanRoof(rb, { x0: dxm, x1: dx1, zWall: mz0, zEave: dzE, y: 9, p: pp, o: 1.0, hip0: false, hip1: false });
-  gableTri(rb, [V(dx0, 9, dzE), V(dx0, 9, dz1a), V(dx0, 9 + (dz1a - dzE) * pp, dz1a)]);
-  const [sx0] = toFt([1420.5, 0]), [sx1] = toFt([1703.5, 0]), [, sz0] = toFt([0, -238]);
-  const sp = 10 / 12;
-  gableRoof(rb, { x0: sx0, x1: sx1, z0: sz0, z1: mz0, y: 9, p: sp, o: 1.0, rake: [1.0, 0], gable: [false, false] });
-  for (const za of [-9.5, -4.5, 3.3, 7.6]) {
+  gableRoof(rb, { x0: sx0, x1: sx1, z0: zG, z1: mz0, y: 9, p: sp, o: 1.0, rake: [1.0, 0], gable: [false, false] });
+  for (const za of [-3.4, 3.3, 7.6]) {
     const zb = za + 2.3, xa = sx0 + 1.2, xb = sx0 + 3.6, ya = 9 + (xa - sx0) * sp + 0.06, yb = 9 + (xb - sx0) * sp + 0.06;
     rb.face('skylight', [V(xa, ya, za), V(xb, yb, za), V(xb, yb, zb), V(xa, ya, zb)], V(-0.6, 1, 0));
     bat.face('white', [V(xa, ya - ROOFT - 0.02, za), V(xb, yb - ROOFT - 0.02, za), V(xb, yb - ROOFT - 0.02, zb), V(xa, ya - ROOFT - 0.02, zb)], V(0.6, -1, 0));
   }
-  buildSunroomGable(renoGroup(rs, 'f1'), -238, rs);
-  // mudroom lockers, scullery counters, dining set, sun room seating
-  const at = (x, y, rot = 0, y0 = 0) => { const [lx, lz] = P(L, x, y); return new Kit(bat, rs).at(lx, lz, y0, rot); };
-  {
-    const { k, len } = runKit(bat, rs, toFt([272, 121.4]), toFt([548, 121.4]), [0, 1]);
-    const n = 7, cw = len / n;
-    k.box('cab', 0, 0, 0, len, 7.2, 0.15);
-    for (let i = 0; i <= n; i++) k.box('cabDoor', i * cw - 0.04, 0, 0, i * cw + 0.04, 7.2, 1.6);
-    k.box('cabDoor', 0, 1.45, 0, len, 1.6, 1.6); k.soft('fab:#7c8a8f', 0.05, 1.6, 0.25, len - 0.05, 1.8, 1.55, 0.06);
-    k.box('cabDoor', 0, 5.6, 0, len, 5.7, 1.6); k.box('cabDoor', 0, 7.1, 0, len, 7.25, 1.7);
-    for (let i = 0; i < n; i++) { k.box('brass', i * cw + cw / 2 - 0.15, 4.6, 0.15, i * cw + cw / 2 + 0.15, 4.7, 0.4); k.box('fab:#6b5a48', i * cw + 0.2, 0.05, 0.25, i * cw + cw - 0.2, 1.0, 1.4); }
-    k.solid(0, 0, len, 1.6, 0, 7.2);
-    rug(at(410, 300), 3, 5, '#4f5a5e', '#3a4245');
-  }
-  {
-    const { k, len } = runKit(bat, rs, toFt([566, 121.4]), toFt([839, 121.4]), [0, 1]);
-    baseRun(k, 0, len - 3.0); counterTop(k, 0, len - 3.0); farmSink(k, (680 - 566) / 23.55);
-    builtInFridge(k, len - 3.0, len);
-    k.box('cabDoor', 0, 4.6, 0, len - 3.2, 4.7, 1.0); k.box('cabDoor', 0, 5.8, 0, len - 3.2, 5.9, 1.0);
-    k.solid(0, 0, len - 3.0, 2.1, 0, 3.1);
-  }
-  {
-    // table sits west of the slider so the path from the kitchen out to the patio stays clear
-    const k = at(985, 20, 0);
-    for (const [cx, cz, r] of diningTable(k, 7, 3.6, { color: '#6e5038' })) { const p = k.P(cx, 0, cz); chair(new Kit(bat, rs).at(p.x, p.z, 0, r), '#cfc6b6'); }
-    rug(at(985, 20, 0), 9, 12, '#cfc7ba', '#9c9284');
-    for (const dx of [-2.3, 0, 2.3]) pendant(new Kit(bat, rs).at(k.ox + dx, k.oz, 0), 8, 2.4);
-  }
-  { const k = at(1562, -150, 180); sofa(k, 7.5, { color: '#d9d2b8' }); }
-  coffeeTable(at(1562, -205, 90), 4, 2);
-  plant(at(1680, -220), 0, 0, 5);
-  // new patio off the dining addition's slider, with the fire pit, chairs and dining set moved out
-  const patio = [];
-  for (let i = 0; i < 40; i++) { const a = (i / 40) * Math.PI * 2; patio.push([36 + Math.cos(a) * 14, -14 + Math.sin(a) * 7.8]); }
-  bat.prism({ top: 'paving', side: 'foundation' }, patio, -1, -0.62);
-  addFloorPoly(patio, [], -0.62, rs);
-  const pk = (x, z, rot, fn) => fn(new Kit(bat, rs).at(x, z, -0.62, rot));
-  pk(40, -15.5, 0, firePit);
-  for (const [dx, dz] of [[-3.8, -3.8], [3.8, -3.8], [-3.8, 3.8], [3.8, 3.8]]) pk(40 + dx, -15.5 + dz, (Math.atan2(-dx, -dz) * 180) / Math.PI, (k) => adirondack(k));
-  { const k = new Kit(bat, rs).at(27, -13, -0.62, 0); for (const [cx, cz, r] of patioDining(k)) pk(27 + cx, -13 + cz, r, patioChair); }
+  const k = new Kit(bat, rs), xc = (sx0 + sx1) / 2, ridge = 9 + ((sx1 - sx0) / 2) * sp - ROOFT;
+  k.box('trim', xc - 0.3, ridge - 0.8, zG, xc + 0.3, ridge, z0);            // ridge beam carries on
+  for (const x of [1415, 1709]) { const [cx, cz] = toFt([x, yW]); k.cbox('white', cx, cz, 0.6, 0.6, -0.9, 9); }
+  const at = (x, y, rot = 0) => { const [lx, lz] = toFt([x, y]); return new Kit(bat, rs).at(lx, lz, 0, rot); };
+  // the added length takes a real seating group at the window end
+  sofa(at(1697.6, yG + 80, -90), 6, { color: '#d9d2b8' });
+  coffeeTable(at(1610, yG + 80, 90), 3.5, 1.8);
+  armchair(at(1470, yG + 80, 90), { color: '#e6e0cf' });
+  plant(at(1445, yG + 22), 0, 0, 5);
 }
 
 // ------------------------------------------------------------------ detached garage / studio
@@ -377,9 +478,11 @@ function buildDetachedGarage() {
 }
 
 export function buildRenovations() {
-  buildOpenPlan();
+  buildOpenings();
   buildKitchenRemodel();
   buildPrimaryBath();
-  buildAddition();
+  buildMudroom();
+  buildBumpOut();
+  buildSunExt();
   buildDetachedGarage();
 }

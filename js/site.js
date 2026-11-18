@@ -92,7 +92,9 @@ function shrub(group, x, z, s, mat = shrubMat) {
 export function buildSite() {
   const group = new THREE.Group();
   const bat = new Batcher();
-  const offAdd = new Batcher(); // yard items the rear addition would displace
+  // yard items a renovation option displaces, by set
+  const OFF = {};
+  const off = (rs) => (OFF[rs] = OFF[rs] || new Batcher());
 
   // ground with a hole where the basement is
   const bLevel = LEVELS.find((l) => l.id === 'b');
@@ -158,23 +160,23 @@ export function buildSite() {
   bed([[-3.4, 1], [-0.3, 1], [-0.3, 24.5], [-3.4, 24.5]], 7, false);   // garage side bed
 
   // birdhouse on a post, near the patio
-  { const k = new Kit(offAdd, 'off:addition').at(44.5, -8.5, G);
+  { const k = new Kit(bat, 'site').at(44.5, -8.5, G);
     k.cbox('post', 0, 0, 0.35, 0.35, 0, 6.2);
     k.cbox('white', 0, 0, 1.6, 1.6, 6.2, 7.5);
     k.prof('col:#2f5b45', [[-1.1, 7.45], [1.1, 7.45], [0, 8.3]], -1.1, 1.1);
     k.cbox('col:#2f5b45', 0, 0, 0.5, 0.5, 8.2, 8.7);
     for (const s of [-1, 1]) k.cyl('black', 0.4 * s, 0.81, 0.13, 0.13, 6.9, 6.92, 10);
-    addSolid(V(44.3, 0, -8.7), V(0.4, 0, 0), V(0, 0, 0.4), G, G + 6, 'off:addition'); }
+    addSolid(V(44.3, 0, -8.7), V(0.4, 0, 0), V(0, 0, 0.4), G, G + 6, 'site'); }
   // cedar raised planter on the patio, by the sun room slider
-  { const k = new Kit(offAdd, 'off:addition').at(46, 1.2, -0.62, 90);
+  { const k = new Kit(bat, 'site').at(46, 1.2, -0.62, 90);
     for (const x of [-1.9, 1.9]) for (const z of [-0.6, 0.6]) k.cbox('cedar', x, z, 0.25, 0.25, 0, 2.6);
     k.box('cedar', -2.1, 1.8, -0.8, 2.1, 2.8, 0.8);
     for (let i = 0; i < 5; i++) k.cyl(i % 2 ? 'col:#5d8a3e' : 'col:#7a9a4b', -1.6 + i * 0.8, (i % 2) * 0.2 - 0.1, 0.4, 0.1, 2.8, 3.4 + (i % 3) * 0.2, 6);
-    addSolid(V(45.2, 0, -0.9), V(1.6, 0, 0), V(0, 0, 4.2), -0.62, 2.8, 'off:addition'); }
+    addSolid(V(45.2, 0, -0.9), V(1.6, 0, 0), V(0, 0, 4.2), -0.62, 2.8, 'site'); }
   // white fan trellis on the garage's back wall, right of the laundry door
-  { const k = new Kit(offAdd, 'off:addition').at(4.6, 14.5, 0, 180);
+  { const k = new Kit(off('off:mud'), 'off:mud').at(4.6, 14.5, 0, 180);
     for (let i = 0; i < 7; i++) {
-      const a = (-0.55 + (1.1 * i) / 6), kb = new Kit(offAdd, 'off:addition').at(4.6, 14.5, 0, 180);
+      const a = (-0.55 + (1.1 * i) / 6), kb = new Kit(off('off:mud'), 'off:mud').at(4.6, 14.5, 0, 180);
       const top = V(Math.sin(a) * 2.6, 6.5, 0);
       kb.bat.box('white', kb.P(-0.04, 0.3, -0.06), kb.ex().multiplyScalar(top.x).add(V(0, top.y - 0.3, 0)), V(0.08, 0, 0), kb.ez().multiplyScalar(0.06));
     }
@@ -209,13 +211,13 @@ export function buildSite() {
     k.solid(9.0, -3.6, 9.6, -3.2, 0, 9); k.solid(9.0, 3.2, 9.6, 3.6, 0, 9);
   }
   // downspouts
-  for (const [x, z, top, rear] of [[0.05, 14.5, 9, 1], [0.05, 48.55, 9], [25.4, 49.0, 9], [61.95, 0.05, 9, 1], [61.95, 41.9, 17], [21.6, 41.95, 17], [21.6, 14.6, 17, 1], [33.6, 13.0, 9, 1]]) {
-    const b = rear ? offAdd : bat;
+  for (const [x, z, top, rear] of [[0.05, 14.5, 9], [0.05, 48.55, 9], [25.4, 49.0, 9], [61.95, 0.05, 9, 'off:sunext'], [61.95, 41.9, 17], [21.6, 41.95, 17], [21.6, 14.6, 17], [33.6, 13.0, 9, 'off:bump']]) {
+    const b = rear ? off(rear) : bat; // downspouts at corners an option builds over
     b.aabox('white', x - 0.13, G, z - 0.13, x + 0.13, top - 0.1, z + 0.13);
     b.aabox('white', x - 0.25, G, z - 0.25, x + 0.25, G + 0.12, z + 0.25);
   }
   // hose reel by the laundry door, AC condenser at the back corner of the garage
-  { const k = new Kit(offAdd, 'off:addition').at(9, 13.6, G, 180); k.cyl('col:#2f5b45', 0, 0, 0.9, 0.9, 0.3, 1.0, 14); k.cbox('col:#3a3a3a', 0, 0, 1.0, 1.0, 0, 0.3); }
+  { const k = new Kit(off('off:mud'), 'off:mud').at(9, 13.6, G, 180); k.cyl('col:#2f5b45', 0, 0, 0.9, 0.9, 0.3, 1.0, 14); k.cbox('col:#3a3a3a', 0, 0, 1.0, 1.0, 0, 0.3); }
   { const k = new Kit(bat, 'site').at(-2.6, 18, G, 0); k.cbox('col:#d9d9d3', 0, 0, 2.6, 2.6, 0, 2.6); k.cbox('col:#4a4a48', 0, 0, 2.2, 2.2, 2.6, 2.7); k.cbox('foundation', 0, 0, 3.0, 3.0, 0, 0.12); k.solid(-1.3, -1.3, 1.3, 1.3, 0, 2.7); }
 
   // lot lines
@@ -239,11 +241,7 @@ export function buildSite() {
     bat.face('col:#8a8d92', [V(x1 + 1, G + h * 0.6, z0 - 1), V(x1 + 1, G + h * 0.6, z1 + 1), V(xc, G + h, z1 + 1), V(xc, G + h, z0 - 1)], V(1, 1, 0));
   }
   bat.build(group);
-  const offGroup = new THREE.Group();
-  offGroup.userData.rs = 'off:addition';
-  offAdd.build(offGroup);
-  group.add(offGroup);
-  group.userData.renos = [offGroup];
+  group.userData.renos = Object.entries(OFF).map(([rs, b]) => { const g = new THREE.Group(); g.userData.rs = rs; b.build(g); group.add(g); return g; });
 
   // trees & planting
   const trees = new THREE.Group();

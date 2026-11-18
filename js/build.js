@@ -218,10 +218,13 @@ export function buildWall(L, w, bat) {
         else { strip(side, s - cw - 0.08, e + cw + 0.08, sill - 0.06, sill + 0.02, 0.2, key); strip(side, s - cw, e + cw, sill - 0.36, sill - 0.06, dep, key); }
       }
     };
-    if (type !== 'o' && type !== 'g') {
+    if ((type !== 'o' || oo.cased) && type !== 'g') {
       for (const [side, k] of [[1, kp], [-1, kn]]) if (k.outside || (k.room && !k.room.tile)) casing(side, k, type === 'w');
     }
-    if (type === 'o') return; // drywall-wrapped opening, no trim (as in the photos)
+    if (type === 'o') { // drywall-wrapped opening, no trim (as in the photos); { cased: true } adds casing + jamb liner
+      if (oo.cased) { fbox(s, s + 0.06, sill, head); fbox(e - 0.06, e, sill, head); fbox(s, e, head - 0.06, head); }
+      return;
+    }
     if (type === 'g') {
       fbox(s, s + 0.25, sill, head, 'white'); fbox(e - 0.25, e, sill, head, 'white'); fbox(s, e, head - 0.25, head, 'white');
       garageDoor(s + 0.25, e - 0.25, sill, head - 0.25, outSide || 1);
@@ -488,7 +491,7 @@ function buildFloors(L, bats) {
     const gar = L.garage.map(([x, y]) => P(L, x, y));
     bat.prism({ top: 'floor:concrete', side: 'foundation' }, gar, -1, -0.5);
     addFloorPoly(gar, [], -0.5, 'f1');
-    L.ceilings.forEach((c, i) => (i === 0 ? renoBat('off:addition', 'f2') : bats.f2).poly('ceiling', c.map(([x, y]) => P(L, x, y)), 8, [], true));
+    L.ceilings.forEach((c) => bats.f2.poly('ceiling', c.map(([x, y]) => P(L, x, y)), 8, [], true));
   }
   if (L.id === 'f2') {
     const f = L._foot[0];
@@ -690,12 +693,13 @@ function buildRoofs(bats) {
   gableRoof(bat, { x0: rx0, x1: rx1, z0: rz0, z1: mz0, y: RY, p: 1, o: 1.0, rake: [1.0, 0], gable: [true, false], base: 17 });
   const [gx0] = f(255, 0), [gx1] = f(847, 0), [, gzBack] = f(0, 392.5), [, gzFront] = f(0, 1181.5);
   gableRoof(bat, { x0: gx0, x1: gx1, z0: gzBack, z1: mz1, y: 9, p: 8 / 12, o: 1.0, rake: [0, 0], gable: [false, false], xLimE: mx0 });
-  // its rear gable end + rake: replaced by the rear addition
-  gableRoof(renoBat('off:addition', 'roof'), { x0: gx0, x1: gx1, z0: gzBack, z1: gzBack + 0.01, y: 9, p: 8 / 12, o: 1.0, rake: [1.0, 0], gable: [true, false], xLimE: mx0 });
+  // its rear gable end + rake
+  gableRoof(bat, { x0: gx0, x1: gx1, z0: gzBack, z1: gzBack + 0.01, y: 9, p: 8 / 12, o: 1.0, rake: [1.0, 0], gable: [true, false], xLimE: mx0 });
   gableRoof(bat, { x0: gx0, x1: gx1, z0: mz1, z1: gzFront, y: 9, p: 8 / 12, o: 1.0, rake: [0, 1.0], gable: [false, true] });
   const [sx0, sz0] = f(1420.5, 49.5), [sx1] = f(1703.5, 0);
   const sp = 10 / 12;
-  const offA = renoBat('off:addition', 'roof'), offA1 = renoBat('off:addition', 'f1');
+  // the sun room roof is replaced by the sun room extension, the nook lean-to by the breakfast bump-out
+  const offA = renoBat('off:sunext', 'roof'), offA1 = renoBat('off:sunext', 'f1');
   gableRoof(offA, { x0: sx0, x1: sx1, z0: sz0, z1: mz0, y: 9, p: sp, o: 1.0, rake: [1.0, 0], gable: [false, false] });
   for (const [za, zb] of [[3.3, 5.6], [7.6, 9.9]]) {
     const xa = sx0 + 1.2, xb = sx0 + 3.6, ya = 9 + (xa - sx0) * sp + 0.06, yb = 9 + (xb - sx0) * sp + 0.06;
@@ -704,7 +708,7 @@ function buildRoofs(bats) {
     offA1.face('white', [V(xa, ya - ROOFT - 0.02, za), V(xb, yb - ROOFT - 0.02, za), V(xb, yb - ROOFT - 0.02, zb), V(xa, ya - ROOFT - 0.02, zb)], V(0.6, -1, 0));
   }
   const [nx0, nz0] = f(1054, 250), [nx1] = f(1420.5, 0);
-  leanRoof(offA, { x0: nx0, x1: nx1, zWall: mz0, zEave: nz0, y: 9, p: 6 / 12, o: 1.0, hip0: true, hip1: false });
+  leanRoof(renoBat('off:bump', 'roof'), { x0: nx0, x1: nx1, zWall: mz0, zEave: nz0, y: 9, p: 6 / 12, o: 1.0, hip0: true, hip1: false });
   // infill between the sun room's vaulted ceiling and the family room's flat ceiling (above the 8 ft wall)
   {
     const z = toFt([0, 310.5])[1], xc = (sx0 + sx1) / 2, top = (x) => 9 + (Math.min(x, 2 * xc - x) - sx0) * sp - ROOFT - 0.02;
@@ -832,7 +836,10 @@ function cornerBoards(L, bat, y0, y1) {
       if (Math.sign(cross) !== Math.sign(area)) continue; // concave corner
       const axisAligned = (Math.abs(ax) < 0.05 || Math.abs(az) < 0.05) && (Math.abs(bx) < 0.05 || Math.abs(bz) < 0.05);
       if (!axisAligned) continue;
-      bat.aabox('white', p[0] - 0.3, y0, p[1] - 0.3, p[0] + 0.3, y1, p[1] + 0.3);
+      // corners that a renovation turns into a straight run of wall go away with it
+      const [cx, cy] = [p[0] * 23.55 + 255, p[1] * 23.55 + 44];
+      const off = L.id !== 'f1' ? null : cy < 50 && cx > 1400 ? 'off:sunext' : Math.abs(cx - 1060) < 2 && Math.abs(cy - 349) < 2 ? 'off:bump' : null;
+      (off ? renoBat(off, 'f1') : bat).aabox('white', p[0] - 0.3, y0, p[1] - 0.3, p[0] + 0.3, y1, p[1] + 0.3);
     }
   }
 }
@@ -874,7 +881,7 @@ export function buildHouse() {
   buildFurniture(bats);
   buildRoofs(bats);
   buildPorch(bats);
-  buildSunroomGable(renoGroup('off:addition', 'f1'), 49.5, 'off:addition');
+  buildSunroomGable(renoGroup('off:sunext', 'f1'), 49.5, 'off:sunext');
   buildRenovations(bats);
   const labels = {};
   const balGeo = balusterGeometry();

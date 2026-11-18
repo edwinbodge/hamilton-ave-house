@@ -69,10 +69,10 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const state = {
   view: 'ext', labels: true, furniture: true, mode: 'orbit', layout: 'A',
-  reno: { open: false, kitchen: false, pbath: false, addition: false, garage2: false }, garageUse: 'golf',
+  reno: { openSun: false, openLiving: false, openFoyer: false, kitchen: false, pbath: false, mud: false, bump: false, sunext: false, garage2: false }, garageUse: 'golf',
   style: { ...STYLE_PRESETS[DEFAULT_PRESET].values },
 };
-try { const saved = JSON.parse(localStorage.getItem('house-options') || 'null'); if (saved) { Object.assign(state.reno, saved.reno); state.garageUse = saved.garageUse || 'golf'; Object.assign(state.style, saved.style); } } catch {}
+try { const saved = JSON.parse(localStorage.getItem('house-options') || 'null'); if (saved) { for (const k of Object.keys(state.reno)) if (saved.reno && typeof saved.reno[k] === 'boolean') state.reno[k] = saved.reno[k]; /* older keys ('open', 'addition') are dropped */ state.garageUse = saved.garageUse || 'golf'; Object.assign(state.style, saved.style); } } catch {}
 const saveOptions = () => { try { localStorage.setItem('house-options', JSON.stringify({ reno: state.reno, garageUse: state.garageUse, style: state.style })); } catch {} };
 
 function isVisible(o) {

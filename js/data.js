@@ -76,22 +76,24 @@ export const LEVELS = [
     walls: [
       // garage. The plan shows a 3.5 ft notch at the back corner, but the rear photos show a
       // flush wall, so the exterior runs straight across and the notch is an open storage alcove.
-      [260.5, 387, 260.5, 1187, 'e', [[557, 619, 'x', { hinge: 'lo', into: '+x', style: 'half', color: '#f2f2ee' }], [711, 923, 'g'], [964, 1176, 'g']]],
+      // (split at the back of the car bays: the rear storage bay becomes the mudroom in the 'mud' option)
+      [260.5, 387, 260.5, 654.5, 'e', [[557, 619, 'x', { hinge: 'lo', into: '+x', style: 'half', color: '#f2f2ee' }]], { reno: 'mud' }],
+      [260.5, 654.5, 260.5, 1187, 'e', [[711, 923, 'g'], [964, 1176, 'g']]],
       [255, 1181.5, 847, 1181.5, 'e', [[380, 451, 'w', { sh: 1, sill: 2.6 }], [679, 750, 'w', { sh: 1, sill: 2.6 }]]],
-      [255, 476.5, 524.5, 476.5, 'i', [[275, 505, 'o']]],
-      [524.5, 392.5, 524.5, 654.5, 'i'],
+      [255, 476.5, 524.5, 476.5, 'i', [[275, 505, 'o']], { reno: 'mud' }],
+      [524.5, 392.5, 524.5, 654.5, 'i', [], { reno: 'mud' }],
       // laundry / half bath / kitchen rear
-      [255, 392.5, 847, 392.5, 'e', [[587, 649, 'x', { hinge: 'lo', into: '+y', style: 'half', color: BROWN }], [743, 805, 'w', { g: 'cs', sill: 3.7, head: 6.6 }]], { reno: 'addition' }],
-      [841, 349, 841, 392.5, 'e', [], { reno: 'addition' }],
-      [835, 354.5, 1060, 354.5, 'e', [[898, 980, 'w', { g: 'cs2', sill: 3.5, head: 6.9 }]], { reno: 'addition' }],
-      [1054, 360, 1054, 308, 'e', [], { reno: 'addition' }],
+      [255, 392.5, 847, 392.5, 'e', [[587, 649, 'x', { hinge: 'lo', into: '+y', style: 'half', color: BROWN }], [743, 805, 'w', { g: 'cs', sill: 3.7, head: 6.6 }]], { reno: 'mud' }],
+      [841, 349, 841, 392.5, 'e'],
+      [835, 354.5, 1060, 354.5, 'e', [[898, 980, 'w', { g: 'cs2', sill: 3.5, head: 6.9 }]]],
+      [1054, 360, 1054, 308, 'e', [], { reno: 'bump' }],
       // breakfast nook bay
-      [1054, 308, 1112, 250, 'e', [[1064, 1102, 'x', { hinge: 'hi', into: '+y', style: 'full', color: BROWN }]], { reno: 'addition' }],
-      [1112, 250, 1250, 250, 'e', [[1125, 1238, 'w', { g: 'cs2', rows: 5, sill: 1.6 }]], { reno: 'addition' }],
-      [1250, 250, 1308, 310.5, 'e', [[260, 300, 'w', { g: 'cs', rows: 5, sill: 1.6 }]], { reno: 'addition' }], // steeper than 45°: opening in plan y
-      [1308, 310.5, 1420.5, 310.5, 'e', [], { reno: 'addition' }],
+      [1054, 308, 1112, 250, 'e', [[1064, 1102, 'x', { hinge: 'hi', into: '+y', style: 'full', color: BROWN }]], { reno: 'bump' }],
+      [1112, 250, 1250, 250, 'e', [[1125, 1238, 'w', { g: 'cs2', rows: 5, sill: 1.6 }]], { reno: 'bump' }],
+      [1250, 250, 1308, 310.5, 'e', [[260, 300, 'w', { g: 'cs', rows: 5, sill: 1.6 }]], { reno: 'bump' }], // steeper than 45°: opening in plan y
+      [1308, 310.5, 1420.5, 310.5, 'e', [], { reno: 'bump' }],
       // sun room (west gable wall with the arched window is built separately)
-      [1420.5, 310.5, 1420.5, 44, 'e', [[122, 247, 's']], { reno: 'addition' }],
+      [1420.5, 310.5, 1420.5, 44, 'e', [[122, 247, 's']], { reno: 'bump' }],
       [1703.5, 44, 1703.5, 1034, 'e', [[903, 979, 'w']]],
       // front
       [835, 1028.5, 1709, 1028.5, 'e', [[875, 946, 'w', { sh: 1 }], [1015, 1085, 'w', { sh: 1 }], [1197, 1331, 'e', { hinge: 'hi', into: '-y' }], [1458, 1534, 'w', { sh: 1 }], [1598, 1674, 'w', { sh: 1 }]]],
@@ -99,7 +101,7 @@ export const LEVELS = [
       // garage side wall facing the front porch
       [841, 1028.5, 841, 1187, 'e'],
       // interior
-      [524.5, 654.5, 841, 654.5, 'i', [[581, 644, 'd', { hinge: 'lo', into: '-y' }]]],
+      [524.5, 654.5, 841, 654.5, 'i', [[581, 644, 'd', { hinge: 'lo', into: '-y' }]], { reno: 'mud' }],
       [713, 392.5, 713, 576.5, 'i'],
       [524.5, 576.5, 842.5, 576.5, 'i', [[592, 648, 'd', { hinge: 'hi', into: '-y' }], [768, 830, 'd', { hinge: 'hi', into: '-y' }]]],
       [842.5, 392.5, 842.5, 581, 'i'],
@@ -107,9 +109,9 @@ export const LEVELS = [
       [1134.5, 704, 1134.5, 1028.5, 'i', [[927, 992, 'o']]],
       // (the wall under the upper stair run is built with the stairs; it follows the stair up)
       [1313, 704, 1313, 784, 'i', [[709, 784, 'd', { hinge: 'lo', into: '-x' }]]],
-      [1420.5, 310.5, 1703.5, 310.5, 'i', [[1443, 1506, 'f', { hinge: 'lo', into: '+y' }]], { reno: 'open' }],
-      [1422, 626.5, 1703.5, 626.5, 'i', [[1489, 1616, 'f', { pair: true, into: '+y' }]], { reno: 'open' }],
-      [1422, 626.5, 1422, 866, 'i', [[713, 862, 'o']], { reno: 'open' }],
+      [1420.5, 310.5, 1703.5, 310.5, 'i', [[1443, 1506, 'f', { hinge: 'lo', into: '+y' }]], { reno: 'openSun' }],
+      [1422, 626.5, 1703.5, 626.5, 'i', [[1489, 1616, 'f', { pair: true, into: '+y' }]], { reno: 'openLiving' }],
+      [1422, 626.5, 1422, 866, 'i', [[713, 862, 'o']], { reno: 'openFoyer' }],
       [1422, 866, 1422, 1028.5, 'i'],
       [1366.5, 866, 1422, 866, 'i'],
       [1366.5, 866, 1366.5, 1028.5, 'i', [[889, 1009, 'c']]],
@@ -223,7 +225,7 @@ export const RAILINGS = [
   // balcony: an L along the east side and the front of the opening, ending at the primary bedroom wall
   { f2: [[1120, 724], [1137, 724], [1137, 1030], [848, 1030]] },
   // short rail (about 2 ft) between the breakfast nook and family room, ending at an oak column
-  [1312, 316, 1312, 362, 0, 0, 'open'], // off the sun-room wall (removed by the open-plan option)
+  [1312, 316, 1312, 362, 0, 0],
 ];
 
 // Lot: 0.39 acre (~16,990 sq ft). Proportions measured from the aerial photo:

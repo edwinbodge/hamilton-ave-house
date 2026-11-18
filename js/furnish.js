@@ -871,11 +871,11 @@ export function buildFixtures(bats) {
   sconce(at('f1', 1697.6, 375, -90), 5.6);
   sconce(at('f1', 1697.6, 549, -90), 5.6);
   // oak column at the end of the nook rail
-  { const [cx, cz] = P('f1', 1312, 368); const k = new Kit(renoBat('off:open', 'f1'), 'off:open').at(cx, cz, 0); k.cbox('trim', 0, 0, 0.55, 0.55, 0, 8); k.cbox('trim', 0, 0, 0.75, 0.75, 7.55, 8); k.cbox('trim', 0, 0, 0.7, 0.7, 0, 0.5); }
+  { const [cx, cz] = P('f1', 1312, 368); const k = new Kit(bats.f1, 'f1').at(cx, cz, 0); k.cbox('trim', 0, 0, 0.55, 0.55, 0, 8); k.cbox('trim', 0, 0, 0.75, 0.75, 7.55, 8); k.cbox('trim', 0, 0, 0.7, 0.7, 0, 0.5); }
   // ---- lights, 1st floor
   chandelier(at('f1', 988, 866), 8, 2.6);
   sconce(at('f1', 845.1, 770, 90), 5.7); sconce(at('f1', 845.1, 962, 90), 5.7);
-  globePendant(at('f1', 1185, 335), 8, 2.3);
+  { const [lx, lz] = P('f1', 1185, 335); globePendant(new Kit(renoBat('off:bump', 'f1'), 'off:bump').at(lx, lz, 0), 8, 2.3); } // replaced by the bump-out's pendants
   for (const [x, y] of [[905, 440], [995, 440], [905, 560], [995, 600], [1110, 600], [1230, 470]]) recessed(at('f1', x, y), 8);
   flushDome(at('f1', 1450, 440), 8); flushDome(at('f1', 1590, 440), 8);
   flushDome(at('f1', 600, 615), 8); flushDome(at('f1', 760, 615), 8);
@@ -993,8 +993,8 @@ export function buildFixtures(bats) {
   for (const [x, y] of [[900, 1040], [1350, 1040], [1500, 780]]) { const [lx, lz] = P('b', x, y); new Kit(bats.b, 'b').at(lx, lz, -9).cyl('bulb', 0, 0, 0.12, 0.12, 6.9, 7.1, 8); }
   // ---- exterior lights
   for (const x of [1178, 1350]) exteriorLantern(at('f1', x, 1034.4, 0), 6.0);
-  { const B = renoBat('off:addition', 'f1');
-    for (const [x, y, r] of [[560, 386.6, 180], [1048.1, 334, -90]]) { const [lx, lz] = P('f1', x, y); exteriorLantern(new Kit(B, 'off:addition').at(lx, lz, 0, r), 6.6); } }
+  // by the laundry door (moves with the mudroom option) and the nook door (goes with the bump-out)
+  for (const [x, y, r, rs] of [[560, 386.6, 180, 'off:mud'], [1048.1, 334, -90, 'off:bump']]) { const [lx, lz] = P('f1', x, y); exteriorLantern(new Kit(renoBat(rs, 'f1'), rs).at(lx, lz, 0, r), 6.6); }
   exteriorLantern(at('f1', 254.6, 530, -90), 6.6);
   exteriorLantern(at('f1', 254.6, 1150, -90), 7.4);
 }
@@ -1034,10 +1034,12 @@ export function buildFurniture(bats) {
 
   // ---- breakfast nook: 42 in round table, four chairs
   {
-    const k = at('f1', 1182, 335, 0);
+    // (in the 'off:bump' set: the bump-out option swaps it for a full dining table)
+    const NB = renoBat('off:bump', 'f1'), [nx, nz] = P('f1', 1182, 335);
+    const k = new Kit(NB, 'off:bump').at(nx, nz, 0, 0);
     for (const [cx, cz, r] of roundTable(k, 1.75, { base: '#d9d6cf' })) {
       const p = k.P(cx, 0, cz);
-      chair(new Kit(bats.f1F, 'f1F').at(p.x, p.z, 0, r), '#ece9e2', '#5c3d2a');
+      chair(new Kit(NB, 'off:bump').at(p.x, p.z, 0, r), '#ece9e2', '#5c3d2a');
     }
   }
   // ---- sun room
@@ -1048,7 +1050,7 @@ export function buildFurniture(bats) {
   // ---- garage: two cars and storage shelving
   place('f1', 470, 817, 90, (k) => car(k, '#6f7d8c'));
   place('f1', 470, 1070, 90, (k) => car(k, '#d9d9d4'));
-  place('f1', 390, 398.4, 0, (k) => shelving(k, 9, 1.6, 6));
+  { const [lx, lz] = P('f1', 390, 398.4); shelving(new Kit(renoBat('off:mud', 'f1'), 'off:mud').at(lx, lz, LV.f1.floor, 0), 9, 1.6, 6); } // rear storage bay (becomes the mudroom)
   // ---- primary bedroom: king bed on the windowless south wall
   place('f2', 470, 820, 90, (k) => rug(k, 8, 10, '#d8cbb8', '#9f8a72'));
   place('f2', 279.2, 820, 90, (k) => bed(k, 'king', { duvet: '#efe9df', accent: '#6f5a4a', headboard: '#b9aa96', sham: '#d9cbb8' }));
@@ -1088,16 +1090,17 @@ export function buildFurniture(bats) {
   placeA(1455, 470, 90, (k) => bodyPumpArea(k));
   placeA(1638.2, 470, -90, (k) => k.box('mirror', -3.6, 0.6, 0, 3.6, 6.8, 0.06));
   // ---- patio: fire pit with four Adirondack chairs, and a dining set by the family-room windows
-  const PATIO = renoBat('off:addition', 'f1');
-  const patio = (x, z, rot, fn) => fn(new Kit(PATIO, 'off:addition').at(x, z, -0.62, rot));
+  // (the fire pit group shifts over when the breakfast bump-out adds a patio door: see reno.js)
+  const PATIO = renoBat('off:bump', 'f1');
+  const patio = (x, z, rot, fn) => fn(new Kit(PATIO, 'off:bump').at(x, z, -0.62, rot));
   patio(33, -1, 0, firePit);
   for (const [dx, dz] of [[-3.8, -3.8], [3.8, -3.8], [-3.8, 3.8], [3.8, 3.8]]) {
     const rot = (Math.atan2(-dx, -dz) * 180) / Math.PI;
     patio(33 + dx, -1 + dz, rot, (k) => adirondack(k));
   }
   {
-    const k = new Kit(PATIO, 'off:addition').at(18.5, 6.5, -0.62, 0);
-    for (const [cx, cz, r] of patioDining(k)) patio(18.5 + cx, 6.5 + cz, r, patioChair);
+    const PD = (x, z, rot = 0) => new Kit(bats.f1F, 'f1F').at(x, z, -0.62, rot);
+    for (const [cx, cz, r] of patioDining(PD(18.5, 6.5))) patioChair(PD(18.5 + cx, 6.5 + cz, r));
   }
   placeA(800, 1173.7, 180, (k) => shelving(k, 6, 1.5, 6));
   placeA(1400, 1173.7, 180, (k) => shelving(k, 6, 1.5, 6));
