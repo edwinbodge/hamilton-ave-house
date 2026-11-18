@@ -72,7 +72,7 @@ const state = {
   reno: { openSun: false, openLiving: false, openFoyer: false, kitchen: false, pbath: false, mud: false, bump: false, sunext: false, garage2: false, yard: false }, garageUse: 'golf',
   style: { ...STYLE_PRESETS[DEFAULT_PRESET].values },
 };
-try { const saved = JSON.parse(localStorage.getItem('house-options') || 'null'); if (saved) { for (const k of Object.keys(state.reno)) if (saved.reno && typeof saved.reno[k] === 'boolean') state.reno[k] = saved.reno[k]; /* older keys ('open', 'addition') are dropped */ state.garageUse = saved.garageUse || 'golf'; Object.assign(state.style, saved.style); } } catch {}
+try { const saved = JSON.parse(localStorage.getItem('house-options') || 'null'); if (saved) { /* renovations always start off so the house opens as it is today */ state.garageUse = saved.garageUse || 'golf'; Object.assign(state.style, saved.style); } } catch {}
 const saveOptions = () => { try { localStorage.setItem('house-options', JSON.stringify({ reno: state.reno, garageUse: state.garageUse, style: state.style })); } catch {} };
 
 function isVisible(o) {
@@ -130,7 +130,7 @@ function applyReno() {
 }
 document.querySelectorAll('[data-reno]').forEach((el) => el.addEventListener('change', () => { state.reno[el.dataset.reno] = el.checked; applyReno(); }));
 // "Edwin's decisions": one switch for the preferred set of renovations
-const EDWIN = ['openSun', 'openLiving', 'kitchen', 'pbath', 'mud', 'sunext', 'garage2'];
+const EDWIN = ['openSun', 'openLiving', 'kitchen', 'pbath', 'mud', 'sunext', 'garage2', 'yard'];
 const isEdwin = () => Object.keys(state.reno).every((k) => !!state.reno[k] === EDWIN.includes(k));
 $('#edwin').addEventListener('change', (e) => {
   for (const k of Object.keys(state.reno)) state.reno[k] = e.target.checked && EDWIN.includes(k);

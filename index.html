@@ -41,6 +41,9 @@
     box-shadow: 0 8px 30px rgba(0,0,0,.12); transition: transform .25s ease; z-index: 5; }
   body.collapsed #panel { transform: translateX(calc(-100% - 20px)); }
   #panel header { padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
+  #house-pick { font: inherit; font-size: 15px; font-weight: 600; color: inherit; background: transparent; border: 1px solid transparent; border-radius: 8px; padding: 2px 22px 2px 4px; margin-left: -5px; cursor: pointer; appearance: none; -webkit-appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%); background-position: calc(100% - 10px) 55%, calc(100% - 5px) 55%; background-size: 5px 5px; background-repeat: no-repeat; }
+  #house-pick:hover, #house-pick:focus { border-color: var(--line); outline: none; }
   #panel h1 { font-size: 15px; margin: 0; font-weight: 600; }
   #panel header p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
   .scroll { overflow-y: auto; padding: 4px 16px 16px; flex: 1; }
@@ -138,7 +141,10 @@
 <button id="panel-toggle" title="Show / hide panel" aria-label="Toggle panel">&#9776;</button>
 <aside id="panel">
   <header>
-    <h1>Harrison Ave house</h1>
+    <h1><select id="house-pick" aria-label="Choose a house" onchange="location.href=this.value">
+      <option value="/" selected>Harrison Ave house</option>
+      <option value="/creekside/" disabled>Creekside Ln house (coming soon)</option>
+    </select></h1>
     <p>3 bed · 2.5 bath · 3,303 sq ft · 0.39 acre lot</p>
   </header>
   <div class="scroll">
@@ -170,7 +176,7 @@
 
     <section>
       <h2>Renovation ideas</h2>
-      <label class="edwin"><input type="checkbox" id="edwin"><span><b>Edwin's decisions</b><small>Open sun room + family room, kitchen remodel, primary bath remodel, mudroom, sun room extension, detached studio.</small></span></label>
+      <label class="edwin"><input type="checkbox" id="edwin"><span><b>Edwin's decisions</b><small>Open sun room + family room, kitchen remodel, primary bath remodel, mudroom, sun room extension, detached studio, backyard pavers &amp; pergola.</small></span></label>
       <div class="reno-list">
         <label><input type="checkbox" data-reno="openSun"><span><b>Open sun room to family room</b><small>The single French door becomes an 8½ ft cased opening.</small></span></label>
         <label><input type="checkbox" data-reno="openLiving"><span><b>Open family room to living room</b><small>The French doors become a 9 ft cased opening.</small></span></label>
