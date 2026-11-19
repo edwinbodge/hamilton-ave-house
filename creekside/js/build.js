@@ -6,6 +6,7 @@ import { Batcher, Kit, V, pip, centroid, addSolid, addFloorPoly, addFloorRect, m
 
 // Operable doors (hinged leaves and sliders). Each has t (0 closed .. 1 open) and apply().
 export const DOORS = [];
+export const DOOR_RENOS = []; // facade parts that ride on moving doors (visibility follows their reno set)
 // Renovation sets. 'off:<name>' = parts removed when renovation <name> is on, 'on:<name>' = parts it adds.
 const RENO_BATS = new Map(), RENO_GROUPS = new Map();
 export function renoGroup(rs, level) {
@@ -509,13 +510,58 @@ export function buildWall(L, w, bat) {
       }
     }
   }
+  // sectional garage door, mounted just inside the wall: its sections roll up the tracks and back under the ceiling
+  // (E in walk mode, or "open all doors"). drawSection(k, w, sh, i) draws section i (0 = bottom) in y 0..sh.
+  function sectionalDoor(a0, a1, h0, h1, outSide, drawSection, rows = 4, extra) {
+    const w = a1 - a0, h = h1 - h0, sh = h / rows, R = 0.7, zo = -outSide * (t / 2 + 0.12);
+    const p = at(a0, 1, 0), pivot = new THREE.Group();
+    pivot.position.set(p.x, 0, p.z); pivot.rotation.y = Math.atan2(-u.z, u.x);
+    const secs = [];
+    for (let i = 0; i < rows; i++) {
+      const db = new Batcher(), g = new THREE.Group();
+      const kk = new Kit(db, TAG), box = kk.box.bind(kk); // allow reversed z extents (doors facing -z)
+      kk.box = (key, x0, y0, z0, x1, y1, z1) => box(key, x0, y0, Math.min(z0, z1), x1, y1, Math.max(z0, z1));
+      drawSection(kk, w, sh, i);
+      db.build(g); pivot.add(g); secs.push(g);
+      if (extra) extra(g, w, sh, i, h0 + i * sh);
+    }
+    const arc = (Math.PI * R) / 2;
+    const track = (s) => { // [y, depth inward] along the track, s = distance from the closed bottom edge
+      if (s <= h) return [h0 + s, 0];
+      const s2 = s - h;
+      if (s2 <= arc) { const f = s2 / R; return [h1 + R * Math.sin(f), R - R * Math.cos(f)]; }
+      return [h1 + R, R + s2 - arc];
+    };
+    const c = at((a0 + a1) / 2, 1, 0);
+    const solid = { cx: c.x + n.x * zo, cz: c.z + n.z * zo, ux: u.x, uz: u.z, hl: w / 2, ht: 0.15, y0: h0, y1: h1, tag: TAG };
+    PHYS.solids.push(solid);
+    const d = { kind: 'garage', dur: 2.6, level: L.id, rs: RS, pivot, pair: null, solid, t: 0, target: 0 };
+    d.apply = () => {
+      const lift = d.t * (h + 0.1);
+      for (let i = 0; i < rows; i++) {
+        const [ya, da] = track(i * sh + lift), [yb, db2] = track((i + 1) * sh + lift);
+        secs[i].position.set(0, ya, zo - outSide * da);
+        secs[i].rotation.x = Math.atan2(-outSide * (db2 - da), yb - ya);
+      }
+      solid.y0 = h0 + lift;
+    };
+    registerDoor(d, pivot);
+  }
   function garageDoor(a0, a1, h0, h1, outSide) { // flush steel sections, four horizontal joints
-    const k = sashKit(a0, -outSide * 0.05);
-    const w = a1 - a0, h = h1 - h0;
-    k.box('garageDoor', 0, h0, -0.08, w, h1, 0.08);
-    k.solid(0, -0.1, w, 0.1, h0, h1);
-    for (let r = 1; r < 4; r++) k.box('blackMatte', 0, h0 + (h / 4) * r - 0.02, outSide * 0.08, w, h0 + (h / 4) * r + 0.02, outSide * 0.09);
-    for (const s of [-1, 1]) k.box('garageDoor', 0, h0, s * 0.08, w, h0 + 0.05, s * 0.1);
+    sectionalDoor(a0, a1, h0, h1, outSide, (k, w, sh, i) => {
+      k.box('garageDoor', 0, 0, -0.08, w, sh, 0.08);
+      if (i < 3) k.box('blackMatte', 0, sh - 0.02, outSide * 0.08, w, sh + 0.02, outSide * 0.09);
+      if (i === 0) for (const s of [-1, 1]) k.box('garageDoor', 0, 0, s * 0.08, w, 0.05, s * 0.1);
+    }, 4, (g, w, sh, i, base) => { // modern facade: a band of frosted glass in black frames rides on the doors
+      const y0 = Math.max(4.7, base), y1 = Math.min(5.7, base + sh);
+      if (y1 <= y0) return;
+      const db = new Batcher(), k = new Kit(db, 'on:facade'), z = outSide * 0.08, n = Math.round(w / 2.0);
+      const zz = (a, b) => [Math.min(z + outSide * a, z + outSide * b), Math.max(z + outSide * a, z + outSide * b)];
+      { const [za, zb] = zz(0, 0.06); k.box('black', 0, y0 - base, za, w, y1 - base, zb); }
+      const [fa, fb] = zz(0.06, 0.08);
+      for (let j = 0; j < n; j++) k.box('frosted', (w * j) / n + 0.12, Math.max(4.8, y0) - base, fa, (w * (j + 1)) / n - 0.12, Math.min(5.6, y1) - base, fb);
+      const fg = new THREE.Group(); fg.userData = { rs: 'on:facade', level: L.id }; db.build(fg); g.add(fg); DOOR_RENOS.push(fg);
+    });
   }
 }
 
@@ -1021,6 +1067,7 @@ export function buildHouse() {
   for (const [k, bat] of RENO_BATS) bat.build(RENO_GROUPS.get(k));
   const renos = [];
   for (const g of RENO_GROUPS.values()) { levelGroup(g.userData.level).add(g); renos.push(g); }
+  renos.push(...DOOR_RENOS);
   Object.values(groups).forEach((g) => house.add(g));
   return { house, groups, furn, labels, levels: LV, renos };
 }

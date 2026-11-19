@@ -1,11 +1,11 @@
 // Lot, landscaping and context for Creekside Ln. House frame (feet): +x = plan right (southwest, the driveway side),
 // +z = plan down = toward the street (northwest), y = up. Ground is at y = -1.
-// Positions come from the Google aerial (58.webp, ~6.7 px/ft, scaled on the house) and the listing photos:
-// street + sidewalk from the aerial; the two big front maples from 49/50/58; spruces along the back line (47, 50);
-// the NE neighbor ~12 ft off the kitchen bump (49, 58); the SW neighbor across both driveways (49, 58).
+// The surroundings (neighbors, trees, streets, lawn vs. needle litter, the red-mulch bed) come from the Google Earth
+// aerial 59 (fitted to this house: 3.40 px/ft) and the oblique 60, via NEIGHBORS / TREES / GROUND / STREETS in
+// data.js; the planting right around the house (beds, yews, arborvitae, patio, fence) from the listing photos.
 import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
-import { LEVELS, LOT, STREET, NEIGHBORS, toFt } from './data.js';
+import { LEVELS, LOT, STREET, STREETS, NEIGHBORS, TREES, GROUND, X_AZ, toFt } from './data.js';
 import { Batcher, Kit, V, addFloorPoly, addSolid, pip } from './geom.js';
 
 const G = -1; // ground elevation
@@ -158,6 +158,8 @@ const PAL = {
   arb: ['#3c6a2c', '#477834', '#345d27', '#52823a'],
   shrub: ['#4a6c32', '#5b7c39', '#3e5e2b', '#6a8a40'],
   hydrangea: ['#3f6a33', '#4c7a3a', '#365c2c'],
+  oak: ['#3d5f28', '#4a6c2e', '#35541f', '#567a34'],
+  purple: ['#4a2430', '#5c2b37', '#3d1f28', '#6e3644', '#55303a'],
 };
 const FOL = (name) => foliageMat(name, () => (name.startsWith('frond') ? frondTexture(PAL[name.split(':')[1]], name.length * 7) : leafTexture(PAL[name.split(':')[1]], name.length * 13 + 5, name.split(':')[0])));
 
@@ -314,40 +316,40 @@ function clump(P, names, r, c, rx, ry, rz, n, size, lc, opt = {}) {
 }
 // broadleaf shade tree: clear trunk, 3-5 leaders, crown of overlapping clumps
 function shadeTree(P, x, z, o) {
-  const r = rng(o.seed || 1), h = o.h, R = o.R, base = o.trunk ?? h * 0.22, names = o.leaves;
+  const r = rng(o.seed || 1), h = o.h, R = o.R, base = o.trunk ?? h * 0.22, names = o.leaves, lod = o.lod ?? 1; // lod < 1: far trees, fewer clumps / cards / facets
   const rt = o.rt ?? 0.35 + h * 0.012;
   const top = V(x + (o.lean?.[0] || 0), G + base, z + (o.lean?.[1] || 0));
-  P.limb(V(x, G - 0.3, z), top, rt * 1.25, rt * 0.85, 9);
+  P.limb(V(x, G - 0.3, z), top, rt * 1.25, rt * 0.85, lod < 1 ? 6 : 9);
   const crownC = V(top.x, G + base + (h - base) * 0.55, top.z), Ry = (h - base) * 0.5;
   const nL = o.leaders || 4, ends = [];
   for (let i = 0; i < nL; i++) {
     const a = (i / nL) * Math.PI * 2 + r() * 0.8, rr = R * (0.35 + r() * 0.3);
     const end = V(top.x + Math.cos(a) * rr, crownC.y + Ry * (0.05 + r() * 0.35), top.z + Math.sin(a) * rr);
-    P.limb(top, end, rt * 0.6, rt * 0.25, 6);
+    P.limb(top, end, rt * 0.6, rt * 0.25, lod < 1 ? 4 : 6);
     ends.push(end);
-    for (let j = 0; j < 2; j++) { // secondary limbs reaching toward the crown shell
+    for (let j = 0; j < (lod < 1 ? 0 : 2); j++) { // secondary limbs reaching toward the crown shell
       const mid = top.clone().lerp(end, 0.45 + r() * 0.3), b = rndDir(r); b.y = Math.abs(b.y) * 0.6 + 0.2;
       P.limb(mid, mid.clone().add(V(b.x * R * 0.55, b.y * Ry * 0.6, b.z * R * 0.55)), rt * 0.28, rt * 0.08, 5);
     }
   }
   const coreCol = o.core || '#2f3d22';
   const clumps = [...ends.map((e) => e.clone().add(V(0, Ry * 0.15, 0))), crownC.clone().add(V(0, Ry * 0.45, 0))];
-  for (let i = 0; i < 3; i++) { const d = rndDir(r); d.y = d.y * 0.4 - 0.1; clumps.push(crownC.clone().add(V(d.x * R * 0.55, d.y * Ry, d.z * R * 0.55))); }
+  for (let i = 0; i < (lod < 0.6 ? 1 : 3); i++) { const d = rndDir(r); d.y = d.y * 0.4 - 0.1; clumps.push(crownC.clone().add(V(d.x * R * 0.55, d.y * Ry, d.z * R * 0.55))); }
   for (const c of clumps) {
     const cr = R * (0.48 + r() * 0.16), cry = Ry * (0.5 + r() * 0.15);
-    clump(P, names, r, c, cr, cry, cr, Math.round((cr * cr) * (o.density || 1.05) * 1.1), o.card || Math.max(3.2, R * 0.24), crownC, { tint: o.tint, dark: 0.42, lit: 1.05 });
-    blobCluster(P, names[Math.floor(r() * names.length)].split(':')[1], r, c, cr * 0.95, cry * 0.95, cr * 0.95, 11, { dark: 0.4, jit: 0.34, s0: 0.45, s: 0.26, spread: 0.45, bright: 1.18 });
+    clump(P, names, r, c, cr, cry, cr, Math.round((cr * cr) * (o.density || 1.05) * 1.1 * lod), (o.card || Math.max(3.2, R * 0.24)) * (lod < 1 ? 1.3 : 1), crownC, { tint: o.tint, dark: 0.42, lit: 1.05 });
+    blobCluster(P, names[Math.floor(r() * names.length)].split(':')[1], r, c, cr * 0.95, cry * 0.95, cr * 0.95, lod < 1 ? Math.max(3, Math.round(11 * lod)) : 11, { dark: 0.4, jit: 0.34, s0: lod < 1 ? 0.6 : 0.45, s: lod < 1 ? 0.36 : 0.26, spread: 0.45, bright: 1.18, detail: lod < 1 ? 1 : 2 });
   }
   addSolid(V(x - rt, 0, z - rt), V(rt * 2, 0, 0), V(0, 0, rt * 2), G, G + base, 'site');
 }
 // conifer (Norway / Colorado blue spruce): whorls of drooping fronds down to the ground
 function spruce(P, x, z, h, o = {}) {
   const r = rng(o.seed || Math.round(x * 13 + z * 7 + 99)), R = o.R ?? h * 0.2, kind = o.blue ? 'blue' : 'spruce';
-  const name = 'frond:' + kind, skirt = o.skirt ?? 0.5;
+  const name = 'frond:' + kind, skirt = o.skirt ?? 0.5, lod = o.lod ?? 1, st = lod < 1 ? 1.35 / Math.max(0.65, lod) : 1.25;
   P.limb(V(x, G - 0.3, z), V(x, G + h, z), 0.25 + h * 0.008, 0.05, 6);
-  for (let y = skirt; y < h - 1.2; y += 1.25 + r() * 0.5) {
+  for (let y = skirt; y < h - 1.2; y += st + r() * 0.5) {
     const t = y / h, rad = R * Math.pow(1 - t, 0.92) * (0.85 + r() * 0.25) + 0.4;
-    const nb = Math.max(5, Math.round(rad * 2.2));
+    const nb = Math.max(5, Math.round(rad * 2.2 * lod));
     for (let i = 0; i < nb; i++) {
       const a = r() * Math.PI * 2, dir = V(Math.cos(a), -0.28 - r() * 0.2, Math.sin(a)).normalize();
       const start = V(x, G + y, z), len = rad * (0.85 + r() * 0.3);
@@ -361,14 +363,15 @@ function spruce(P, x, z, h, o = {}) {
   }
   for (let i = 0; i < 4; i++) { const a = (i / 4) * Math.PI * 2 + 0.3, dir = V(Math.cos(a) * 0.35, 1, Math.sin(a) * 0.35).normalize(); P.card(name, V(x, G + h - 2.4, z), V(-Math.sin(a), 0, Math.cos(a)), [2.8, 1.2], [1, 1, 1], V(Math.cos(a), 0.8, Math.sin(a)).normalize(), dir); }
   // drooping tiers: jagged open skirts (darker inside, lighter at the tips), stacked with overlap
-  for (let y = skirt + 0.6, i = 0; y < h - 1.5; y += 1.35 + r() * 0.5, i++) {
+  const tst = lod < 1 ? 1.35 / Math.max(0.65, lod) : 1.35;
+  for (let y = skirt + 0.6, i = 0; y < h - 1.5; y += tst + r() * 0.5, i++) {
     const t = y / h, rad = (R * Math.pow(1 - t, 0.92) + 0.4) * (0.92 + r() * 0.16);
-    spruceTier(P, kind, r, x + (r() - 0.5) * 0.5, z + (r() - 0.5) * 0.5, G + y + 1.4 + rad * 0.15, G + y - rad * 0.5, rad, t);
+    spruceTier(P, kind, r, x + (r() - 0.5) * 0.5, z + (r() - 0.5) * 0.5, G + y + 1.4 + rad * 0.15 + (tst - 1.35) * 0.6, G + y - rad * 0.5, rad, t, lod < 1 ? 12 : 28);
   }
   addSolid(V(x - 0.7, 0, z - 0.7), V(1.4, 0, 0), V(0, 0, 1.4), G, G + h, 'site');
 }
-function spruceTier(P, species, r, x, z, yTop, yBot, rad, t) {
-  const seg = 28, g = new THREE.ConeGeometry(rad, yTop - yBot, seg, 3, true);
+function spruceTier(P, species, r, x, z, yTop, yBot, rad, t, seg = 28) {
+  const g = new THREE.ConeGeometry(rad, yTop - yBot, seg, seg < 28 ? 2 : 3, true);
   g.deleteAttribute('uv');
   const p = g.attributes.position, ph = r() * 9, base = new THREE.Color(PAL[species][Math.floor(r() * PAL[species].length)]), col = [];
   const hh = yTop - yBot;
@@ -433,51 +436,251 @@ function shrub(P, x, z, w, hgt, kind = 'shrub', seed) {
 }
 
 // ------------------------------------------------------------------ neighbors
-// simple houses: body + roof ('gx' gable with ridge along x, 'gz' ridge along z, 'hip'), siding color, windows
-function house(bat, o) {
-  const { x0, z0, x1, z1, eave, ridge } = o;
-  const k = new Kit(bat, 'site');
-  k.box('col:' + o.wall, x0, G, z0, x1, G + eave, z1);
-  k.box('foundation', x0 - 0.05, G, z0 - 0.05, x1 + 0.05, G + 0.6, z1 + 0.05);
-  const rc = 'col:' + (o.roof || '#5b6066'), ov = 1.2, ye = G + eave, yr = G + ridge;
-  const a0 = V(x0 - ov, ye, z0 - ov), a1 = V(x1 + ov, ye, z0 - ov), a2 = V(x1 + ov, ye, z1 + ov), a3 = V(x0 - ov, ye, z1 + ov);
-  const xm = (x0 + x1) / 2, zm = (z0 + z1) / 2;
-  if (o.type === 'gx') { // ridge along x, gable ends at x0 / x1
-    const r0 = V(x0 - ov, yr, zm), r1 = V(x1 + ov, yr, zm);
-    bat.face(rc, [a0, a1, r1, r0], V(0, 1, -1)); bat.face(rc, [a3, a2, r1, r0], V(0, 1, 1));
-    for (const x of [x0, x1]) bat.face('col:' + o.wall, [V(x, ye, z0), V(x, ye, z1), V(x, yr - 0.6, zm)], V(x === x0 ? -1 : 1, 0, 0));
-  } else if (o.type === 'gz') {
-    const r0 = V(xm, yr, z0 - ov), r1 = V(xm, yr, z1 + ov);
-    bat.face(rc, [a0, a3, r1, r0], V(-1, 1, 0)); bat.face(rc, [a1, a2, r1, r0], V(1, 1, 0));
-    for (const z of [z0, z1]) bat.face('col:' + o.wall, [V(x0, ye, z), V(x1, ye, z), V(xm, yr - 0.6, z)], V(0, 0, z === z0 ? -1 : 1));
-  } else { // hip
-    const d = Math.min(x1 - x0, z1 - z0) / 2 + ov, along = x1 - x0 >= z1 - z0;
-    const r0 = along ? V(x0 - ov + d, yr, zm) : V(xm, yr, z0 - ov + d), r1 = along ? V(x1 + ov - d, yr, zm) : V(xm, yr, z1 + ov - d);
-    if (along) { bat.face(rc, [a0, a1, r1, r0], V(0, 1, -1)); bat.face(rc, [a3, a2, r1, r0], V(0, 1, 1)); bat.face(rc, [a0, a3, r0], V(-1, 1, 0)); bat.face(rc, [a1, a2, r1], V(1, 1, 0)); }
-    else { bat.face(rc, [a0, a3, r1, r0], V(-1, 1, 0)); bat.face(rc, [a1, a2, r1, r0], V(1, 1, 0)); bat.face(rc, [a0, a1, r0], V(0, 1, -1)); bat.face(rc, [a3, a2, r1], V(0, 1, 1)); }
-  }
-  bat.box('col:#e9e6de', a0.clone().add(V(0, -0.7, 0)), V(x1 - x0 + 2 * ov, 0, 0), V(0, 0.7, 0), V(0, 0, 0.12));
-  bat.box('col:#e9e6de', a3.clone().add(V(0, -0.7, -0.12)), V(x1 - x0 + 2 * ov, 0, 0), V(0, 0.7, 0), V(0, 0, 0.12));
-  // windows on every wall, one or two rows
-  const rows = eave > 15 ? [[2.6, 6.6], [12.4, 16.2]] : [[2.6, 6.6]];
-  const win = (ax, az, bx, bz, nx, nz) => {
-    const L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.floor(L / 9));
-    for (let i = 0; i < n; i++) {
-      const t = (i + 0.5) / n, cx = ax + (bx - ax) * t, cz = az + (bz - az) * t, ux = (bx - ax) / L, uz = (bz - az) / L;
-      if (o.doors && o.doors.some(([dx, dz]) => Math.hypot(dx - cx, dz - cz) < 6)) continue;
-      for (const [y0, y1] of rows) {
-        const w = 1.5, p = (s, y, d) => V(cx + ux * s + nx * d, G + y, cz + uz * s + nz * d);
-        bat.face('col:#e9e6de', [p(-w - 0.25, y0 - 0.25, 0.04), p(w + 0.25, y0 - 0.25, 0.04), p(w + 0.25, y1 + 0.25, 0.04), p(-w - 0.25, y1 + 0.25, 0.04)], V(nx, 0, nz));
-        bat.face('col:#2d3438', [p(-w, y0, 0.07), p(w, y0, 0.07), p(w, y1, 0.07), p(-w, y1, 0.07)], V(nx, 0, nz));
+// Each neighbor is a set of rectangular parts in its own frame (see NEIGHBORS in data.js), rotated into the plan:
+// lap-siding walls, hip or gable roofs with soffits and fascia, windows (two rows on 2-story parts), garage doors
+// on the side they really face, an entry door, chimneys, patios, decks and driveways.
+const TRIM = 'col:#f1efe8', GLASS = 'col:#2b3237', SHUTTER = 'col:#3b4247';
+function nbFrame(n) {
+  const r = (n.rot * Math.PI) / 180, c = Math.cos(r), s = Math.sin(r);
+  return {
+    P: (lx, y, lz) => V(n.x + lx * c + lz * s, y, n.z - lx * s + lz * c),
+    D: (dx, dy, dz) => V(dx * c + dz * s, dy, -dx * s + dz * c),
+    XZ: (lx, lz) => [n.x + lx * c + lz * s, n.z - lx * s + lz * c],
+  };
+}
+// plan outline of each part (for distances)
+export function neighborPolys(n) {
+  const { XZ } = nbFrame(n);
+  return n.parts.map(([x0, z0, x1, z1]) => [XZ(x0, z0), XZ(x1, z0), XZ(x1, z1), XZ(x0, z1)]);
+}
+const ridgeOf = ([x0, z0, x1, z1, e, type, pitch = 8 / 12]) => e + (type === 'gx' ? (z1 - z0) / 2 : type === 'gz' ? (x1 - x0) / 2 : Math.min(x1 - x0, z1 - z0) / 2) * pitch;
+function neighbor(bat, n) {
+  const { P, D } = nbFrame(n);
+  const wall = 'lap:' + n.wall, roofK = n.roof, ov = 1.1;
+  const doors = n.doors || [];
+  const faceN = { '+x': [1, 0], '-x': [-1, 0], '+z': [0, 1], '-z': [0, -1] };
+  // quad in local coords, offset `off` along the local normal (nx, nz)
+  const quad = (key, ax, az, bx, bz, y0, y1, nx, nz, off) => bat.face(key, [P(ax + nx * off, y0, az + nz * off), P(bx + nx * off, y0, bz + nz * off), P(bx + nx * off, y1, bz + nz * off), P(ax + nx * off, y1, az + nz * off)], D(nx, 0, nz));
+  const roofFace = (pts, e, h, nrm, k) => {
+    const uv = pts.map(([x, , z]) => [x * e[0] + z * e[1], (x * h[0] + z * h[1]) * k]);
+    bat.face(roofK, pts.map(([x, y, z]) => P(x, y, z)), D(nrm[0], nrm[1], nrm[2]), uv);
+  };
+  const inOther = (self, lx, lz, y) => n.parts.some((q) => q !== self && lx > q[0] + 0.2 && lx < q[2] - 0.2 && lz > q[1] + 0.2 && lz < q[3] - 0.2 && y < G + q[4] + 1.5);
+  for (const part of n.parts) {
+    const [x0, z0, x1, z1, e, type, p = 8 / 12] = part;
+    const yw = G + e, yE = yw - ov * p, yr = G + ridgeOf(part), k = Math.sqrt(1 + p * p);
+    const X0 = x0 - ov, X1 = x1 + ov, Z0 = z0 - ov, Z1 = z1 + ov, xm = (x0 + x1) / 2, zm = (z0 + z1) / 2;
+    const sides = [[x0, z1, x1, z1, 0, 1], [x1, z0, x0, z0, 0, -1], [x0, z0, x0, z1, -1, 0], [x1, z1, x1, z0, 1, 0]];
+    for (const [ax, az, bx, bz, nx, nz] of sides) {
+      quad(wall, ax, az, bx, bz, G, yw, nx, nz, 0);
+      quad('foundation', ax, az, bx, bz, G, G + 0.75, nx, nz, 0.06);
+    }
+    // roof
+    const A = [[X0, yE, Z0], [X1, yE, Z0], [X1, yE, Z1], [X0, yE, Z1]];
+    const along = type === 'gx' || (type === 'hip' && X1 - X0 >= Z1 - Z0);
+    if (type === 'hip') {
+      if (along) {
+        const d = (Z1 - Z0) / 2, r0 = [X0 + d, yr, zm], r1 = [X1 - d, yr, zm];
+        roofFace([A[0], A[1], r1, r0], [1, 0], [0, 1], [0, 1, -p], k); roofFace([A[3], A[2], r1, r0], [1, 0], [0, -1], [0, 1, p], k);
+        roofFace([A[0], A[3], r0], [0, 1], [1, 0], [-p, 1, 0], k); roofFace([A[1], A[2], r1], [0, 1], [-1, 0], [p, 1, 0], k);
+      } else {
+        const d = (X1 - X0) / 2, r0 = [xm, yr, Z0 + d], r1 = [xm, yr, Z1 - d];
+        roofFace([A[0], A[3], r1, r0], [0, 1], [1, 0], [-p, 1, 0], k); roofFace([A[1], A[2], r1, r0], [0, 1], [-1, 0], [p, 1, 0], k);
+        roofFace([A[0], A[1], r0], [1, 0], [0, 1], [0, 1, -p], k); roofFace([A[3], A[2], r1], [1, 0], [0, -1], [0, 1, p], k);
+      }
+    } else if (type === 'gx') {
+      const r0 = [X0, yr, zm], r1 = [X1, yr, zm];
+      roofFace([A[0], A[1], r1, r0], [1, 0], [0, 1], [0, 1, -p], k); roofFace([A[3], A[2], r1, r0], [1, 0], [0, -1], [0, 1, p], k);
+      for (const x of [x0, x1]) bat.face(wall, [P(x, yw, z0), P(x, yw, z1), P(x, yr, zm)], D(x === x0 ? -1 : 1, 0, 0));
+      for (const x of [X0, X1]) bat.face(TRIM, [P(x, yE - 0.5, Z0), P(x, yE, Z0), P(x, yr, zm), P(x, yr - 0.5, zm)], D(x === X0 ? -1 : 1, 0, 0)), bat.face(TRIM, [P(x, yE - 0.5, Z1), P(x, yE, Z1), P(x, yr, zm), P(x, yr - 0.5, zm)], D(x === X0 ? -1 : 1, 0, 0));
+    } else {
+      const r0 = [xm, yr, Z0], r1 = [xm, yr, Z1];
+      roofFace([A[0], A[3], r1, r0], [0, 1], [1, 0], [-p, 1, 0], k); roofFace([A[1], A[2], r1, r0], [0, 1], [-1, 0], [p, 1, 0], k);
+      for (const z of [z0, z1]) bat.face(wall, [P(x0, yw, z), P(x1, yw, z), P(xm, yr, z)], D(0, 0, z === z0 ? -1 : 1));
+      for (const z of [Z0, Z1]) bat.face(TRIM, [P(X0, yE - 0.5, z), P(X0, yE, z), P(xm, yr, z), P(xm, yr - 0.5, z)], D(0, 0, z === Z0 ? -1 : 1)), bat.face(TRIM, [P(X1, yE - 0.5, z), P(X1, yE, z), P(xm, yr, z), P(xm, yr - 0.5, z)], D(0, 0, z === Z0 ? -1 : 1));
+    }
+    bat.face(TRIM, A.map(([x, y, z]) => P(x, y, z)), V(0, -1, 0)); // soffit
+    const fas = (ax, az, bx, bz, nx, nz) => quad(TRIM, ax, az, bx, bz, yE - 0.6, yE, nx, nz, 0);
+    if (type !== 'gz') { fas(X0, Z1, X1, Z1, 0, 1); fas(X1, Z0, X0, Z0, 0, -1); }
+    if (type !== 'gx') { fas(X0, Z0, X0, Z1, -1, 0); fas(X1, Z1, X1, Z0, 1, 0); }
+    // windows: one or two rows, skipping garage doors, the entry and walls hidden inside another part
+    const rows = e >= 16 ? [[3.2, 7.6], [12.0, 16.0]] : e >= 9 ? [[3.2, 7.4]] : [];
+    for (const [ax, az, bx, bz, nx, nz] of sides) {
+      const L = Math.hypot(bx - ax, bz - az), cnt = L < 6 ? 0 : Math.max(1, Math.round(L / 10.5));
+      const ux = (bx - ax) / L, uz = (bz - az) / L;
+      for (let i = 0; i < cnt; i++) {
+        const t = (i + 0.5) / cnt, cx = ax + (bx - ax) * t, cz = az + (bz - az) * t;
+        for (const [y0, y1] of rows) {
+          if (inOther(part, cx + nx * 0.8, cz + nz * 0.8, G + y0)) continue;
+          if (y0 < 8 && doors.some(([dx, dz, w]) => Math.hypot(dx - cx, dz - cz) < w / 2 + 2.6)) continue;
+          if (y0 < 8 && n.entry && Math.hypot(n.entry[0] - cx, n.entry[1] - cz) < 4.5) continue;
+          const w = 1.5, q = (s, y, off) => P(cx + ux * s + nx * off, G + y, cz + uz * s + nz * off);
+          bat.face(TRIM, [q(-w - 0.3, y0 - 0.3, 0.05), q(w + 0.3, y0 - 0.3, 0.05), q(w + 0.3, y1 + 0.3, 0.05), q(-w - 0.3, y1 + 0.3, 0.05)], D(nx, 0, nz));
+          bat.face(GLASS, [q(-w, y0, 0.09), q(w, y0, 0.09), q(w, y1, 0.09), q(-w, y1, 0.09)], D(nx, 0, nz));
+          bat.face(TRIM, [q(-w, (y0 + y1) / 2 + 0.05, 0.1), q(w, (y0 + y1) / 2 + 0.05, 0.1), q(w, (y0 + y1) / 2 - 0.05, 0.1), q(-w, (y0 + y1) / 2 - 0.05, 0.1)], D(nx, 0, nz));
+          if (nz > 0.5) for (const s of [-1, 1]) bat.face(SHUTTER, [q(s * (w + 0.35), y0, 0.07), q(s * (w + 1.45), y0, 0.07), q(s * (w + 1.45), y1, 0.07), q(s * (w + 0.35), y1, 0.07)], D(nx, 0, nz));
+        }
       }
     }
-  };
-  win(x0, z1, x1, z1, 0, 1); win(x0, z0, x1, z0, 0, -1); win(x0, z0, x0, z1, -1, 0); win(x1, z0, x1, z1, 1, 0);
-  for (const [cx, cz, w, nx, nz] of o.doors || []) { // garage doors on a face
-    const ux = nz ? 1 : 0, uz = nx ? 1 : 0, p = (s, y) => V(cx + ux * s + nx * 0.08, G + y, cz + uz * s + nz * 0.08);
-    bat.face('col:#ece8df', [p(-w / 2, 0), p(w / 2, 0), p(w / 2, 7.3), p(-w / 2, 7.3)], V(nx, 0, nz));
+    addSolid(P(x0, 0, z0), D(x1 - x0, 0, 0), D(0, 0, z1 - z0), G, yr, 'site');
   }
-  addSolid(V(x0, 0, z0), V(x1 - x0, 0, 0), V(0, 0, z1 - z0), G, G + ridge, 'site');
+  // garage doors: raised-panel look with a few horizontal joints, in a trim frame
+  for (const [cx, cz, w, f] of doors) {
+    const [nx, nz] = faceN[f], ux = Math.abs(nz), uz = Math.abs(nx);
+    const a = [cx - ux * w / 2, cz - uz * w / 2], b = [cx + ux * w / 2, cz + uz * w / 2];
+    quad(TRIM, a[0] - ux * 0.35, a[1] - uz * 0.35, b[0] + ux * 0.35, b[1] + uz * 0.35, G, G + 8.0, nx, nz, 0.05);
+    quad('col:#ecE9e1', a[0], a[1], b[0], b[1], G, G + 7.6, nx, nz, 0.09);
+    for (let y = 1.9; y < 7.5; y += 1.9) quad('col:#c8c4bb', a[0], a[1], b[0], b[1], G + y - 0.05, G + y + 0.05, nx, nz, 0.11);
+  }
+  if (n.entry) { // entry door with a stoop
+    const [cx, cz, f] = n.entry, [nx, nz] = faceN[f], ux = Math.abs(nz), uz = Math.abs(nx);
+    quad(TRIM, cx - ux * 2.1, cz - uz * 2.1, cx + ux * 2.1, cz + uz * 2.1, G + 0.5, G + 8.2, nx, nz, 0.05);
+    quad('col:#3f464c', cx - ux * 1.6, cz - uz * 1.6, cx + ux * 1.6, cz + uz * 1.6, G + 0.5, G + 7.6, nx, nz, 0.09);
+    bat.box('foundation', P(cx - ux * 3 + nx * 0.05, G, cz - uz * 3 + nz * 0.05), D(ux * 6, 0, uz * 6), V(0, 0.5, 0), D(nx * 4, 0, nz * 4));
+  }
+  if (n.chimney) {
+    const [cx, cz, top] = n.chimney;
+    bat.box('col:#8d8379', P(cx - 1.8, G, cz - 1.3), D(3.6, 0, 0), V(0, top, 0), D(0, 0, 2.6));
+    bat.box('col:#6f6a64', P(cx - 2.0, G + top, cz - 1.5), D(4.0, 0, 0), V(0, 0.4, 0), D(0, 0, 3.0));
+  }
+  const flat = (key, pts, y) => { bat.poly(key, pts, y); addFloorPoly(pts, [], y, 'site'); };
+  if (n.drive) flat('paving', n.drive, G + 0.04);
+  if (n.patio) flat(n.patioKey || 'pavers', n.patio, G + 0.06);
+  if (n.court) flat('col:#9b5a46', n.court, G + 0.06);
+  if (n.deck) { // raised wood deck with posts and a railing on the open sides
+    const [x0, z0, x1, z1, h, open] = n.deck, W = 'wood:#8f6b4b', k = new Kit(bat, 'site');
+    k.box(W, x0, G + h - 0.25, z0, x1, G + h, z1);
+    addFloorPoly([[x0, z0], [x1, z0], [x1, z1], [x0, z1]], [], G + h, 'site');
+    for (let x = x0 + 0.3; x <= x1; x += (x1 - x0 - 0.6) / Math.max(1, Math.round((x1 - x0) / 7))) for (const z of [z0 + 0.3, z1 - 0.3]) k.cbox(W, x, z, 0.45, 0.45, G, G + h);
+    const rail = (ax, az, bx, bz) => {
+      const L = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / L, uz = (bz - az) / L;
+      k.box(TRIM, Math.min(ax, bx) - 0.1, G + h + 2.9, Math.min(az, bz) - 0.1, Math.max(ax, bx) + 0.1, G + h + 3.1, Math.max(az, bz) + 0.1);
+      k.box(TRIM, Math.min(ax, bx) - 0.05, G + h + 0.3, Math.min(az, bz) - 0.05, Math.max(ax, bx) + 0.05, G + h + 0.45, Math.max(az, bz) + 0.05);
+      for (let s = 0; s <= L; s += 0.55) k.cbox(TRIM, ax + ux * s, az + uz * s, 0.12, 0.12, G + h, G + h + 2.9);
+      addSolid(V(Math.min(ax, bx) - 0.1, 0, Math.min(az, bz) - 0.1), V(Math.abs(bx - ax) + 0.2, 0, 0), V(0, 0, Math.abs(bz - az) + 0.2), G, G + h + 3.1, 'site');
+    };
+    if (open !== '-z') rail(x0, z0, x1, z0); if (open !== '+z') rail(x0, z1, x1, z1);
+    if (open !== '-x') rail(x0, z0, x0, z1); if (open !== '+x') rail(x1, z0, x1, z1);
+  }
+  if (n.garden) { // white fence around a vegetable garden of raised cedar beds
+    const [x0, z0, x1, z1] = n.garden, k = new Kit(bat, 'site');
+    const fence = (ax, az, bx, bz) => {
+      const L = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / L, uz = (bz - az) / L;
+      for (const y of [0.5, 3.4]) k.box('railWhite', Math.min(ax, bx) - 0.06, G + y, Math.min(az, bz) - 0.06, Math.max(ax, bx) + 0.06, G + y + 0.25, Math.max(az, bz) + 0.06);
+      for (let s = 0; s <= L; s += 0.6) k.cbox('railWhite', ax + ux * s, az + uz * s, 0.25, 0.25, G, G + 4.1);
+      addSolid(V(Math.min(ax, bx) - 0.1, 0, Math.min(az, bz) - 0.1), V(Math.abs(bx - ax) + 0.2, 0, 0), V(0, 0, Math.abs(bz - az) + 0.2), G, G + 4, 'site');
+    };
+    fence(x0, z0, x1, z0); fence(x0, z1, x1, z1); fence(x0, z0, x0, z1); fence(x1, z0, x1, z1);
+    for (let z = z0 + 3; z + 8 < z1 - 2; z += 10) for (const x of [x0 + 2.5, (x0 + x1) / 2 + 1]) { k.box('cedar', x, G, z, x + 4, G + 1.2, z + 8); k.box('col:#4a3628', x + 0.15, G + 0.9, z + 0.15, x + 3.85, G + 1.12, z + 7.85); }
+  }
+  if (n.play) { // cedar play set with a red slide and a green canopy
+    const [px, pz] = n.play, k = new Kit(bat, 'site').at(px, pz, G, n.rot);
+    for (const x of [-2.5, 2.5]) for (const z of [-2.5, 2.5]) k.cbox('cedar', x, z, 0.35, 0.35, 0, 9);
+    k.box('cedar', -2.6, 4.6, -2.6, 2.6, 4.85, 2.6);
+    k.prof('col:#3f7a3c', [[-3.0, 8.8], [3.0, 8.8], [0, 10.8]], -3, 3);
+    bat.box('col:#d33a2c', k.P(-1, 4.7, 2.6), k.ez().multiplyScalar(8).add(V(0, -4.5, 0)), V(0, 0.2, 0), k.ex().multiplyScalar(2));
+    k.box('cedar', 2.5, 7.6, -0.2, 10, 8.0, 0.2);
+    for (const s of [-1, 1]) k.cbox('cedar', 9.8, s * 2.6, 0.3, 0.3, 0, 8);
+    k.solid(-2.8, -2.8, 2.8, 2.8, 0, 9);
+  }
+}
+
+// ------------------------------------------------------------------ distances
+// Wall-to-wall distances from this house to each neighbor (closest points of the 1st-floor outlines), drawn as a
+// dimension line on the ground with its label, plus a floating tag over each neighbor's roof; and the distance from
+// the house to each lot line.
+function segDist(a, b, c, d) { // closest points between segments ab and cd (2D, non-crossing)
+  const ps = (p, s0, s1) => {
+    const dx = s1[0] - s0[0], dz = s1[1] - s0[1], t = Math.max(0, Math.min(1, ((p[0] - s0[0]) * dx + (p[1] - s0[1]) * dz) / (dx * dx + dz * dz || 1)));
+    return [s0[0] + dx * t, s0[1] + dz * t];
+  };
+  let best = null;
+  for (const [p, s0, s1, swap] of [[a, c, d, 0], [b, c, d, 0], [c, a, b, 1], [d, a, b, 1]]) {
+    const q = ps(p, s0, s1), dd = Math.hypot(q[0] - p[0], q[1] - p[1]);
+    if (!best || dd < best.d) best = swap ? { d: dd, pa: q, pb: p } : { d: dd, pa: p, pb: q };
+  }
+  return best;
+}
+function polyDist(A, B) {
+  let best = null;
+  for (let i = 0; i < A.length; i++) for (let j = 0; j < B.length; j++) {
+    const r = segDist(A[i], A[(i + 1) % A.length], B[j], B[(j + 1) % B.length]);
+    if (!best || r.d < best.d) best = r;
+  }
+  return best;
+}
+function tagSprite(lines, x, y, z, w) {
+  const c = document.createElement('canvas'), g0 = c.getContext('2d');
+  g0.font = '600 64px Inter, system-ui, sans-serif'; let tw = g0.measureText(lines[0]).width;
+  g0.font = '500 44px Inter, system-ui, sans-serif'; if (lines[1]) tw = Math.max(tw, g0.measureText(lines[1]).width);
+  c.width = Math.ceil(tw + 70); c.height = lines.length > 1 ? 200 : 120; w *= c.width / 640;
+  const g = c.getContext('2d');
+  g.fillStyle = 'rgba(20,24,28,0.72)';
+  g.beginPath(); g.roundRect(4, 4, c.width - 8, c.height - 8, 26); g.fill();
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = '#ffffff'; g.font = '600 64px Inter, system-ui, sans-serif';
+  g.fillText(lines[0], c.width / 2, lines.length > 1 ? 66 : c.height / 2);
+  if (lines[1]) { g.fillStyle = 'rgba(255,255,255,0.8)'; g.font = '500 44px Inter, system-ui, sans-serif'; g.fillText(lines[1], c.width / 2, 142); }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false }));
+  s.scale.set(w, (w * c.height) / c.width, 1);
+  s.position.set(x, y, z);
+  s.renderOrder = 2;
+  return s;
+}
+// which part of this house a point on its outline belongs to (for the labels)
+function ourSide(x, z) {
+  if (x <= 0.6 && z > 25 && z < 40) return 'our kitchen bump';
+  if (x <= 3) return 'our NE wall';
+  if (x >= 57) return 'our garage';
+  if (z <= 3) return 'our family room';
+  if (z <= 15) return 'our back wall';
+  if (z >= 52) return 'our front';
+  return 'our house';
+}
+export const NEIGHBOR_DISTANCES = [];
+function buildDistances(grp) {
+  const bat = new Batcher();
+  const ours = LEVELS.find((l) => l.id === 'f1').footprint[0].map((q) => toFt(q));
+  const strip = (ax, az, bx, bz, w, y = G + 0.16) => {
+    const L = Math.hypot(bx - ax, bz - az), nx = (-(bz - az) / L) * w / 2, nz = ((bx - ax) / L) * w / 2;
+    bat.face('col:#ffffff', [V(ax + nx, y, az + nz), V(bx + nx, y, bz + nz), V(bx - nx, y, bz - nz), V(ax - nx, y, az - nz)], V(0, 1, 0));
+  };
+  const dimLine = (pa, pb, text) => {
+    const [ax, az] = pa, [bx, bz] = pb, L = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / L, uz = (bz - az) / L;
+    strip(ax, az, bx, bz, 0.25);
+    for (const [px, pz] of [pa, pb]) strip(px - uz * 1.6, pz + ux * 1.6, px + uz * 1.6, pz - ux * 1.6, 0.25);
+    // label: along the line when it's long, across it in narrow side yards; never upside down from the street
+    let dx = ux, dz = uz;
+    if (L < 34) { dx = -uz; dz = ux; }
+    if (dx - dz < 0) { dx = -dx; dz = -dz; }
+    const tw = Math.max(16, text.length * 1.75), th = 3.6;
+    const off = L < 34 ? 0 : 2.6;
+    grp.add(groundText(text, (ax + bx) / 2 - dz * off, (az + bz) / 2 + dx * off, tw, th, Math.atan2(-dz, dx), 'rgba(255,255,255,0.95)'));
+  };
+  NEIGHBOR_DISTANCES.length = 0;
+  for (const n of NEIGHBORS) {
+    if (!n.dist) continue;
+    const polys = neighborPolys(n);
+    let best = null;
+    for (const poly of polys) { const r = polyDist(ours, poly); if (!best || r.d < best.d) best = r; }
+    const ft = Math.round(best.d), side = ourSide(...best.pa);
+    NEIGHBOR_DISTANCES.push({ name: n.name, ft, from: side });
+    dimLine(best.pa, best.pb, `${n.name}: ${ft} ft`);
+    const all = polys.flat(), cx = all.reduce((a, p) => a + p[0], 0) / all.length, cz = all.reduce((a, p) => a + p[1], 0) / all.length;
+    const top = Math.max(...n.parts.map((q) => ridgeOf(q)));
+    grp.add(tagSprite([`${n.name} · ${ft} ft away`, `wall to wall, from ${side}`], cx, G + top + 7, cz, 24));
+  }
+  // house to the lot lines
+  const xs = ours.map((q) => q[0]), zs = ours.map((q) => q[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs);
+  const lotLbl = (text, x, z, rot) => grp.add(groundText(text, x, z, 22, 2.6, rot, 'rgba(255,255,255,0.85)'));
+  lotLbl(`${Math.round(x0 - LOT.xSouth)} ft to the lot line`, (x0 + LOT.xSouth) / 2 - 0.2, 18, Math.PI / 2);
+  lotLbl(`${Math.round(LOT.xNorth - x1)} ft to the lot line`, LOT.xNorth - 2.5, 4, Math.PI / 2);
+  lotLbl(`${Math.round(z0 - LOT.zBack)} ft to the rear lot line`, 24, LOT.zBack + 4, 0);
+  lotLbl(`${Math.round(LOT.zFront - z1)} ft to the front lot line`, 70, LOT.zFront - 3, 0);
+  bat.build(grp, { shadows: false });
 }
 
 // ------------------------------------------------------------------ site
@@ -501,23 +704,41 @@ export function buildSite() {
   for (const zc of [sz0, sz1]) bat.aabox('col:#c4c1b8', -W, G - 0.3, zc - (zc === sz0 ? 0.6 : 0), W, G + 0.05, zc + (zc === sz0 ? 0 : 0.6));
   for (let x = -W + 6; x < W; x += 15) bat.aabox('col:#8f8c86', x - 0.04, G - 0.295, sz0, x + 0.04, G - 0.29, sz1);
   bat.aabox('col:#8f8c86', -W, G - 0.295, (sz0 + sz1) / 2 - 0.04, W, G - 0.29, (sz0 + sz1) / 2 + 0.04);
-  for (const [a, b] of [[sw0, sw1], [sz1 + 5, sz1 + 9.5]]) {
+  for (const [a, b] of [[sw0, sw1], [sz1 + 6, sz1 + 10.5]]) {
     bat.poly('paving', [[-W, a], [W, a], [W, b], [-W, b]], G + 0.03);
     addFloorPoly([[-W, a], [W, a], [W, b], [-W, b]], [], G + 0.03, 'site');
     for (let x = -W; x < W; x += 5) bat.aabox('col:#a9a59d', x - 0.03, G + 0.031, a, x + 0.03, G + 0.035, b);
   }
   addFloorPoly([[-W, sz0], [W, sz0], [W, sz1], [-W, sz1]], [], G - 0.3, 'site');
 
+  // Boxelder Ln (T off Creekside past 1252, bending SE) and Chickadee Ln behind us: 33 ft streets with grass terraces
+  // and sidewalks, drawn on the grade (their curb lines are not modeled)
+  const offsetLine = (pts, d) => pts.map((q, i) => {
+    const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)], l = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    return [q[0] - ((b[1] - a[1]) / l) * d, q[1] + ((b[0] - a[0]) / l) * d];
+  });
+  for (const [key, line] of Object.entries(STREETS)) {
+    const pts = curve(line, line.length * 8);
+    ribbon(bat, 'concrete', pts, STREET.width, G + 0.06);
+    for (const s of [-1, 1]) { ribbon(bat, 'col:#c4c1b8', offsetLine(pts, s * (STREET.width / 2 + 0.3)), 0.6, G + 0.1); ribbon(bat, 'paving', offsetLine(pts, s * (STREET.width / 2 + 7.75)), 4.5, G + 0.07); }
+    const m = pts[Math.round(pts.length * (key === 'boxelder' ? 0.3 : 0.45))], nx = pts[Math.round(pts.length * (key === 'boxelder' ? 0.3 : 0.45)) + 1];
+    group.add(groundText(key.toUpperCase() + ' LN', m[0], m[1], 50, 6, Math.atan2(-(nx[1] - m[1]), nx[0] - m[0]) + (key === 'boxelder' ? Math.PI : 0), 'rgba(255,255,255,0.8)'));
+  }
+  // needle litter under the conifers, the lawn left as a clearing in front of them; the red-mulch bed curving past
+  // the spruce band (aerial 59)
+  bat.poly('col:#3b4128', GROUND.duff, G + 0.03);
+  { const bed = curve(GROUND.redBed, 40); ribbon(bat, 'col:#8f3e2e', bed, 3.2, G + 0.06); }
+
   // driveway: from the street straight along the SW side of the house, widening into the apron at the
   // side-load garage doors and running a few feet past the garage's back corner (aerials 58, 64; photos 44, 62)
   const [gx] = F(987.5, 0), [, gzB] = F(0, 378.5), [, gzF] = F(0, 722.5);
-  const dx0 = gx + 0.12, dx1 = 76.5, ax1 = 80.5;
-  const drive = rounded([[dx0 - 2.2, sz0], [dx0, sz0 - 2.2, 2.2], [dx0, gzB - 2.5, 3], [dx0 + 4, gzB - 7.5, 4], [ax1, gzB - 7.5, 5], [ax1, gzF - 2, 4], [dx1, gzF + 6, 4], [dx1, sz0 - 2.2, 2.2], [dx1 + 2.2, sz0]]);
+  const dx0 = gx + 0.12, dx1 = 79, ax1 = 80.5, dzB = gzB - 12; // the aerial shows the slab ~12 ft past the garage's back corner
+  const drive = rounded([[dx0 - 2.2, sz0], [dx0, sz0 - 2.2, 2.2], [dx0, gzB - 2.5, 3], [dx0 + 4, dzB, 4], [ax1, dzB, 5], [ax1, gzF - 2, 4], [dx1, gzF + 6, 4], [dx1, sz0 - 2.2, 2.2], [dx1 + 2.2, sz0]]);
   bat.poly('paving', drive, G + 0.04);
   addFloorPoly(drive, [], G + 0.04, 'site');
-  for (let z = gzB + 3; z < sz0 - 3; z += 11) bat.aabox('col:#aaa69e', dx0, G + 0.041, z - 0.04, z < gzF ? ax1 - 0.5 : dx1, G + 0.046, z + 0.04);
+  for (let z = gzB - 8; z < sz0 - 3; z += 11) bat.aabox('col:#aaa69e', dx0, G + 0.041, z - 0.04, z < gzF ? ax1 - 0.5 : dx1, G + 0.046, z + 0.04);
   bat.aabox('col:#aaa69e', (dx0 + dx1) / 2 - 0.04, G + 0.041, gzF + 4, (dx0 + dx1) / 2 + 0.04, G + 0.046, sz0 - 1);
-  bat.aabox('col:#aaa69e', (dx0 + ax1) / 2 - 0.04, G + 0.041, gzB - 6, (dx0 + ax1) / 2 + 0.04, G + 0.046, gzF);
+  bat.aabox('col:#aaa69e', (dx0 + ax1) / 2 - 0.04, G + 0.041, dzB + 1, (dx0 + ax1) / 2 + 0.04, G + 0.046, gzF);
 
   // front stoop (one step) and the walk curving from it along the garage front to the driveway at the brick pier
   const [doorX, porchZ] = F(517, 566.5);
@@ -588,20 +809,24 @@ export function buildSite() {
     for (let z = z0; z < z1; z += 8) { k.box('railWhite', x - 0.22, G, z, x + 0.22, G + 4.4, z + 0.44); k.box('railWhite', x - 0.27, G + 4.4, z - 0.05, x + 0.27, G + 4.55, z + 0.49); }
     addSolid(V(x - 0.15, 0, z0), V(0.3, 0, 0), V(0, 0, z1 - z0), G, G + 4, 'site'); }
   // the neighbor's little gabled playhouse just over the fence (photos 02, 45, 64)
-  house(bat, { x0: -16.5, z0: -14, x1: -10.5, z1: -8, eave: 6.5, ridge: 9.5, type: 'gz', wall: '#cbb79a', roof: '#6d6a66' });
-  // lot lines
+  neighbor(bat, { name: '', x: -13.5, z: -11, rot: 0, wall: '#cbb79a', roof: 'shingle:n', parts: [[-3, -3, 3, 3, 6.5, 'gz', 1]] });
+  // neighboring houses (measured on aerial 59, forms from the oblique 60) with their drives, patios and decks
+  for (const n of NEIGHBORS) neighbor(bat, n);
+
+  // lot lines, distances to the lot lines and to the neighbors' houses (the "Lot lines" toggle shows / hides them all)
+  const lotG = new THREE.Group();
+  lotG.name = 'lotLines';
   const lotPts = [[LOT.xSouth, LOT.zBack], [LOT.xNorth, LOT.zBack], [LOT.xNorth, LOT.zFront], [LOT.xSouth, LOT.zFront], [LOT.xSouth, LOT.zBack]];
   const lineGeo = new THREE.BufferGeometry().setFromPoints(lotPts.map(([x, z]) => V(x, G + 0.15, z)));
   const lot = new THREE.Line(lineGeo, new THREE.LineDashedMaterial({ color: '#ffffff', dashSize: 3, gapSize: 2, transparent: true, opacity: 0.9 }));
   lot.computeLineDistances();
-  lot.name = 'lotLines';
-  group.add(lot);
+  lotG.add(lot);
+  buildDistances(lotG);
+  group.add(lotG);
   group.add(groundText('CREEKSIDE LN', 30, (sz0 + sz1) / 2 + 6, 60, 7, 0, 'rgba(255,255,255,0.85)'));
-  group.add(groundText('N →', LOT.xSouth - 14, LOT.zFront - 8, 14, 7, -3 * Math.PI / 4, 'rgba(255,255,255,0.9)')); // north = between plan-left (NE) and the street (NW)
+  // north arrow: local direction of north is (cos(-X_AZ), sin(-X_AZ)) in (x, z); the text's +x runs (cos r, -sin r)
+  group.add(groundText('N →', LOT.xSouth - 14, LOT.zFront - 8, 14, 7, (X_AZ * Math.PI) / 180, 'rgba(255,255,255,0.9)'));
 
-  // neighboring houses (massing, siding and roof colors from the photos), their driveways
-  for (const n of NEIGHBORS) house(bat, n);
-  for (const [x0, x1, z0] of [[90.5, 110.5, 64], [-76, -60, 54]]) { const d = [[x0, z0], [x1, z0], [x1, sz0], [x0, sz0]]; bat.poly('paving', d, G + 0.04); addFloorPoly(d, [], G + 0.04, 'site'); }
   bat.build(group);
   group.userData.renos = Object.entries(OFF).map(([rs, b]) => { const g = new THREE.Group(); g.userData.rs = rs; b.build(g); group.add(g); return g; });
 
@@ -609,35 +834,24 @@ export function buildSite() {
   const trees = new THREE.Group();
   trees.name = 'trees';
   const P = new Plants();
-  // the two big front-yard maples (aerials 49, 50, 58; photos 02, 43, 60, 62): ~50 ft, 40 ft spread, low forks
-  shadeTree(P, 39, 76, { h: 50, R: 18.5, trunk: 9, leaders: 5, seed: 11, rt: 1.0, leaves: ['maple:mapleRed', 'maple:mapleRed', 'maple:mapleGreen'], lean: [0.6, 0.4] });
-  shadeTree(P, 4, 80, { h: 46, R: 17, trunk: 10, leaders: 4, seed: 23, rt: 0.9, leaves: ['maple:mapleOrange', 'maple:mapleRed', 'maple:mapleOrange'] });
-  // big yellow honey locust / ash crowns over the NE side and the NE-back corner (aerial 50, photo 47)
-  shadeTree(P, -22, -7, { h: 52, R: 19, trunk: 14, leaders: 4, seed: 31, leaves: ['oval:locust'], card: 4.2, density: 0.9 });
-  shadeTree(P, -16, -40, { h: 46, R: 18, trunk: 12, leaders: 4, seed: 37, leaves: ['oval:locust', 'oval:linden'], card: 4.0, density: 0.9 });
-  shadeTree(P, 30, -66, { h: 44, R: 17, trunk: 11, leaders: 4, seed: 41, leaves: ['maple:mapleGreen', 'maple:mapleOrange'] });
-  // spruces along the back lot line, a couple of Colorado blue spruces among them (photos 47, 50, 64)
-  for (const [x, z, h, blue] of [[2, -55, 46], [12, -58, 40, 1], [22, -53, 44], [36, -60, 48], [47, -55, 38, 1], [58, -59, 45], [70, -55, 42], [80, -60, 36, 1],
-    [89, -47, 44], [96, -30, 40], [97, -10, 46], [-9, -56, 38, 1]]) spruce(P, x, z, h, { blue: !!blue, R: h * 0.21 });
-  function spruceTier(P, species, r, x, z, yTop, yBot, rad, t) {
-  const seg = 28, g = new THREE.ConeGeometry(rad, yTop - yBot, seg, 3, true);
-  g.deleteAttribute('uv');
-  const p = g.attributes.position, ph = r() * 9, base = new THREE.Color(PAL[species][Math.floor(r() * PAL[species].length)]), col = [];
-  const hh = yTop - yBot;
-  for (let i = 0; i < p.count; i++) {
-    const px = p.getX(i), py = p.getY(i), pz = p.getZ(i), a = Math.atan2(pz, px);
-    const f = (py + hh / 2) / hh; // 0 at the tips, 1 at the trunk
-    const jag = 1 + (Math.sin(a * 4 + ph) * 0.16 + Math.sin(a * 9 + ph * 2) * 0.12 + Math.sin(a * 17 + ph * 3) * 0.07 + (hash3(Math.round(px * 10), Math.round(pz * 10), 1) - 0.5) * 0.2) * (1 - f);
-    const droop = (1 - f) * (0.3 + 0.25 * Math.sin(a * 7 + ph)) * rad * 0.18;
-    p.setXYZ(i, x + px * jag, (yTop + yBot) / 2 + py - droop, z + pz * jag);
-    const s = (0.45 + 0.55 * (1 - f) * (0.8 + t * 0.4)) * (0.88 + hash3(a, py, 3) * 0.24);
-    col.push(base.r * s, base.g * s, base.b * s);
-  }
-  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-  g.computeVertexNormals();
-  P.leaf(species, worldUV(g.toNonIndexed(), 0.5));
-}
-// columnar arborvitae along the SW line by the apron (photos 49, 63, 64)
+  // trees from the aerial (TREES in data.js), full detail around the lot, lighter further out
+  TREES.forEach(([kind, x, z, h, R0], i) => {
+    let R = R0;
+    const d = Math.hypot(x - 39, z - 15), lod = d < 105 ? 1 : d < 170 ? 0.5 : 0.32;
+    if (kind === 'spruce' || kind === 'blue') return spruce(P, x, z, h, { blue: kind === 'blue', R: h * 0.26, lod, seed: 101 + i * 7 }); // Norway spruce: ~25-30 ft spread at 50 ft
+    R *= 1.12; // the crowns render a little inside R; this matches the canopy sizes measured on the aerial
+    const o = { h, R, seed: 11 + i * 13, lod, trunk: Math.max(2, h * 0.2), rt: 0.25 + R * 0.045, leaders: R > 10 ? 4 : 3 };
+    if (kind === 'mapleRed') Object.assign(o, { trunk: 9, leaders: 5, seed: 11, rt: 1.0, leaves: ['maple:mapleRed', 'maple:mapleRed', 'maple:mapleGreen'], lean: [0.6, 0.4] });
+    else if (kind === 'mapleOrange') Object.assign(o, { trunk: 10, seed: 23, rt: 0.9, leaves: ['maple:mapleOrange', 'maple:mapleRed', 'maple:mapleOrange'] });
+    else if (kind === 'locust') Object.assign(o, { trunk: h * 0.27, leaves: ['oval:locust', 'oval:linden'], card: R * 0.22, density: 0.9 });
+    else if (kind === 'linden') Object.assign(o, { leaves: ['oval:linden'], card: Math.max(1.8, R * 0.22) });
+    else if (kind === 'oak') Object.assign(o, { leaves: ['oval:oak', 'maple:mapleGreen'], card: R * 0.22 });
+    else if (kind === 'purple') Object.assign(o, { leaves: ['maple:purple'], core: '#2a1a1e' });
+    else if (kind === 'shrubTree') Object.assign(o, { trunk: 1.5, leaders: 3, rt: 0.2, leaves: ['oval:shrub'], card: 1.4, density: 2 });
+    else o.leaves = ['maple:mapleGreen'];
+    shadeTree(P, x, z, o);
+  });
+  // columnar arborvitae along the SW line by the apron (photos 49, 63, 64)
   for (const [z, h] of [[18, 19], [23.5, 21], [29, 20], [34.5, 18]]) arborvitae(P, 83, z, h, Math.round(z * 3));
   // yews flanking the chimney (photos 03, 45), small shrubs in the garage-front bed (photo 04)
   { // (the bigger-patio option paves over these two)

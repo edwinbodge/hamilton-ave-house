@@ -350,7 +350,7 @@ function updateWalk(dt) {
   $('#hud-room').textContent = r ? `${r.name} · ${lvlName}` : walk.feet < 4 && walk.feet > -2 && !r ? 'Outside' : lvlName;
   const di = doorAhead(7);
   $('#hud-door').hidden = di < 0;
-  if (di >= 0) $('#hud-door').textContent = `${DOORS[di].target > 0.5 ? 'Close' : 'Open'} door: press E${plc.isLocked ? ' or click' : ''}`;
+  if (di >= 0) $('#hud-door').textContent = `${DOORS[di].target > 0.5 ? 'Close' : 'Open'} ${DOORS[di].kind === 'garage' ? 'garage door' : 'door'}: press E${plc.isLocked ? ' or click' : ''}`;
 }
 
 // ------------------------------------------------------------------ measuring
@@ -617,7 +617,7 @@ function frame() {
   }
   for (const d of DOORS) {
     if (d.t === d.target) continue;
-    d.t = d.target > d.t ? Math.min(d.target, d.t + dt / 0.7) : Math.max(d.target, d.t - dt / 0.7);
+    d.t = d.target > d.t ? Math.min(d.target, d.t + dt / (d.dur || 0.7)) : Math.max(d.target, d.t - dt / (d.dur || 0.7));
     d.apply();
     gfx.dirty();
   }

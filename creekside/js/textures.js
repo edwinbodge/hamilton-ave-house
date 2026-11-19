@@ -340,6 +340,12 @@ export function tex(name) {
     case 'shingleDark': // charcoal architectural shingles (modern facade)
       t = canvasTex(1024, 1024, (g, w, h, H, Rf) => shingles(g, w, h, H, Rf, { hue: 30, sat: 3, light: 21, spread: 5 }), [6.5, 6.5625], { bump: 4 });
       break;
+    case 'shingleBrown': // weathered brown architectural shingles
+      t = canvasTex(1024, 1024, (g, w, h, H, Rf) => shingles(g, w, h, H, Rf, { hue: 26, sat: 16, light: 30, spread: 7 }), [6.5, 6.5625], { bump: 4 });
+      break;
+    case 'shingleSlate': // slate blue-gray architectural shingles
+      t = canvasTex(1024, 1024, (g, w, h, H, Rf) => shingles(g, w, h, H, Rf, { hue: 212, sat: 9, light: 36, spread: 6 }), [6.5, 6.5625], { bump: 4 });
+      break;
     case 'oak': // red oak strip flooring, 2.25" boards, honey-orange finish
       t = canvasTex(1024, 1024, (g, w, h, H, Rf) => boards(g, w, h, H, Rf, {
         // Harrison's photos show deep amber red oak; Creekside's (photos 11-15) a lighter honey/natural oak

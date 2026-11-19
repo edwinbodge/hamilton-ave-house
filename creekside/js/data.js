@@ -281,30 +281,133 @@ export const STAIRS = {
   basement: { x0: 563.5, x1: 610.5, yTop: 422, yBottom: 551, risers: 14 },
 };
 
-// Lot: 0.29 acre (12,576 sq ft) drawn as a 96 x 131 ft rectangle; house placement estimated from the
-// aerial photos (garage-side driveway needs ~26 ft of apron, so the house sits toward the south line).
+// ---------------------------------------------------------------- lot, street, neighbors, trees
+// Measured from the Google Earth aerial (59.webp, north up) and the oblique view (60.webp). The aerial was fitted to
+// this house's own footprint (garage corners, office and family room back corners, the 2nd-floor front corner, roof
+// overhang ~1 ft): 3.40 px/ft, residuals ~1 ft. That fit also gives the orientation: +x points 217.5 deg (it was
+// 225 before), so the street runs at ~37.5 / 217.5 deg and the front faces ~307 deg (northwest).
+// Creekside Ln measures ~33 ft curb to curb at this scale (a little more than the usual 30 ft).
+// Lot: 0.29 acre listed. The side lines sit between the houses (NE: ~6 ft off the kitchen bump, where the white
+// picket fence is; SW: just past the driveway, at the arborvitae row); the front line is 1 ft behind the sidewalk.
+// The rear line isn't visible: it's drawn through the band of tall spruces ~60 ft behind the family room, which
+// gives 90 x 143 ft = 12,870 sq ft (0.30 ac). The red-mulch bed and the small lawn past the spruces most likely
+// belong to the lot behind (1283 Chickadee): its side line (the row of shrubs) ends right at that bed.
 // xSouth / xNorth are historical names for the plan-left (NE) and plan-right (SW, driveway) lot lines.
-// Refined from the Google aerial (58.webp, scaled on the house): the NE line runs ~6 ft off the kitchen bump
-// (the NE neighbor is ~14 ft away), the SW line is just past the driveway apron, the back line ~58 ft behind the
-// family room. 90 x 142 ft = 12,780 sq ft (listed 0.29 acre).
-export const LOT = { zBack: -58, zFront: 84, xSouth: -6, xNorth: 84 };
-// compass azimuth (degrees clockwise from north) of local +x; local +z is X_AZ + 90 (the front faces NW = 315)
-export const X_AZ = 225;
-export const STREET = { sidewalk: [84.5, 89], curb: 94.5, width: 30 };
-// Neighboring houses from the aerials (58, 49, 50) and photos: plan box, eave + ridge (ft above grade), roof
-// type ('gx' ridge along x, 'gz' along z, 'hip'), siding + roof colors, garage doors [cx, cz, width, nx, nz].
-const nb = (x0, z0, x1, z1, eave, ridge, type, wall, roof = '#62666b', doors) => ({ x0, z0, x1, z1, eave, ridge, type, wall, roof, doors });
+export const LOT = { zBack: -58, zFront: 85, xSouth: -6, xNorth: 84 };
+// compass azimuth (degrees clockwise from north) of local +x; local +z is X_AZ + 90 (the front faces NW)
+export const X_AZ = 217.5;
+export const STREET = { sidewalk: [85.5, 90], curb: 96, width: 33 };
+// Boxelder Ln (T into Creekside past 1252, curving SE to Chickadee Ln) and Chickadee Ln (the street behind), centerlines
+export const STREETS = {
+  boxelder: [[-128, 96.5], [-134, 70], [-139, 40], [-141, 18], [-152, -22], [-167, -66], [-181, -100], [-190, -114]],
+  chickadee: [[-240, -60], [-185, -102], [-60, -197], [90, -312]],
+};
+// The houses on Chickadee Ln sit at an angle to ours. They were measured in a frame turned 44 deg from ours
+// (p = toward our back yard, q = along Chickadee Ln); CH() maps that frame to plan feet.
+const C44 = Math.cos((44 * Math.PI) / 180), S44 = Math.sin((44 * Math.PI) / 180);
+export const CH = (p, q) => [p * C44 - q * S44, p * S44 + q * C44];
+const CHROT = -134; // their fronts face Chickadee Ln
+const chRect = (p0, q0, p1, q1) => [CH(p0, q0), CH(p0, q1), CH(p1, q1), CH(p1, q0)];
+// Neighboring houses: nb(name, [x, z] center, rot, siding color, parts, options).
+//   rot: degrees; the house's local +z (its front) points (sin rot, cos rot) in plan. 0 = faces Creekside from our
+//        side, 180 = across the street, -134 = faces Chickadee Ln.
+//   part: [lx0, lz0, lx1, lz1, eave (ft above grade), roof, pitch] in the house's own frame (feet from the center).
+//         roof: 'hip', 'gx' (gable, ridge along local x), 'gz' (ridge along local z). pitch = rise / run (8/12 default).
+//   doors: garage doors [lx, lz, width, face ('+x' | '-x' | '+z' | '-z')]; entry: [lx, lz, face]; chimney: [lx, lz, top]
+//   patio / drive / court: plan polygons; deck: [x0, z0, x1, z1, height, open sides]; dist: label for the distance
+//   (wall to wall) from this house.
+// Most are 2-story (eave ~18.5-19 ft over grade), gray architectural shingles; siding colors from the oblique view
+// where it shows them (1252 white, 1282 gray), otherwise light neutrals.
+// roof 'shingle:n': the same shingle texture as ours, but not re-finished by the facade options
+const nb = (name, [x, z], rot, wall, parts, o = {}) => ({ name, x, z, rot, wall, parts, roof: 'shingle:n', ...o });
 export const NEIGHBORS = [
-  nb(-56, 20, -15, 55, 18, 29, 'gx', '#ece4cf', '#6b6862'),                         // NE: cream 2-story, side gable, ~14 ft away
-  nb(-78, 28, -56, 54, 10, 18, 'gz', '#ece4cf', '#6b6862', [[-67, 54, 16, 0, 1]]),   //     its garage wing
-  nb(90, 40, 112, 64, 10, 19, 'gz', '#7f9cc4', '#5d6670', [[95.5, 64, 8, 0, 1], [106, 64, 8, 0, 1]]), // SW: blue, front-load garage
-  nb(108, 12, 140, 58, 18, 30, 'hip', '#86a2c8', '#5d6670'),
-  nb(-60, -150, -20, -115, 17, 28, 'gx', '#d9d2c3'),
-  nb(40, -160, 85, -125, 17, 28, 'hip', '#c9ccc8'),
-  nb(-45, 168, 0, 200, 17, 28, 'gx', '#d8d0c0'),                                     // across Creekside Ln
-  nb(28, 165, 68, 198, 17, 29, 'hip', '#b9c2c6'),
-  nb(96, 168, 136, 200, 17, 28, 'gx', '#e2ddd2'),
+  // 1252: long side-gabled house with two front gables, white siding, chimney at the NE end, garage at the NE end
+  // opening onto the drive from Boxelder Ln; brick patio behind; a fenced vegetable garden of raised beds
+  nb('1252', [-50, 45], 0, '#ebe8df', [
+    [-33, -13, 12, 12, 18.5, 'gx'], [12, -7, 34, 12, 18.5, 'gx'], [-30, 9, -11, 17, 18.5, 'gz'], [-8, 9, 8, 14, 18.5, 'gz'],
+  ], { doors: [[-33, -3, 8.5, '-x'], [-33, 6.5, 8.5, '-x']], entry: [0, 12, '+z'], chimney: [-29, 3, 33],
+    patio: [[-70, 24], [-56, 24], [-56, 32], [-70, 32]], patioKey: 'col:#9b5e4c',
+    drive: [[-123, 34], [-83, 34], [-83, 59], [-123, 59]], garden: [-113, -21, -97, 32], dist: 'side wall' }),
+  // 1282: gray, hipped, front-load 2-car garage projecting toward the street, chimney at the SW end, paver patio behind
+  nb('1282', [122, 38], 0, '#a8acaf', [
+    [-32, -22, -7, 4, 18.5, 'hip'], [-32, 2, -7, 23, 10, 'hip'], [-7, -23, 33, 12, 19, 'hip', 0.75],
+    [-1, 8, 13, 14, 19, 'gz', 0.75], [19, 8, 33, 14, 19, 'gz', 0.75],
+  ], { doors: [[-25, 23, 9, '+z'], [-14, 23, 9, '+z']], entry: [16, 12, '+z'], chimney: [33.5, -8, 34],
+    patio: [[103, -2], [135, -2], [135, 15], [103, 15]], drive: [[90, 61], [115, 61], [117, 92], [119, 96], [88, 96], [90, 92]], dist: 'garage side' }),
+  // 1290: hipped, front gable, side-load garage wing on its SW end
+  nb('1290', [225, 32], 0, '#d8d0be', [
+    [-33, -19, 11, 15, 19, 'hip', 0.75], [-20, 10, 0, 17, 19, 'gz', 0.75], [11, -13, 36, 17, 11, 'hip'],
+  ], { doors: [[36, -5, 9, '+x'], [36, 7, 9, '+x']], entry: [-10, 17, '+z'],
+    patio: [[203, 3], [226, 3], [226, 13], [203, 13]], drive: [[261, 18], [287, 18], [287, 96], [268, 96], [268, 50], [261, 50]] }),
+  // behind 1290, mostly outside the aerial: footprint and orientation rough
+  nb('house behind 1290', [241, -80], 180, '#d4cfc4', [[-21, -28, 21, 28, 19, 'hip']], { patio: [[194, -100], [219, -100], [219, -62], [194, -62]] }),
+  // across Creekside Ln: 1259 (two front gables, side-load garage off the NE drive, raised deck behind)
+  nb('1259', [5, 203], 180, '#d5cebf', [
+    [-30, -25, 29, 25, 19, 'hip'], [-9, 11, 7, 25, 19, 'gz'], [-29, 11, -14, 25, 19, 'gz'],
+  ], { doors: [[29, -6, 9, '+x'], [29, -16, 9, '+x']], entry: [-1, 25, '+z'],
+    deck: [-8, 228, 22, 238, 3.2, '-z'], drive: [[-42, 129], [-24, 129], [-24, 224], [-42, 224]], dist: 'front' }),
+  // 1277: front gable on the NE end, side-load garage off the NE drive
+  nb('1277', [92, 203], 180, '#e2dccf', [
+    [-26, -25, 26, 25, 19, 'hip'], [4, 8, 26, 25, 19, 'gz'],
+  ], { doors: [[26, -6, 9, '+x'], [26, -16, 9, '+x']], entry: [-5, 25, '+z'], drive: [[46, 129], [65, 129], [65, 224], [46, 224]], dist: 'front' }),
+  // the next houses along the far side are outside the aerial: generic stand-ins so the street isn't empty
+  nb('', [-88, 204], 180, '#d9d3c6', [[-26, -24, 26, 24, 19, 'hip'], [-26, 10, -8, 24, 19, 'gz']], { doors: [[14, 24, 16, '+z']], drive: [[-110, 129], [-94, 129], [-94, 180], [-110, 180]], assumed: true }),
+  nb('', [176, 204], 180, '#cfd2d0', [[-26, -24, 26, 24, 19, 'hip'], [8, 10, 26, 24, 19, 'gz']], { doors: [[-14, 24, 16, '+z']], drive: [[182, 129], [198, 129], [198, 180], [182, 180]], assumed: true }),
+  // behind us, on Chickadee Ln: 1283 (front-load garage, front gable, paver patio with a red play set behind)
+  nb('1283', CH(-110, -102), CHROT, '#cfcac0', [
+    [-34, -17, -3, 14, 19, 'hip'], [-3, -15, 33, 17, 11, 'hip'], [-26, 14, -2, 23, 19, 'gz'],
+  ], { doors: [[9, 17, 8.5, '+z'], [19.5, 17, 8.5, '+z']], entry: [-14, 23, '+z'],
+    patio: chRect(-88, -108, -73, -90), play: CH(-86, -114), drive: chRect(-127, -98, -164, -78), dist: 'rear' }),
+  // 1301: hipped, side-load garage facing the wide drive on its 1283 side
+  nb('1301', CH(-105, -196), CHROT, '#d3d5d3', [
+    [-35, -24, 35, 13, 19, 'hip'], [-1, 13, 30, 29, 11, 'gz'],
+  ], { doors: [[35, 5, 8.5, '+x'], [35, -4.5, 8.5, '+x']], entry: [-15, 13, '+z'], drive: chRect(-116, -166, -157, -145), dist: 'rear' }),
+  // the big unlabeled house on the Boxelder / Chickadee corner: side-load garage onto Boxelder, paver patio toward us,
+  // red-paver court at the front
+  nb('corner house', CH(-118, -20), CHROT, '#d8d4cb', [
+    [-38, -21, 17, 22, 19, 'hip', 0.75], [-35, 16, -10, 25, 19, 'gz', 0.75], [17, -18, 37, 12, 11, 'hip'],
+  ], { doors: [[37, -2.5, 9, '+x'], [37, -12.5, 9, '+x']], entry: [-3, 22, '+z'],
+    patio: [CH(-97, -45), CH(-97, -15), CH(-88, -12), CH(-80, -22), CH(-82, -40), CH(-90, -47)], court: chRect(-152, -28, -140, -8),
+    drive: chRect(-120, 17, -100, 68), dist: 'rear corner' }),
 ];
+// Trees: [kind, x, z, height, canopy radius (deciduous; conifers derive it from the height)]. kinds: maple (green),
+// mapleRed / mapleOrange (the two front maples, fall color as in the listing photos), locust, linden, purple
+// (crimson-king type), oak, spruce, blue (Colorado blue spruce), shrubTree (small round). Canopies from the aerial;
+// heights from the oblique view: the rear spruces stand as tall as or taller than the houses (40-58 ft).
+export const TREES = [
+  // front yard and street strips
+  ['mapleRed', 44, 77, 50, 16.5], ['mapleOrange', 10, 76, 46, 15], ['maple', -17, 80, 44, 13], ['linden', 22, 97, 24, 6],
+  ['linden', 120, 92, 38, 11], ['maple', 150, 70, 45, 15], ['purple', 172, 35, 38, 12], ['maple', 270, 66, 40, 12],
+  ['linden', -65, 98, 42, 13], ['purple', -75, 74, 34, 11], ['maple', -97, 77, 40, 12],
+  ['linden', -152, 80, 42, 13], ['maple', -124, 34, 40, 12], ['maple', -166, 2, 45, 14], ['maple', -131, -38, 46, 16], ['maple', -182, -58, 44, 14],
+  ['maple', -193, -24, 42, 13], ['linden', -224, -55, 42, 13],
+  ['maple', 4, 146, 44, 14], ['linden', 90, 133, 44, 14], ['maple', 190, 121, 40, 13], ['spruce', 14, 160, 20],
+  ['linden', -117, -143, 40, 14], ['linden', -25, -212, 40, 13],
+  // NE side and the NE back corner
+  ['locust', -24, -10, 52, 18], ['maple', -66, -20, 46, 15], ['locust', -12, -38, 46, 16], ['purple', -3, -57, 30, 9], ['oak', -48, -43, 44, 13],
+  ['spruce', -48, -73, 42], ['spruce', -15, -95, 45], ['spruce', 2, -82, 48], ['blue', -24, -76, 40], ['spruce', 6, -106, 44],
+  // the band of tall spruces / firs across the back of the lawn, a big maple among them
+  ['spruce', 32, -47, 48], ['spruce', 46, -59, 55], ['blue', 36, -73, 46], ['spruce', 58, -50, 52], ['spruce', 71, -61, 58],
+  ['spruce', 59, -77, 46], ['spruce', 82, -49, 54], ['blue', 94, -62, 44], ['spruce', 104, -45, 56], ['spruce', 119, -56, 48],
+  ['spruce', 127, -38, 52], ['spruce', 112, -24, 46], ['spruce', 135, -18, 44], ['spruce', 19, -60, 44], ['blue', 7, -69, 40],
+  ['maple', 112, -77, 50, 16],
+  // behind 1282 / 1290
+  ['spruce', 141, -37, 46], ['spruce', 153, -53, 48], ['spruce', 167, -40, 44], ['spruce', 183, -22, 46], ['spruce', 162, -16, 40],
+  ['spruce', 197, -12, 42], ['maple', 233, -10, 45, 15],
+  // deeper: behind 1283 / 1301
+  ['spruce', 40, -113, 48], ['spruce', 55, -97, 50], ['spruce', 63, -127, 46], ['spruce', 37, -135, 44],
+  ['spruce', 120, -100, 46], ['spruce', 150, -86, 50], ['spruce', 171, -70, 46],
+  ['maple', 55, -152, 48, 14], ['linden', 100, -178, 48, 14], ['maple', 78, -165, 44, 12], ['maple', 140, -150, 46, 14],
+  ['linden', 160, -118, 46, 14], ['maple', 126, -123, 44, 14],
+  // the row of small round shrubs on the 1283 / 1301 line
+  ['shrubTree', 86, -108, 11, 3.2], ['shrubTree', 91, -115, 10, 3], ['shrubTree', 96, -121, 11, 3.2], ['shrubTree', 101, -127, 10, 3],
+];
+// Ground: where the lawn gives way to needle litter under the conifers (plan polygon), and the curving red-mulch bed
+export const GROUND = {
+  duff: [[-6, -50], [10, -48], [22, -43], [40, -40], [55, -42], [70, -44], [88, -40], [100, -34], [110, -14], [140, -6], [185, -6],
+    [204, -26], [176, -64], [132, -72], [110, -64], [100, -70], [82, -66], [60, -84], [44, -100], [22, -114], [-30, -104], [-62, -78], [-40, -58]],
+  redBed: [[60, -66], [71, -68], [80, -70.2], [89, -72.8], [95.5, -76.3], [97.5, -81.9], [95.3, -87.7], [92.1, -93.8], [86, -97]],
+};
 // living room tray ceiling (photos 19-20): octagon inside this px rectangle, corners chamfered by TRAY.c ft, 0.7 ft deep
 export const TRAY = { px: [338, 509, 462, 641], c: 1.3, depth: 0.7 };
 export const trayOct = () => {

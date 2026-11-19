@@ -6,6 +6,7 @@ import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer
 import { Look } from './render.js';
 import { buildHouse, roomAtPoint, DOORS } from './build.js';
 import { CONTROLS, PRESETS as STYLE_PRESETS, DEFAULT_PRESET, applyStyle } from './themes.js';
+import { EXT_CONTROLS, EXT_PRESETS, applyExterior } from './exterior.js';
 import { RENO_LABELS, RENO_ROOMS } from './reno.js';
 import { buildSite } from './site.js';
 import { PHYS, pip, V, addSolid, addFloorPoly, applyFinish, ORIGIN } from './geom.js';
@@ -64,11 +65,12 @@ const state = {
   view: 'ext', labels: true, furniture: true, mode: 'orbit', layout: '0',
   reno: { kitchen: false, openLiving: false, frontOffice: false, frontDining: false, refresh: false, pbath: false, mud: false, facade: false, classic: false, patio: false, play: false },
   style: { ...STYLE_PRESETS[DEFAULT_PRESET].values },
+  ext: { ...EXT_PRESETS.listed.values },
 };
 const STORE = 'creekside-options';
 // renovations always start off so the house opens as it is today; the interior style is remembered
-try { const saved = JSON.parse(localStorage.getItem(STORE) || 'null'); if (saved && saved.style) for (const k of Object.keys(state.style)) if (saved.style[k] !== undefined) state.style[k] = saved.style[k]; } catch {}
-const saveOptions = () => { try { localStorage.setItem(STORE, JSON.stringify({ reno: state.reno, layout: state.layout, style: state.style })); } catch {} };
+try { const saved = JSON.parse(localStorage.getItem(STORE) || 'null'); if (saved && saved.style) for (const k of Object.keys(state.style)) if (saved.style[k] !== undefined) state.style[k] = saved.style[k]; if (saved && saved.ext) for (const k of Object.keys(state.ext)) if (saved.ext[k] !== undefined) state.ext[k] = saved.ext[k]; } catch {}
+const saveOptions = () => { try { localStorage.setItem(STORE, JSON.stringify({ reno: state.reno, layout: state.layout, style: state.style, ext: state.ext })); } catch {} };
 
 function isVisible(o) {
   for (let p = o; p; p = p.parent) if (!p.visible) return false;
@@ -117,15 +119,9 @@ $('#panel-toggle').addEventListener('click', () => document.body.classList.toggl
 const renoSets = [...renos, ...(site.userData.renos || [])];
 // labels of as-built rooms a renovation relabels
 const HIDE_LABELS = [['kitchen', /^(Kitchen|Dining Area)$/], ['pbath', /^Primary Bath$/], ['mud', /^Laundry$/]];
-// the modern facade re-finishes the exterior materials
-const FACADE = { siding: 'bnb:#2e3135', brickExt: 'paintbrick:#ebe7df', extTrim: '#1f2022', winExt: '#1f2022', winTrim: '#1f2022', shingle: 'shingleDark', garageDoor: 'plank:#a66d3c', frontDoor: '#1f2022', shake: 'plank:#a66d3c', gutter: '#1f2022' };
-// classic refresh (AI rendering): brick + roof stay; warm greige siding and bay panels, black window casings/sashes, black gutters
-const CLASSIC = { siding: 'lap:#aa9e8d', shake: 'shake:#b0a493', winTrim: '#1c1c1d', winExt: '#1c1c1d', gutter: '#1c1c1d', extTrim: '#ece7dc', garageDoor: '#8a7e70' };
-let facadeOn = null;
+// exterior finishes come from the exterior style (exterior.js); the facade renovations pick their matching preset
 function applyReno() {
   for (const g of renoSets) g.visible = activeTag(g.userData.rs);
-  const ext = state.reno.facade ? 'facade' : state.reno.classic ? 'classic' : 'none';
-  if (facadeOn !== ext) { facadeOn = ext; for (const k of new Set([...Object.keys(FACADE), ...Object.keys(CLASSIC)])) applyFinish(k, ext === 'facade' ? FACADE[k] ?? ORIGIN[k] : ext === 'classic' ? CLASSIC[k] ?? ORIGIN[k] : ORIGIN[k]); }
   document.querySelectorAll('[data-reno]').forEach((el) => { el.checked = !!state.reno[el.dataset.reno]; });
   document.querySelectorAll('[name=basement-layout]').forEach((r) => { r.checked = r.value === state.layout; });
   $('#suggested').checked = isSuggested();
@@ -140,6 +136,7 @@ document.querySelectorAll('[data-reno]').forEach((el) => el.addEventListener('ch
   // so are the two front-room uses
   if (el.checked && el.dataset.reno === 'frontOffice') state.reno.frontDining = false;
   if (el.checked && el.dataset.reno === 'frontDining') state.reno.frontOffice = false;
+  if (el.dataset.reno === 'facade' || el.dataset.reno === 'classic') syncExtToFacade();
   applyReno();
 }));
 // one switch for the whole suggested plan (basement: open plan, layout D)
@@ -148,8 +145,17 @@ const isSuggested = () => Object.keys(state.reno).every((k) => !!state.reno[k] =
 $('#suggested').addEventListener('change', (e) => {
   for (const k of Object.keys(state.reno)) state.reno[k] = e.target.checked && SUGGESTED.includes(k);
   state.layout = e.target.checked ? 'D' : '0';
+  syncExtToFacade();
   applyReno();
 });
+// turning a facade renovation on picks its exterior preset; turning both off returns an untouched preset to As listed
+function syncExtToFacade() {
+  const is = (id) => Object.entries(EXT_PRESETS[id].values).every(([k, v]) => state.ext[k] === v);
+  if (state.reno.facade) state.ext = { ...EXT_PRESETS.modern.values };
+  else if (state.reno.classic) state.ext = { ...EXT_PRESETS.classic.values };
+  else if (is('modern') || is('classic')) state.ext = { ...EXT_PRESETS.listed.values };
+  applyExterior(state.ext); renderExt();
+}
 
 // ------------------------------------------------------------------ interior style
 function renderStyle() {
@@ -178,6 +184,33 @@ function renderStyle() {
 }
 applyStyle(state.style);
 renderStyle();
+
+// ------------------------------------------------------------------ exterior style
+function renderExt() {
+  const pre = $('#ext-presets');
+  pre.innerHTML = '';
+  for (const [id, p] of Object.entries(EXT_PRESETS)) {
+    const b = document.createElement('button');
+    b.textContent = p.label;
+    b.className = Object.entries(p.values).every(([k, v]) => state.ext[k] === v) ? 'on' : '';
+    b.addEventListener('click', () => { state.ext = { ...p.values }; applyExterior(state.ext); renderExt(); saveOptions(); gfx.dirty(); });
+    pre.appendChild(b);
+  }
+  const box = $('#ext-controls');
+  box.innerHTML = '';
+  for (const c of EXT_CONTROLS) {
+    const lab = document.createElement('label');
+    lab.textContent = c.label;
+    const sel = document.createElement('select');
+    for (const [val, name] of c.options) { const o = document.createElement('option'); o.value = val; o.textContent = name; sel.appendChild(o); }
+    sel.value = state.ext[c.id];
+    sel.addEventListener('change', () => { state.ext[c.id] = sel.value; applyExterior(state.ext); renderExt(); saveOptions(); gfx.dirty(); });
+    lab.appendChild(sel);
+    box.appendChild(lab);
+  }
+}
+applyExterior(state.ext);
+renderExt();
 function setLayout(l) {
   state.layout = l;
   applyReno();
@@ -371,7 +404,7 @@ function updateWalk(dt) {
   $('#hud-room').textContent = r && !r.void ? `${r.name} · ${lvlName}` : walk.feet < 4 && walk.feet > -2 && !r ? 'Outside' : lvlName;
   const di = doorAhead(7);
   $('#hud-door').hidden = di < 0;
-  if (di >= 0) $('#hud-door').textContent = `${DOORS[di].target > 0.5 ? 'Close' : 'Open'} door: press E${plc.isLocked ? ' or click' : ''}`;
+  if (di >= 0) $('#hud-door').textContent = `${DOORS[di].target > 0.5 ? 'Close' : 'Open'} ${DOORS[di].kind === 'garage' ? 'garage door' : 'door'}: press E${plc.isLocked ? ' or click' : ''}`;
 }
 
 // ------------------------------------------------------------------ measuring
@@ -638,7 +671,7 @@ function frame() {
   }
   for (const d of DOORS) {
     if (d.t === d.target) continue;
-    d.t = d.target > d.t ? Math.min(d.target, d.t + dt / 0.7) : Math.max(d.target, d.t - dt / 0.7);
+    d.t = d.target > d.t ? Math.min(d.target, d.t + dt / (d.dur || 0.7)) : Math.max(d.target, d.t - dt / (d.dur || 0.7));
     d.apply();
     gfx.dirty();
   }
@@ -676,5 +709,5 @@ function simWalk(path, start) {
   state.mode = 'orbit';
   return out;
 }
-window.__house = { gfx, renderer, scene, camera, orbit, PHYS, setView, state, simWalk, floorAt, DOORS, setAllDoors, setLayout, applyReno, applyStyle, activeTag, groups, renos };
+window.__house = { gfx, renderer, scene, camera, orbit, PHYS, setView, state, simWalk, floorAt, DOORS, setAllDoors, setLayout, applyReno, applyStyle, applyExterior, activeTag, groups, renos };
 applyReno();

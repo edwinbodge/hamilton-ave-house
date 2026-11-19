@@ -497,17 +497,50 @@ export function buildWall(L, w, bat) {
       }
     }
   }
-  function garageDoor(a0, a1, h0, h1, outSide) {
-    const k = sashKit(a0, -outSide * 0.05);
-    const w = a1 - a0, h = h1 - h0;
-    k.box('white', 0, h0, -0.08, w, h1, 0.08);
-    k.solid(0, -0.1, w, 0.1, h0, h1);
-    const rows = 4, cols = Math.max(2, Math.round(w / 2.2));
-    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-      const x0 = (w / cols) * c + 0.2, x1 = (w / cols) * (c + 1) - 0.2, y0 = h0 + (h / rows) * r + 0.25, y1 = h0 + (h / rows) * (r + 1) - 0.25;
-      k.box('col:#e9e9e4', x0, y0, outSide * 0.08, x1, y1, outSide * 0.12);
+  // sectional garage door, mounted just inside the wall: its sections roll up the tracks and back under the ceiling
+  // (E in walk mode, or "open all doors"). drawSection(k, w, sh, i) draws section i (0 = bottom) in y 0..sh.
+  function sectionalDoor(a0, a1, h0, h1, outSide, drawSection, rows = 4, extra) {
+    const w = a1 - a0, h = h1 - h0, sh = h / rows, R = 0.7, zo = -outSide * (t / 2 + 0.12);
+    const p = at(a0, 1, 0), pivot = new THREE.Group();
+    pivot.position.set(p.x, 0, p.z); pivot.rotation.y = Math.atan2(-u.z, u.x);
+    const secs = [];
+    for (let i = 0; i < rows; i++) {
+      const db = new Batcher(), g = new THREE.Group();
+      const kk = new Kit(db, TAG), box = kk.box.bind(kk); // allow reversed z extents (doors facing -z)
+      kk.box = (key, x0, y0, z0, x1, y1, z1) => box(key, x0, y0, Math.min(z0, z1), x1, y1, Math.max(z0, z1));
+      drawSection(kk, w, sh, i);
+      db.build(g); pivot.add(g); secs.push(g);
+      if (extra) extra(g, w, sh, i, h0 + i * sh);
     }
-    for (let r = 1; r < rows; r++) k.box('col:#cfcfc8', 0, h0 + (h / rows) * r - 0.02, outSide * 0.08, w, h0 + (h / rows) * r + 0.02, outSide * 0.1);
+    const arc = (Math.PI * R) / 2;
+    const track = (s) => { // [y, depth inward] along the track, s = distance from the closed bottom edge
+      if (s <= h) return [h0 + s, 0];
+      const s2 = s - h;
+      if (s2 <= arc) { const f = s2 / R; return [h1 + R * Math.sin(f), R - R * Math.cos(f)]; }
+      return [h1 + R, R + s2 - arc];
+    };
+    const c = at((a0 + a1) / 2, 1, 0);
+    const solid = { cx: c.x + n.x * zo, cz: c.z + n.z * zo, ux: u.x, uz: u.z, hl: w / 2, ht: 0.15, y0: h0, y1: h1, tag: TAG };
+    PHYS.solids.push(solid);
+    const d = { kind: 'garage', dur: 2.6, level: L.id, rs: RS, pivot, pair: null, solid, t: 0, target: 0 };
+    d.apply = () => {
+      const lift = d.t * (h + 0.1);
+      for (let i = 0; i < rows; i++) {
+        const [ya, da] = track(i * sh + lift), [yb, db2] = track((i + 1) * sh + lift);
+        secs[i].position.set(0, ya, zo - outSide * da);
+        secs[i].rotation.x = Math.atan2(-outSide * (db2 - da), yb - ya);
+      }
+      solid.y0 = h0 + lift;
+    };
+    registerDoor(d, pivot);
+  }
+  function garageDoor(a0, a1, h0, h1, outSide) { // raised-panel steel sections
+    const cols = Math.max(2, Math.round((a1 - a0) / 2.2));
+    sectionalDoor(a0, a1, h0, h1, outSide, (k, w, sh, i) => {
+      k.box('white', 0, 0, -0.08, w, sh, 0.08);
+      for (let c = 0; c < cols; c++) k.box('col:#e9e9e4', (w / cols) * c + 0.2, 0.25, outSide * 0.08, (w / cols) * (c + 1) - 0.2, sh - 0.25, outSide * 0.12);
+      if (i < 3) k.box('col:#cfcfc8', 0, sh - 0.02, outSide * 0.08, w, sh + 0.02, outSide * 0.1);
+    });
   }
 }
 

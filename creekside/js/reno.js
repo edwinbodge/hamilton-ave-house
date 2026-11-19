@@ -318,9 +318,7 @@ function buildFacade() {
   for (const [y0, y1] of [[403, 594], [613, 711]]) {
     const [x, za] = F(988.5, y0 + 3), [, zb] = F(0, y1 - 3);
     const k = new Kit(bat, rs);
-    k.box('black', x + 0.1, 4.7, za, x + 0.16, 5.7, zb);
-    const n = Math.round((zb - za) / 2.0);
-    for (let i = 0; i < n; i++) { const a = za + ((zb - za) * i) / n + 0.12, b = za + ((zb - za) * (i + 1)) / n - 0.12; k.box('frosted', x + 0.16, 4.8, a, x + 0.18, 5.6, b); }
+    // (the glass band itself rides on the door sections: build.js garageDoor)
     k.box('black', x + 0.1, -0.6, za - 0.25, x + 0.2, 6.65, za); k.box('black', x + 0.1, -0.6, zb, x + 0.2, 6.65, zb + 0.25); k.box('black', x + 0.1, 6.4, za - 0.25, x + 0.2, 6.65, zb + 0.25);
   }
   // cedar slat accent wall at the entry (between the door and the stacked windows), full height
