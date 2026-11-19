@@ -1,4 +1,4 @@
-// Lot, landscaping and context for Creekside Ln. House frame (feet): +x = plan right (assumed north),
+// Lot, landscaping and context for Creekside Ln. House frame (feet): +x = plan right (southwest; front faces northwest),
 // +z = plan down = toward the street (assumed east), y = up. Ground is at y = -1.
 import * as THREE from 'three';
 import { LEVELS, LOT, STREET, NEIGHBORS, toFt } from './data.js';
@@ -166,7 +166,7 @@ export function buildSite() {
   lot.name = 'lotLines';
   group.add(lot);
   group.add(groundText('CREEKSIDE LN', 30, sz0 + 14, 60, 7, 0, 'rgba(255,255,255,0.85)'));
-  group.add(groundText('N →', LOT.xNorth + 10, LOT.zFront - 6, 14, 7, 0, 'rgba(255,255,255,0.9)'));
+  group.add(groundText('N →', LOT.xSouth - 12, LOT.zFront - 8, 14, 7, -3 * Math.PI / 4, 'rgba(255,255,255,0.9)')); // north = between plan-left (NE) and the street (NW)
 
   // neighboring houses (simple massing from the aerials)
   for (const [x0, z0, x1, z1, h] of NEIGHBORS) {

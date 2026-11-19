@@ -9,7 +9,8 @@
 //   basement (basement plan):             12.95 px/ft (x0.9344 to 1st-floor px). Aligned on the kitchen bump,
 //                                                    the chimney/utility chase, the front wall and the east room.
 // Local frame (feet): x = plan right, z = plan down (toward the street), y = up.
-// Assumed compass (from shadows in the photos): the front faces east, so +x = north, +z = east.
+// Compass (from the aerial): the front faces northwest. +z (plan down, toward the street) = NW, +x (plan right,
+// the garage/driveway side) = SW, -x = NE, -z (the back) = SE.
 // 1st floor = 0, 2nd floor = 10, basement = -9.2, grade = -1. The family room is sunken one step (-0.6).
 
 export const PX = 12.1;
@@ -274,12 +275,15 @@ export const STAIRS = {
 
 // Lot: 0.29 acre (12,576 sq ft) drawn as a 96 x 131 ft rectangle; house placement estimated from the
 // aerial photos (garage-side driveway needs ~26 ft of apron, so the house sits toward the south line).
+// xSouth / xNorth are historical names for the plan-left (NE) and plan-right (SW, driveway) lot lines.
 export const LOT = { zBack: -46, zFront: 85, xSouth: -12, xNorth: 84 };
+// compass azimuth (degrees clockwise from north) of local +x; local +z is X_AZ + 90 (the front faces NW = 315)
+export const X_AZ = 225;
 export const STREET = { sidewalk: [86, 91], curb: 98, width: 32 };
 // Neighboring houses, roughly located from the aerials: [x0, z0, x1, z1, ridge height]
 export const NEIGHBORS = [
-  [-62, 4, -24, 58, 28],   // south (blue-gray siding)
-  [98, -6, 140, 44, 28],   // north (white)
+  [-62, 4, -24, 58, 28],   // northeast side
+  [98, -6, 140, 44, 28],   // southwest side, past the driveway
   [-70, -120, -30, -80, 26],
   [40, -130, 85, -92, 26],
 ];

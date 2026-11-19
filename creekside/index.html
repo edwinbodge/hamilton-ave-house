@@ -186,7 +186,7 @@
         <label><input type="checkbox" data-reno="facade"><span><b>Modern facade</b><small>Charcoal board-and-batten, limewashed brick, black windows, trim and gutters, charcoal roof, cedar garage doors with a glass band, cedar accent wall and a black steel canopy at the entry.</small></span></label>
         <label><input type="checkbox" data-reno="classic"><span><b>Classic refresh (exterior)</b><small>Keeps the brick and roof. Siding and bay panels repainted warm greige, black window casings and sashes with black grids, black glass-panel double front door with coach lanterns, black gutters, white hydrangeas and evergreens in the front beds, a small ornamental tree at the garage corner, warm path lights. The alternative to Modern facade: turning one on turns the other off.</small></span></label>
         <label><input type="checkbox" data-reno="patio"><span><b>Backyard: bigger patio</b><small>~900 sq ft paver patio off the dining slider and behind the family room: wide steps, dining under a cedar pergola with string lights, sectional + fire pit lounge, grill counter.</small></span></label>
-        <label><input type="checkbox" data-reno="play"><span><b>Backyard: playground</b><small>Cedar play fort with slide, two swings and a glider, plus a sandbox, on a bordered mulch bed in the north-back corner.</small></span></label>
+        <label><input type="checkbox" data-reno="play"><span><b>Backyard: playground</b><small>Cedar play fort with slide, two swings and a glider, plus a sandbox, on a bordered mulch bed in the back corner on the driveway side.</small></span></label>
       </div>
       <p class="muted">Options carry into the walk-through: press <kbd>O</kbd> or tap Options while walking.</p>
     </section>
@@ -195,10 +195,10 @@
       <h2>Basement</h2>
       <div class="reno-list">
         <label><input type="radio" name="basement-layout" value="0" checked><span><b>As listed</b><small>Drywall done, bare concrete floors, bath roughed in (stub-outs only), empty rooms.</small></span></label>
-        <label><input type="radio" name="basement-layout" value="A"><span><b>Finished: rec room + guest suite</b><small>LVP floors, finished bath with a shower. TV on the brown accent wall with a sectional, game table in the bay, wet bar in the rec room, gym in the north room, guest bedroom in the east room (needs an egress window to count as a bedroom).</small></span></label>
-        <label><input type="radio" name="basement-layout" value="B"><span><b>Finished: theater + playroom + office</b><small>Theater with a 110" screen and two rows of recliners in the north room, kids' playroom in the rec room, office in the east room.</small></span></label>
-        <label><input type="radio" name="basement-layout" value="C"><span><b>Finished: open rec + gym + craft room</b><small>Sectional and TV at the bay end, ping-pong table in the rec room, gym in the north room, craft room east.</small></span></label>
-        <label><input type="radio" name="basement-layout" value="D"><span><b>Finished: open plan</b><small>The odd closets and stub walls come out (rec-room partition and its closets, the closet/corridor boxes, the stair-hall walls, the bump and bay closets) for one big room: sectional + 75" TV, game table in the bay, play area, gym in the north room, east room as office/guest. Kept: stair walls, bath, utility closet, north and east rooms. The main beam and its posts are shown as a dropped soffit with wrapped square columns along the old partition line (the brown "pilasters" in the listing photo) and a second line on the stair's east wall. Beam and post locations are an assumption to confirm on site.</small></span></label>
+        <label><input type="radio" name="basement-layout" value="A"><span><b>Finished: rec room + guest suite</b><small>LVP floors, finished bath with a shower. TV on the brown accent wall with a sectional, game table in the bay, wet bar in the rec room, gym in the back room, guest bedroom in the side room (needs an egress window to count as a bedroom).</small></span></label>
+        <label><input type="radio" name="basement-layout" value="B"><span><b>Finished: theater + playroom + office</b><small>Theater with a 110" screen and two rows of recliners in the back room, kids' playroom in the rec room, office in the side room.</small></span></label>
+        <label><input type="radio" name="basement-layout" value="C"><span><b>Finished: open rec + gym + craft room</b><small>Sectional and TV at the bay end, ping-pong table in the rec room, gym in the back room, craft room in the side room.</small></span></label>
+        <label><input type="radio" name="basement-layout" value="D"><span><b>Finished: open plan</b><small>The odd closets and stub walls come out (rec-room partition and its closets, the closet/corridor boxes, the stair-hall walls, the bump and bay closets) for one big room: sectional + 75" TV, game table in the bay, play area, gym in the back room, side room as office/guest. Kept: stair walls, bath, utility closet, back and side rooms. The main beam and its posts are shown as a dropped soffit with wrapped square columns along the old partition line (the brown "pilasters" in the listing photo) and a second line along the stair wall. Beam and post locations are an assumption to confirm on site.</small></span></label>
       </div>
     </section>
 
@@ -256,8 +256,8 @@
       <div id="add-editor" hidden>
         <input type="text" name="name" aria-label="Name">
         <div class="grid">
-          <label>East-west (ft)<input type="number" name="w" step="0.5"></label>
-          <label>North-south (ft)<input type="number" name="d" step="0.5"></label>
+          <label>Front to back (ft)<input type="number" name="w" step="0.5"></label>
+          <label>Side to side (ft)<input type="number" name="d" step="0.5"></label>
           <label>Height (ft)<input type="number" name="h" step="0.5"></label>
           <label>Base elev.<input type="number" name="y" step="0.5"></label>
           <label>Rotate °<input type="number" name="rot" step="5"></label>
@@ -278,10 +278,10 @@
         <ul>
           <li>Walls, doors, windows and room sizes come from the listing's CubiCasa plans. Scale: 1st floor 12.1 px/ft, set from the garage (23′3″ × 28′1″), family room (18′4″ × 20′2″), dining and kitchen dimensions on the dimensioned plan in the photo set, which agree within 1%. Basement 12.95 px/ft. Expect a few inches of error.</li>
           <li>The 2nd floor is drawn only on the small three-floor plan (5.95 px/ft). It was scaled from the same image as the 1st floor and aligned on the two-story family room walls and the stair. Bedroom 2 (12′2″ × 14′2″) and 3 (12′2″ × 13′9″) and the primary bedroom (23′2″ × 15′9″) match the dimensioned plan.</li>
-          <li>The basement was aligned on the kitchen bump, chimney/utility chase, front wall and the east room. Its rear walls under the dining area and office land about 2 ft inside the 1st-floor walls, so those two rooms are drawn as cantilevered.</li>
+          <li>The basement was aligned on the kitchen bump, chimney/utility chase, front wall and the side room. Its rear walls under the dining area and office land about 2 ft inside the 1st-floor walls, so those two rooms are drawn as cantilevered.</li>
           <li>Heights are assumed: 9 ft 1st-floor ceilings, 10 ft floor to floor (15 stair risers), 8 ft upstairs, 8 ft basement ceiling, family room sunken one step (photos). The family room vault is the underside of the main roof's back slope, which carries on down over the family room.</li>
           <li>Roof shapes and pitches are read from the photos and aerials: main hip 9/12, the bay tower's hip, the bedroom bump over the garage, garage hip at the front with a rake at the back, 7/12. Two skylights (primary bath, upstairs hall).</li>
-          <li>Compass: the front is assumed to face east (from shadows in the photos), so the sun study is approximate. The lot is drawn as a 96 × 131 ft rectangle (0.29 ac) with the house placed from the aerials. Get the plat of survey before planning near a lot line.</li>
+          <li>Compass: the front faces northwest (from the aerial), so the back yard and patio face southeast and get morning sun. The lot is drawn as a 96 × 131 ft rectangle (0.29 ac) with the house placed from the aerials. Get the plat of survey before planning near a lot line.</li>
           <li>Finishes follow the listing photos: white walls, gray living room with a chair rail and tray ceiling, golden oak trim, doors and cabinets, gray laminate counters, black appliances, black marble fireplace, beige foyer tile, mauve living room carpet, pink carpet in bedroom 3, tan brick and taupe lap siding outside.</li>
           <li>Furniture is staged at real sizes, roughly as in the photos (queen in the primary, twin and full in the bedrooms, two cars in the garage). Turn it off under Show.</li>
         </ul>

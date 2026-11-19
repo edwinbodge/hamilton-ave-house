@@ -9,7 +9,7 @@ import { CONTROLS, PRESETS as STYLE_PRESETS, DEFAULT_PRESET, applyStyle } from '
 import { RENO_LABELS, RENO_ROOMS } from './reno.js';
 import { buildSite } from './site.js';
 import { PHYS, pip, V, addSolid, addFloorPoly, applyFinish, ORIGIN } from './geom.js';
-import { LOT, LATITUDE, toFt } from './data.js';
+import { LOT, LATITUDE, X_AZ, toFt } from './data.js';
 
 // ------------------------------------------------------------------ renderer & scene
 const app = document.getElementById('app');
@@ -197,8 +197,9 @@ function updateSun() {
   const lat = LATITUDE * d2r, ha = (hour - 12) * 15 * d2r;
   const el = Math.asin(Math.sin(lat) * Math.sin(dec) + Math.cos(lat) * Math.cos(dec) * Math.cos(ha));
   const az = Math.atan2(Math.sin(ha), Math.cos(ha) * Math.sin(lat) - Math.tan(dec) * Math.cos(lat)) + Math.PI;
-  // local frame: +x north, +z east
-  const dir = V(Math.cos(el) * Math.cos(az), Math.sin(el), Math.cos(el) * Math.sin(az));
+  // local frame: +x points X_AZ (southwest), +z points X_AZ + 90 (northwest, the front)
+  const la = az - X_AZ * d2r;
+  const dir = V(Math.cos(el) * Math.cos(la), Math.sin(el), Math.cos(el) * Math.sin(la));
   sun.position.copy(sunTarget.position).addScaledVector(dir, 300);
   const day = THREE.MathUtils.smoothstep(el, -0.02, 0.18);
   sun.intensity = 2.6 * day;
@@ -474,8 +475,8 @@ function lotDistances(a) {
   const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([i, j]) => [a.x + (c * a.d * i + s * a.w * j) / 2, a.z + (-s * a.d * i + c * a.w * j) / 2]);
   const xs = corners.map((p) => p[0]), zs = corners.map((p) => p[1]);
   return {
-    north: LOT.xNorth - Math.max(...xs), south: Math.min(...xs) - LOT.xSouth,
-    'east, street': LOT.zFront - Math.max(...zs), 'west, back': Math.min(...zs) - LOT.zBack,
+    'southwest, driveway side': LOT.xNorth - Math.max(...xs), 'northeast side': Math.min(...xs) - LOT.xSouth,
+    'northwest, street': LOT.zFront - Math.max(...zs), 'southeast, back': Math.min(...zs) - LOT.zBack,
   };
 }
 function renderAdditions() {
