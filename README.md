@@ -1,6 +1,10 @@
-# House models: Harrison Ave and Creekside Ln
+# House models: Harrison Ave, Creekside Ln and Hamilton Rd
 
-Two walkable 3D house models; pick between them from the dropdown in the panel header. Harrison Ave is at `/`, Creekside Ln at `/creekside/` (its own copy of the engine in `creekside/js`).
+Three walkable 3D house models; pick between them from the dropdown in the panel header. Harrison Ave is at `/`, Creekside Ln at `/creekside/` and Hamilton Rd at `/hamilton-rd/`, each with its own copy of the engine (`js`, `creekside/js`, `hamilton-rd/js`). Garages hold a true-size Rivian R2 and Acura MDX plus bikes, golf bags and tennis rackets, and the sectional garage doors open like the other doors (`E` in walk mode).
+
+## Hamilton Rd
+
+All-brick 4 bed / 3.5 bath on a wooded lot with a walk-out basement, built from the listing's CubiCasa plans (scaled from the MLS room sizes) and photos. Two-story great room with wet bar, kitchen octagon, deck with fireplace, 3-car garage. Renovation toggles: kitchen opened to dining, cosmetic refresh, primary bath, laundry/mudroom, exterior refresh, deck + walk-out patio, playground.
 
 ## Harrison Ave
 
