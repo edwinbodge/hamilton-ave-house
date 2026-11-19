@@ -256,11 +256,19 @@ $('#sun-hour').addEventListener('input', updateSun);
 const plc = new PointerLockControls(camera, renderer.domElement);
 // request pointer lock directly so a refusal (embedded previews, some browsers) is caught instead of
 // surfacing as an unhandled promise rejection; PointerLockControls still tracks the lock state
-function lockPointer() {
+// relock: true when re-locking after the edit menu closes. A refusal then just pauses (click to resume)
+// instead of switching the whole walk-through to drag-to-look.
+let relockTry = false;
+function lockFailed() {
+  if (relockTry) { relockTry = false; if (state.mode === 'walk') { walk.paused = true; $('#walk-paused').hidden = false; } return; }
+  document.body.classList.add('draglook');
+}
+function lockPointer(relock = false) {
+  relockTry = relock;
   try {
     const p = renderer.domElement.requestPointerLock();
-    if (p && p.catch) p.catch(() => document.body.classList.add('draglook'));
-  } catch { document.body.classList.add('draglook'); }
+    if (p && p.catch) p.catch(lockFailed);
+  } catch { lockFailed(); }
 }
 const keys = {};
 let editor = null;
@@ -361,9 +369,9 @@ function toggleWalkPanel(force) {
   if (!on && state.mode === 'walk' && !document.body.classList.contains('draglook')) lockPointer();
 }
 $('#hud-options').addEventListener('click', () => toggleWalkPanel());
-plc.addEventListener('lock', () => { walk.paused = false; $('#walk-paused').hidden = true; });
+plc.addEventListener('lock', () => { relockTry = false; walk.paused = false; $('#walk-paused').hidden = true; document.body.classList.remove('draglook'); });
 // Pointer lock isn't available everywhere (embedded previews, some browsers): fall back to drag-to-look.
-document.addEventListener('pointerlockerror', () => { walk.paused = false; document.body.classList.add('draglook'); });
+document.addEventListener('pointerlockerror', () => { if (relockTry) return lockFailed(); walk.paused = false; document.body.classList.add('draglook'); });
 $('#btn-walk').addEventListener('click', enterWalk);
 $('#walk-resume').addEventListener('click', () => { walk.paused = false; $('#walk-paused').hidden = true; lockPointer(); });
 $('#walk-exit').addEventListener('click', () => { $('#walk-paused').hidden = true; exitWalk(); });
@@ -372,7 +380,7 @@ $('#hud-exit').addEventListener('click', exitWalk);
 const look = new THREE.Euler(0, 0, 0, 'YXZ');
 let dragLook = null;
 renderer.domElement.addEventListener('mousedown', () => {
-  if (state.mode === 'walk' && plc.isLocked) { const i = doorAhead(); if (i >= 0 && !editor.isPending()) toggleDoor(i); else editor.clickAt(0, 0, true); }
+  if (state.mode === 'walk' && plc.isLocked) { const i = doorAhead(7); if (i >= 0 && !editor.isPending()) toggleDoor(i); else editor.openAhead(); }
 });
 renderer.domElement.addEventListener('pointerdown', (e) => {
   if (state.mode !== 'walk' || plc.isLocked) return;
@@ -390,7 +398,7 @@ renderer.domElement.addEventListener('pointermove', (e) => {
 addEventListener('pointerup', () => { dragLook = null; });
 
 function updateWalk(dt) {
-  if (walk.paused && !walk.force) return;
+  if (walk.paused && !walk.force) { $('#hud-edit').hidden = true; return; }
   const fwd = new THREE.Vector3(); camera.getWorldDirection(fwd); fwd.y = 0; fwd.normalize();
   const right = V(-fwd.z, 0, fwd.x);
   const mv = V(0, 0, 0);
@@ -417,6 +425,14 @@ function updateWalk(dt) {
   $('#hud-room').textContent = r && !r.void ? `${r.name} · ${lvlName}` : walk.feet < 4 && walk.feet > -2 && !r ? 'Outside' : lvlName;
   const di = doorAhead(7);
   $('#hud-door').hidden = di < 0;
+  // what's under the crosshair and close enough to edit (checked a few times a second)
+  walk.aimT = (walk.aimT || 0) - dt;
+  if (walk.aimT <= 0) {
+    walk.aimT = 0.12;
+    const t = di < 0 && !editor.isOpen() ? editor.aim() : null;
+    $('#hud-edit').hidden = !t;
+    if (t) $('#hud-edit').textContent = `${plc.isLocked ? 'F or click' : 'F or tap'}: ${t.label}`;
+  }
   if (di >= 0) $('#hud-door').textContent = `${DOORS[di].target > 0.5 ? 'Close' : 'Open'} ${DOORS[di].kind === 'garage' ? 'garage door' : 'door'}: press E${plc.isLocked ? ' or click' : ''}`;
 }
 
@@ -647,6 +663,7 @@ function onKey(e) {
   if (state.mode === 'walk') {
     if (e.code === 'Escape' && !plc.isLocked) exitWalk();
     if (e.code === 'KeyE') { const i = doorAhead(); if (i >= 0) toggleDoor(i); }
+    if (e.code === 'KeyF') editor.openAhead();
     if (e.code === 'KeyO') toggleWalkPanel();
     return;
   }
@@ -694,7 +711,7 @@ editor = initEditor({
     if (state.mode !== 'walk') return;
     walk.paused = false;
     if (document.body.classList.contains('draglook')) return;
-    if (relock) lockPointer(); else { walk.paused = true; $('#walk-paused').hidden = false; }
+    if (relock) lockPointer(true); else { walk.paused = true; $('#walk-paused').hidden = false; }
   },
 });
 gfx.mountUI($('#tgl-lot').closest('.toggles'));

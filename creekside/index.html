@@ -139,7 +139,20 @@
   #edit-pop .ep-row button { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 4px; border-radius: 10px; border: 1px solid var(--line); background: var(--chip); color: var(--ink); font: inherit; font-size: 12px; cursor: pointer; }
   #edit-pop .ep-row button .ic { font-size: 17px; line-height: 1; }
   #edit-pop .ep-row button:hover, #edit-pop .ep-row button.on { border-color: var(--accent); }
+  #edit-pop .ep-row.four { grid-template-columns: repeat(4, 1fr); }
   #edit-pop .ep-sub { margin-top: 8px; }
+  #edit-pop .ep-nudge { display: flex; align-items: center; gap: 4px; margin-top: 6px; font-size: 11.5px; }
+  #edit-pop .ep-nudge span { margin-right: 4px; }
+  #edit-pop .ep-nudge button { width: 30px; height: 26px; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 8px; cursor: pointer; font: inherit; }
+  #edit-pop .ep-nudge .ic:empty, #edit-pop .ep-more .ic:empty { display: none; }
+  #edit-pop .ep-thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; max-height: 210px; overflow-y: auto; }
+  #edit-pop .ep-thumbs button { aspect-ratio: 1; border: 1px solid var(--line); border-radius: 9px; background: #e9e7e1; padding: 2px; cursor: pointer; }
+  #edit-pop .ep-thumbs button.on { border: 2px solid var(--accent); }
+  #edit-pop .ep-thumbs img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  #edit-pop .ep-thumbs > button:not(:has(img)) { aspect-ratio: auto; grid-column: span 4; border-radius: 999px; background: transparent; color: var(--ink); font: inherit; font-size: 12px; padding: 4px; }
+  #hud-edit { position: absolute; top: calc(56% + 30px); left: 50%; transform: translateX(-50%); background: rgba(20,20,20,.6); color: #fff; padding: 4px 10px; border-radius: 999px; font-size: 12px; white-space: nowrap; }
+  #hud-edit[hidden] { display: none; }
+  body.editing #hud-edit, body.editing #hud-door { display: none; }
   #edit-pop .ep-more { display: flex; gap: 4px; flex-wrap: wrap; }
   #edit-pop .ep-more button, #edit-pop .ep-grid button, #edit-pop .ep-foot button { border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer; }
   #edit-pop .ep-more .ic { margin-right: 4px; color: var(--muted); }
@@ -278,7 +291,7 @@
 
     <section>
       <h2>Point &amp; click edits</h2>
-      <p class="muted">Click any piece of furniture, wall or floor (in the walk-through, click whatever is under the dot) to recolor, resize, move or remove it, repaint a room, or add a TV, plant, sofa and more. You can also type what you want, like "make these chairs white".</p>
+      <p class="muted">Click any piece of furniture, wall or floor (in the walk-through, walk up to it and press F or click) to recolor, resize, move or remove it, repaint a room, or add a TV, plant, sofa and more. You can also type what you want, like "make these chairs white".</p>
       <div class="row">
         <button class="btn" id="edit-undo" style="width:auto">Undo</button>
         <button class="btn" id="edit-reset" style="width:auto">Reset all edits</button>
@@ -346,7 +359,8 @@
   <div id="crosshair"></div>
   <div id="hud-room"></div>
   <div id="hud-door" hidden></div>
-  <div id="hud-help"><span class="lockhelp">WASD move · mouse look · E: doors · click: edit what the dot is on · Esc pause</span><span class="draghelp">WASD / arrows move · drag to look · tap: edit · E: doors · Esc exits</span></div>
+  <div id="hud-edit" hidden></div>
+  <div id="hud-help"><span class="lockhelp">WASD move · mouse look · E: doors · F or click: edit what the dot is on · Ctrl+Z undo · Esc pause</span><span class="draghelp">WASD / arrows move · drag to look · tap or F: edit · E: doors · Esc exits</span></div>
   <button id="hud-exit">Exit walk-through</button>
   <button id="hud-options">Options (O)</button>
 </div>

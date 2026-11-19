@@ -3,7 +3,7 @@
 // room's walls, add a TV, a plant or other furniture, or type what you want ("make these chairs white").
 // Edits are kept in this browser (localStorage) and can be undone or reset.
 import * as THREE from 'three';
-import { ITEMS, Kit, Batcher, loadGLB, placeModel, applyFinish } from './geom.js';
+import { ITEMS, Kit, Batcher, loadGLB, placeModel, applyFinish, MODEL_BASE, modelsShown } from './geom.js';
 import { plant, floorLamp, rug, bookcase, wallTV, standTV, mediaConsole } from './furnish.js';
 
 const KEY = 'creekside-edits';
@@ -19,9 +19,35 @@ const COLORS = {
 const SWATCHES = ['white', 'cream', 'beige', 'greige', 'gray', 'charcoal', 'black', 'navy', 'dusty blue', 'sage', 'green', 'emerald', 'blush', 'rust', 'mustard', 'walnut', 'oak'];
 const PAINTS = { 'Warm white': '#ece8df', 'Soft white': '#f3f2ee', Greige: '#ddd5c8', 'Pale sage': '#d3d8c9', 'Light gray': '#dfe2e0', Oatmeal: '#e4ddd0', 'Dusty blue': '#cdd6da', Sage: '#c8cfbe', Blush: '#e6d8cf', Navy: '#2f3d52', 'Forest green': '#3e5446', Charcoal: '#4a4b4d' };
 
-// things you can add: a hand-built piece (fn on a Kit) or an asset-pack model; wall: true = back against a wall
+// framed art, back at z = 0 on a wall, centered about 5'3" up
+const ARTS = {
+  abstract: { label: 'Abstract', w: 2.6, h: 3.3, frame: '#1d1d1f', bg: '#efe8dc', marks: [['#c46a4a', 0.15, 0.55, 0.55, 0.3], ['#2f4a5e', 0.42, 0.2, 0.45, 0.42], ['#d9b26a', 0.1, 0.12, 0.3, 0.25]] },
+  landscape: { label: 'Landscape', w: 4, h: 2.7, frame: '#b88a55', bg: '#bcd0db', bands: [['#9db3a0', 0.28, 0.45], ['#6f8a6a', 0, 0.3], ['#e9e3d3', 0.45, 0.55]] },
+  botanical: { label: 'Botanical', w: 1.8, h: 2.4, frame: '#c9a75a', bg: '#f3efe5', marks: [['#5f7d55', 0.47, 0.15, 0.06, 0.62], ['#7f9b6d', 0.25, 0.45, 0.22, 0.1], ['#7f9b6d', 0.53, 0.55, 0.22, 0.1], ['#7f9b6d', 0.27, 0.68, 0.2, 0.09]] },
+  bw: { label: 'Black & white photo', w: 3, h: 2.2, frame: '#1d1d1f', bg: '#d8d8d6', bands: [['#4a4a4a', 0, 0.35], ['#8a8a88', 0.35, 0.55], ['#bdbdbb', 0.55, 1]] },
+  canvas: { label: 'Large canvas', w: 5, h: 3.4, frame: null, bg: '#e7ddd0', marks: [['#a9b8c4', 0.05, 0.08, 0.9, 0.35], ['#c9a48a', 0.05, 0.5, 0.6, 0.4], ['#f4efe6', 0.55, 0.55, 0.38, 0.36]] },
+  mirror: { label: 'Round mirror', w: 2.8, h: 2.8, mirror: true },
+};
+function art(k, v = 'abstract') {
+  const a = ARTS[v] || ARTS.abstract, { w, h } = a, y0 = 5.3 - h / 2;
+  if (a.mirror) { // round brass mirror: a stack of thin squares approximating a disc
+    for (let i = 0; i < 12; i++) { const t = (i / 12) * Math.PI; const hw = Math.sin(t + Math.PI / 24) * w / 2; k.box('brass', -hw, y0 + h / 2 - Math.cos(t) * h / 2 - 0.12, 0, hw, y0 + h / 2 - Math.cos(t + Math.PI / 12) * h / 2 + 0.12, 0.06); }
+    for (let i = 0; i < 12; i++) { const t = (i / 12) * Math.PI; const hw = Math.sin(t + Math.PI / 24) * (w / 2 - 0.12); k.box('mirror', -hw, y0 + h / 2 - Math.cos(t) * (h / 2 - 0.12), 0.06, hw, y0 + h / 2 - Math.cos(t + Math.PI / 12) * (h / 2 - 0.12), 0.08); }
+    return;
+  }
+  const f = a.frame ? 0.1 : 0, m = a.frame ? 0.22 : 0;
+  if (a.frame) k.box('col:' + a.frame, -w / 2, y0, 0, w / 2, y0 + h, 0.12);
+  if (a.frame) k.box('col:#f5f2ea', -w / 2 + f, y0 + f, 0.12, w / 2 - f, y0 + h - f, 0.125);
+  const x0 = -w / 2 + f + m, x1 = w / 2 - f - m, b0 = y0 + f + m, b1 = y0 + h - f - m, z = a.frame ? 0.13 : 0.16;
+  k.box('col:' + a.bg, x0, b0, a.frame ? 0.125 : 0, x1, b1, z);
+  const W = x1 - x0, H = b1 - b0;
+  for (const [c, lo, hi] of a.bands || []) k.box('col:' + c, x0, b0 + lo * H, z, x1, b0 + hi * H, z + 0.005);
+  for (const [c, px, py, pw, ph] of a.marks || []) k.box('col:' + c, x0 + px * W, b0 + py * H, z, x0 + (px + pw) * W, b0 + (py + ph) * H, z + 0.005);
+}
+// things you can add: a hand-built piece (fn on a Kit) or an asset-pack model; wall: hangs on a wall
 const ADDS = {
   tv: { label: 'TV', wall: (k) => wallTV(k, 65), floor: (k) => { mediaConsole(k, 5.5); standTV(k, 55, 1.8); }, back: true },
+  art: { label: 'Art', wall: (k, a) => art(k, a.v), floor: null, back: true, wallOnly: true },
   sofa: { label: 'Sofa', glb: 'Sofa08', spec: { w: 7.5, back: true }, back: true },
   armchair: { label: 'Armchair', glb: 'Chair12' },
   chair: { label: 'Dining chair', glb: 'Chair03' },
@@ -48,6 +74,26 @@ const NICE = { swap: 'piece', piece: 'piece', leatherSofa: 'leather sofa', spind
   powerRack: 'power rack', liftBench: 'weight bench', dumbbellRack: 'dumbbell rack', pelotonBike: 'Peloton' };
 const nice = (l) => NICE[l] || (/^[A-Z]{2}/.test(l) ? l : l.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase());
 
+const CATS = {
+  sofa: ['Sofa08', 'Sofa01', 'Sofa03', 'Sofa11', 'Sofa16', 'Sofa17', 'Sofa18', 'Sofa31', 'Sofa33', 'Sofa35', 'Sofa36'],
+  armchair: ['Chair11', 'Chair12', 'Chair13', 'Chair14', 'Chair15', 'Chair16', 'Chair20', 'Chair45', 'Sofa37'],
+  chair: ['Chair01', 'Chair03', 'Chair04', 'Chair05', 'Chair06', 'Chair07', 'Chair08', 'Chair17', 'Chair29'],
+  stool: ['Chair22', 'Chair24'], office: ['Chair31', 'Chair32', 'Chair33'], outdoor: ['Chair44', 'Chair39', 'Chair04', 'Chair29', 'Chair07'],
+  bed: ['Bed02', 'Bed04', 'Bed09', 'Bed10', 'Bed12', 'Bed15', 'Bed16', 'Bed18', 'Bed20'],
+  nightstand: ['Drawer01', 'Drawer02', 'Drawer04', 'Drawer14'],
+  dresser: ['Drawer12', 'Drawer13', 'Drawer34', 'Drawer37', 'Drawer35', 'Drawer36', 'Drawer38', 'Drawer39', 'Drawer40'],
+  console: ['Drawer31', 'Drawer32', 'Drawer36', 'Drawer39', 'Drawer40', 'Drawer38'],
+  dining: ['Table03', 'Table04', 'Table06', 'Table07', 'Table11', 'Table17', 'Table19', 'Table22', 'Table23', 'Table24', 'Table29'],
+  coffee: ['Table34', 'Table36', 'Table38', 'Table39', 'Table40'], side: ['Table37', 'Table36', 'Drawer02', 'Drawer04'],
+  desk: ['Table43', 'Table44', 'Table49'], toilet: ['Toilet01', 'Toilet03'],
+};
+const LABEL_CAT = { sofa: 'sofa', leatherSofa: 'sofa', sectional: 'sofa', armchair: 'armchair', recliner: 'armchair', tuxedoChair: 'armchair', rockingChair: 'armchair',
+  loungeChair: 'armchair', spindleChair: 'chair', chair: 'chair', tulipChair: 'chair', patioChair: 'outdoor', adirondack: 'outdoor', officeChair: 'office', stool: 'stool',
+  bed: 'bed', nightstand: 'nightstand', dresser: 'dresser', tallChest: 'dresser', armoire: 'dresser', diningTable: 'dining', roundTable: 'dining', coffeeTable: 'coffee',
+  sideTable: 'side', desk: 'desk', officeDesk: 'desk', bowDesk: 'desk', dropLeafDesk: 'desk', hutchDesk: 'desk', toilet: 'toilet', buffet: 'console', mediaConsole: 'console',
+  sofa_: 'sofa', armchair_: 'armchair', 'dining chair': 'chair', 'coffee table': 'coffee', 'dining table': 'dining', 'side table': 'side', 'office chair': 'office', 'queen bed': 'bed' };
+const catOf = (it) => LABEL_CAT[it.label] || (() => { const g = it.model?.glb; return g && Object.keys(CATS).find((c) => CATS[c].includes(g)); })() || null;
+const WALL_LABELS = new Set(['wallTV', 'TV', 'art', 'projectionScreen', 'racketRack']);
 const GLB_NAMES = { Sofa: 'sofa', Chair: 'chair', Table: 'table', Bed: 'bed', Drawer: 'dresser', Toilet: 'toilet' };
 const nameOf = (it) => (it.label && it.label !== 'piece' ? nice(it.label) : it.model ? GLB_NAMES[it.model.glb.replace(/\d+$/, '')] || 'piece' : 'piece');
 export function initEditor(env) {
@@ -84,8 +130,14 @@ export function initEditor(env) {
     if (!g) return;
     g.visible = !s.removed;
     g.scale.set(s.sx || 1, s.sy || 1, s.sz || 1);
-    g.position.set(it.x + (s.dx || 0), it.y, it.z + (s.dz || 0));
+    g.position.set(it.x + (s.dx || 0), it.y + (s.dl || 0) + (s.dy || 0), it.z + (s.dz || 0));
     g.rotation.y = (it.rot + (s.spin || 0)) * R;
+    // "Change item": a different model in the same spot
+    if (s.glb && it.altGlb !== s.glb) setItemGlb(it, s.glb);
+    const alt = !!s.glb && it.altGlb === s.glb;
+    if (it.altGroup) it.altGroup.visible = alt;
+    if (it.modelGroup) it.modelGroup.visible = !alt && (it.added || modelsShown());
+    if (it.hand) it.hand.visible = !alt && !(it.modelGroup && it.modelGroup.visible);
     recolor(g, s.color);
     // collision boxes follow the piece
     const r0 = it.rot * R, r1 = (it.rot + (s.spin || 0)) * R, c0 = Math.cos(r0), s0 = Math.sin(r0), c1 = Math.cos(r1), s1 = Math.sin(r1);
@@ -99,6 +151,28 @@ export function initEditor(env) {
       so.hl = o.hl * Math.hypot(ux * sx, uz * sz); so.ht = o.ht * Math.hypot(uz * sx, ux * sz);
       so.y0 = it.y + (o.y0 - it.y) * sy; so.y1 = it.y + (o.y1 - it.y) * sy;
     }
+  }
+  // the footprint of a hand-built piece in its own frame: what a replacement model is sized to
+  function footprint(it) {
+    if (it.model) return it.model;
+    const inv = new THREE.Matrix4().makeRotationY(-it.rot * R).multiply(new THREE.Matrix4().makeTranslation(-it.x, -it.y, -it.z));
+    const box = new THREE.Box3();
+    (it.hand || it.group).traverse((m) => { if (m.isMesh && m.geometry) { m.geometry.computeBoundingBox(); box.union(m.geometry.boundingBox.clone().applyMatrix4(inv)); } });
+    if (box.isEmpty()) return {};
+    const back = Math.abs(box.min.z) < 0.4;
+    return { w: box.max.x - box.min.x, d: back ? box.max.z : box.max.z - box.min.z, back, dx: (box.min.x + box.max.x) / 2, dz: back ? 0 : (box.min.z + box.max.z) / 2 };
+  }
+  async function setItemGlb(it, glb) {
+    it.altGlb = glb;
+    if (!it.altGroup) { it.altGroup = new THREE.Group(); it.altGroup.name = 'chosen model'; (it.inner || it.group).add(it.altGroup); }
+    const fp = it.fp || (it.fp = footprint(it));
+    const spec = { w: fp.w, d: fp.d, back: fp.back, dx: fp.dx, dz: fp.dz };
+    const src = await loadGLB(glb);
+    if (it.altGlb !== glb) return;
+    it.altGroup.clear();
+    it.altGroup.add(placeModel(src, spec, it.x, it.y, it.z, it.rot));
+    applyItem(it); gfx.dirty();
+    if (cur && cur.item === it) highlight(targets());
   }
   function buildCopy(a) {
     const src = itemById(a.src);
@@ -115,22 +189,24 @@ export function initEditor(env) {
     if (a.kind === 'copy') return buildCopy(a);
     const def = ADDS[a.kind];
     if (!def) return;
-    const it = { id: a.id, x: a.x, y: a.y, z: a.z, rot: a.rot, label: def.label === 'TV' ? 'TV' : def.label.toLowerCase(), added: true, kind: a.kind, solids: [] };
+    const it = { id: a.id, x: a.x, y: a.y, z: a.z, rot: a.rot, label: def.label === 'TV' ? 'TV' : def.label.toLowerCase(), added: true, kind: a.kind, wall: a.where === 'wall', solids: [] };
     const g = new THREE.Group(); g.name = 'item'; g.userData.item = it; it.group = g;
     g.position.set(a.x, a.y, a.z); g.rotation.y = a.rot * R; g.updateMatrix();
     const inner = new THREE.Group(); inner.applyMatrix4(g.matrix.clone().invert()); g.add(inner);
     const { PHYS } = await import('./geom.js');
     const n0 = PHYS.solids.length;
+    it.inner = inner;
     if (def.glb) {
       const src = await loadGLB(def.glb), o = placeModel(src, def.spec || {}, a.x, a.y, a.z, a.rot);
-      inner.add(o);
+      it.model = { glb: def.glb, ...(def.spec || {}) };
+      it.modelGroup = new THREE.Group(); it.modelGroup.name = 'models'; it.modelGroup.add(o); inner.add(it.modelGroup);
       const sz = new THREE.Vector3(); new THREE.Box3().setFromObject(o).getSize(sz);
       const rr = a.rot * R, w = Math.abs(sz.x * Math.cos(rr)) + Math.abs(sz.z * Math.sin(rr)), d = Math.abs(sz.z * Math.cos(rr)) + Math.abs(sz.x * Math.sin(rr));
       if (sz.y > 1.2 && a.kind !== 'rug') { const k = new Kit(null, 'edit').at(a.x, a.z, a.y, a.rot); const z0 = def.spec && def.spec.back ? 0 : -d / 2; k.solid(-w / 2, z0, w / 2, z0 + d, 0, sz.y); }
     } else {
       const b = new Batcher(), k = new Kit(b, 'edit').at(a.x, a.z, a.y, a.rot);
-      (a.where === 'wall' && def.wall ? def.wall : def.floor || def.fn)(k);
-      b.build(inner);
+      (a.where === 'wall' && def.wall ? def.wall : def.floor || def.fn)(k, a);
+      it.hand = new THREE.Group(); it.hand.name = 'hand-built'; b.build(it.hand); inner.add(it.hand);
     }
     it.solids = PHYS.solids.slice(n0).map((s) => ({ s, o: { ...s } }));
     addedGroup.add(g); ADDED.set(a.id, it);
@@ -231,11 +307,32 @@ export function initEditor(env) {
         l.querySelector('input').addEventListener('change', (e) => { all = e.target.checked; highlight(targets()); });
         pop.appendChild(l);
       }
-      row.append(btn('Recolor', '◐', () => render('color'), view === 'color' ? 'on' : ''), btn('Resize', '⤢', () => render('size'), view === 'size' ? 'on' : ''), btn('Remove', '✕', () => act('remove')));
-      if (view === 'main' || view === 'more') {
+      const cat = catOf(cur.item);
+      row.classList.toggle('four', !!cat);
+      row.append(btn('Recolor', '◐', () => render('color'), view === 'color' ? 'on' : ''));
+      if (cat) row.append(btn('Change', '⇄', () => render('change'), view === 'change' ? 'on' : ''));
+      row.append(btn('Resize', '⤢', () => render('size'), view === 'size' ? 'on' : ''), btn('Remove', '✕', () => act('remove')));
+      if (view === 'main') {
         const more = document.createElement('div'); more.className = 'ep-more';
         more.append(btn('Move', '✥', () => startMove()), btn('Turn', '↻', () => act('spin', 90)), btn('Copy', '⧉', () => copyHere()), btn('Reset', '⟲', () => act('reset')));
         sub.appendChild(more);
+        const wallish = isWallItem(cur.item);
+        const nudge = document.createElement('div'); nudge.className = 'ep-nudge';
+        nudge.append(Object.assign(document.createElement('span'), { className: 'muted', textContent: 'Nudge 6"' }));
+        for (const [l, d] of wallish ? [['←', 'left'], ['→', 'right'], ['↑', 'up'], ['↓', 'down']] : [['←', 'left'], ['→', 'right'], ['↑', 'away'], ['↓', 'closer']]) nudge.appendChild(btn(l, '', () => act('nudge', d)));
+        sub.appendChild(nudge);
+      }
+      if (view === 'change') {
+        const g = document.createElement('div'); g.className = 'ep-thumbs';
+        const curGlb = (E.items[cur.item.id] || {}).glb || cur.item.model?.glb;
+        for (const name of CATS[cat]) {
+          const b = document.createElement('button'); b.title = name; if (name === curGlb) b.className = 'on';
+          b.innerHTML = `<img src="${MODEL_BASE}thumbs/${name}.png" alt="" loading="lazy">`;
+          b.addEventListener('click', (e) => { e.stopPropagation(); act('glb', name); });
+          g.appendChild(b);
+        }
+        if ((E.items[cur.item.id] || {}).glb) g.appendChild(btn('Original', '', () => act('glb', null)));
+        sub.appendChild(g);
       }
       if (view === 'color') sub.appendChild(swatches((hex) => act('color', hex), true));
       if (view === 'size') {
@@ -244,7 +341,13 @@ export function initEditor(env) {
         sub.appendChild(g);
       }
     } else if (cur.kind === 'wall') {
-      row.append(btn('Repaint', '◐', () => render('paint'), view === 'paint' ? 'on' : ''), btn('Hang a TV', '▭', () => addHere('tv')), btn('Add item', '+', () => render('add'), view === 'add' ? 'on' : ''));
+      row.append(btn('Repaint', '◐', () => render('paint'), view === 'paint' ? 'on' : ''), btn('Hang a TV', '▭', () => addHere('tv')), btn('Hang art', '▣', () => render('art'), view === 'art' ? 'on' : ''));
+      if (view === 'main') { const more = document.createElement('div'); more.className = 'ep-more'; more.append(btn('Add furniture here', '+', () => render('add'))); sub.appendChild(more); }
+      if (view === 'art') {
+        const g = document.createElement('div'); g.className = 'ep-grid';
+        for (const [k, a] of Object.entries(ARTS)) g.appendChild(btn(a.label, '', () => addHere('art', null, { v: k })));
+        sub.appendChild(g);
+      }
       if (view === 'paint') {
         if (!cur.key) sub.innerHTML = '<p class="muted">This surface isn\'t a painted room wall.</p>';
         else { sub.appendChild(swatches((hex) => paint(hex), false, PAINTS)); }
@@ -254,7 +357,7 @@ export function initEditor(env) {
     }
     if (view === 'add') {
       const g = document.createElement('div'); g.className = 'ep-grid';
-      for (const [k, d] of Object.entries(ADDS)) g.appendChild(btn(d.label, '', () => addHere(k)));
+      for (const [k, d] of Object.entries(ADDS)) if (!d.wallOnly) g.appendChild(btn(d.label, '', () => addHere(k)));
       sub.appendChild(g);
     }
     pop.append(row, sub);
@@ -301,15 +404,25 @@ export function initEditor(env) {
       if (op === 'remove') { if (it.added) { E.added = E.added.filter((a) => a.id !== it.id); delete E.items[it.id]; } else s.removed = true; }
       if (op === 'color') { if (arg) s.color = arg; else delete s.color; }
       if (op === 'spin') s.spin = ((s.spin || 0) + arg) % 360;
+      if (op === 'glb') { if (arg) s.glb = arg; else delete s.glb; }
+      if (op === 'nudge') {
+        const r = (it.rot + (s.spin || 0)) * R, tx = Math.cos(r), tz = -Math.sin(r), step = 0.5;
+        const cr = new THREE.Vector3(); camera.getWorldDirection(cr); const fx = cr.x, fz = cr.z, fl = Math.hypot(fx, fz) || 1;
+        const rx = -fz / fl, rz = fx / fl; // camera right on the floor
+        if (isWallItem(it) && (arg === 'left' || arg === 'right')) { const sg = Math.sign(tx * rx + tz * rz) || 1, k = (arg === 'right' ? 1 : -1) * sg * step; s.dx = (s.dx || 0) + tx * k; s.dz = (s.dz || 0) + tz * k; }
+        else if (arg === 'left' || arg === 'right') { const k = arg === 'right' ? step : -step; s.dx = (s.dx || 0) + rx * k; s.dz = (s.dz || 0) + rz * k; }
+        else if (arg === 'up' || arg === 'down') s.dy = (s.dy || 0) + (arg === 'up' ? step : -step);
+        else { const k = arg === 'away' ? step : -step; s.dx = (s.dx || 0) + (fx / fl) * k; s.dz = (s.dz || 0) + (fz / fl) * k; }
+      }
       if (op === 'scale') { const [ax, f] = arg; for (const k of ax === 'all' ? ['sx', 'sy', 'sz'] : [ax]) s[k] = Math.max(0.3, Math.min(3, (s[k] || 1) * f)); }
       applyItem(it);
     }
     syncAdded(); save(); gfx.dirty();
     const n = list.length > 1 ? `${list.length} pieces` : nameOf(list[0]);
-    if (op === 'remove') { say(`Removed ${n}.`); setTimeout(() => close(), 450); return; }
+    if (op === 'remove') { close(true); toast(`Removed ${n}. Press Ctrl+Z (or Undo in the panel) to bring it back.`); return; }
     highlight(list);
-    say({ color: `Recolored ${n}.`, spin: `Turned ${n}.`, scale: `Resized ${n}.`, reset: `Put ${n} back as it was.` }[op] || 'Done.');
-    const v = op === 'color' ? 'color' : op === 'scale' ? 'size' : 'main'; const m = pop.querySelector('.ep-msg').textContent; render(v); say(m);
+    say({ color: `Recolored ${n}.`, spin: `Turned ${n}.`, scale: `Resized ${n}.`, reset: `Put ${n} back as it was.`, glb: arg ? `Changed ${n}.` : `Back to the original ${n}.`, nudge: `Nudged ${n}.` }[op] || 'Done.');
+    const v = { color: 'color', scale: 'size', glb: 'change' }[op] || 'main'; const m = pop.querySelector('.ep-msg').textContent; render(v); say(m);
   }
   function paint(hex) {
     if (!cur || !cur.key) return say('Click a painted wall to repaint a room.');
@@ -317,9 +430,10 @@ export function initEditor(env) {
     say(`Repainted the ${roomName(cur.point, cur.normal) || 'room'} walls.`);
   }
   let nextId = () => 'a' + Date.now().toString(36) + Math.floor(Math.random() * 99);
-  async function addHere(kind, at) {
+  async function addHere(kind, at, extra = {}) {
     const def = ADDS[kind], t = at || cur;
     if (!def || !t) return;
+    if (def.wallOnly && t.kind !== 'wall') return say('Art hangs on a wall: click a wall first.');
     const p = t.point.clone(), toCam = new THREE.Vector3().subVectors(camera.position, p);
     let rot, where = 'floor', y = p.y;
     if (t.kind === 'wall') { // back against the wall, facing into the room, on that room's floor
@@ -328,11 +442,11 @@ export function initEditor(env) {
       y = env.floorAt(p.x, p.z, p.y + 0.5); if (y === -Infinity) y = p.y - 4;
     } else rot = Math.round((Math.atan2(toCam.x, toCam.z) / R) / 15) * 15;
     snapshot();
-    const a = { id: nextId(), kind, x: p.x, y, z: p.z, rot, where };
+    const a = { id: nextId(), kind, x: p.x, y, z: p.z, rot, where, ...extra };
     E.added.push(a); save();
     const it = await buildAdded(a);
     cur = { ...t, item: it, kind: 'item' }; all = false; render('main'); highlight([it]);
-    say(`Added a ${def.label === 'TV' ? 'TV' : def.label.toLowerCase()}. Use Move or Turn to adjust it.`);
+    say(`Added ${kind === 'art' ? (ARTS[extra.v]?.label || 'art').toLowerCase() : 'a ' + (def.label === 'TV' ? 'TV' : def.label.toLowerCase())}. Move it, or nudge it with the arrows.`);
   }
   async function copyHere() {
     const it = cur && cur.item; if (!it) return;
@@ -342,10 +456,18 @@ export function initEditor(env) {
     pending = { items: targets(), copy };
     const n = pending.items.length;
     close(true);
-    hint.hidden = false; hint.textContent = `${copy ? 'Copy' : 'Move'} ${n > 1 ? n + ' pieces' : nameOf(pending.items[0])}: click the floor where it should go (Esc to cancel).`;
+    const wall = isWallItem(pending.items[0]);
+    hint.hidden = false; hint.textContent = `${copy ? 'Copy' : 'Move'} ${n > 1 ? n + ' pieces' : nameOf(pending.items[0])}: click ${wall ? 'a spot on a wall' : 'the floor (or a wall to back it against)'} where it should go · Esc cancels`;
   }
+  function isWallItem(it) { return !!it && (it.wall || WALL_LABELS.has(it.label)); }
+  let toastT = null;
+  function toast(t, ms = 3500) { hint.hidden = false; hint.textContent = t; clearTimeout(toastT); toastT = setTimeout(() => { if (!pending) hint.hidden = true; }, ms); }
   async function finishMove(t) {
-    const { items, copy } = pending; pending = null; hint.hidden = true;
+    const { items, copy } = pending;
+    const first0 = items[0];
+    if (t && (t.kind === 'wall' || (t.kind === 'item' && Math.abs(t.normal.y) < 0.3 && isWallItem(first0))) && !copy) { pending = null; hint.hidden = true; return moveToWall(items, t); }
+    if (isWallItem(first0)) { toast('Click a spot on a wall to hang it there · Esc cancels', 4000); return false; }
+    pending = null; hint.hidden = true;
     if (!t || t.kind !== 'floor') return false;
     const first = items[0], s0 = E.items[first.id] || {};
     const bx = first.x + (s0.dx || 0), bz = first.z + (s0.dz || 0), ddx = t.point.x - bx, ddz = t.point.z - bz;
@@ -361,6 +483,21 @@ export function initEditor(env) {
       return true;
     }
     for (const it of items) { const s = st(it.id); s.dx = (s.dx || 0) + ddx; s.dz = (s.dz || 0) + ddz; applyItem(it); }
+    save(); gfx.dirty();
+    return true;
+  }
+  // back a piece against the clicked wall, facing into the room (TVs and art keep their height)
+  function moveToWall(items, t) {
+    const n = t.normal.clone().setY(0).normalize(), rot = Math.atan2(n.x, n.z) / R;
+    snapshot();
+    for (const it of items.slice(0, 1)) {
+      const s = st(it.id), wall = isWallItem(it), fp = wall ? { back: true } : (it.fp || (it.fp = footprint(it)));
+      const off = fp.back ? 0.02 : (fp.d || 2) / 2 + 0.05;
+      const px = t.point.x + n.x * off, pz = t.point.z + n.z * off;
+      const f = env.floorAt(px, pz, t.point.y + 0.5);
+      s.dx = px - it.x; s.dz = pz - it.z; s.spin = rot - it.rot; s.dl = f === -Infinity ? 0 : f - it.y;
+      applyItem(it);
+    }
     save(); gfx.dirty();
     return true;
   }
@@ -406,11 +543,28 @@ export function initEditor(env) {
   }
   addEventListener('keydown', (e) => {
     if (e.code === 'Escape') { if (pending) { pending = null; hint.hidden = true; } if (!pop.hidden) close(false); }
+    if (e.code === 'KeyZ' && (e.ctrlKey || e.metaKey) && !(e.target.matches && e.target.matches('input, textarea'))) { e.preventDefault(); doUndo(); toast('Undone.', 1500); }
   });
+  // walk mode: what the crosshair is on, if it is close enough to edit
+  const REACH = 12;
+  function aim() {
+    const t = pickAt(new THREE.Vector2(0, 0));
+    if (!t || t.hit.distance > REACH) return null;
+    t.label = t.item ? `edit ${nameOf(t.item)}` : t.kind === 'wall' ? (t.key ? 'paint wall · hang a TV or art' : 'hang a TV or art') : t.kind === 'floor' ? 'add something here' : null;
+    return t.label ? t : null;
+  }
+  function openAhead() {
+    if (!pop.hidden) { close(true); return true; }
+    const t = aim();
+    if (pending) { finishMove(pickAt(new THREE.Vector2(0, 0))); return true; }
+    if (!t) return false;
+    open(t, innerWidth / 2, innerHeight / 2);
+    return true;
+  }
   pop.addEventListener('pointerdown', (e) => e.stopPropagation());
   document.querySelector('#edit-undo')?.addEventListener('click', () => doUndo());
   document.querySelector('#edit-reset')?.addEventListener('click', () => { if (confirm('Remove all your point-and-click edits to this house?')) resetAll(); });
   // start: rebuild what was saved
   (async () => { await syncAdded(); applyAll(); updateCount(); })();
-  return { clickAt, isOpen: () => !pop.hidden, isPending: () => !!pending, close, refresh: () => { rebuildCopies(); applyAll(); }, reapplyPaint, command: (s) => command(s), open, pickAt, E: () => E };
+  return { clickAt, aim, openAhead, isOpen: () => !pop.hidden, isPending: () => !!pending, close, refresh: () => { rebuildCopies(); applyAll(); }, reapplyPaint, command: (s) => command(s), open, pickAt, E: () => E };
 }
