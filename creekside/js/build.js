@@ -101,9 +101,9 @@ function balusterGeometry() {
 // ------------------------------------------------------------------ walls
 export function buildWall(L, w, bat) {
   const [x0, y0, x1, y1, kind, openings = [], opts = {}] = w;
-  const RS = opts.rs || (opts.reno ? 'off:' + opts.reno : null);
+  let RS = opts.rs || (opts.reno ? 'off:' + opts.reno : null);
   if (RS) bat = renoBat(RS, L.id);
-  const TAG = RS || L.id;
+  let TAG = RS || L.id;
   const a = P(L, x0, y0), b = P(L, x1, y1);
   const dx = b[0] - a[0], dz = b[1] - a[1], len = Math.hypot(dx, dz);
   const u = V(dx / len, 0, dz / len), n = V(-dz / len, 0, dx / len);
@@ -211,7 +211,7 @@ export function buildWall(L, w, bat) {
   function opening(op) {
     const { s, e, type, sill, head, oo } = op;
     const [kp, kn] = sidesAt((s + e) / 2);
-    const fk = (k) => (k.outside ? 'extTrim' : k.room && k.room.bare ? 'white' : 'trim');
+    const fk = (k) => (k.outside ? 'winTrim' : k.room && k.room.bare ? 'white' : 'trim');
     const frameKeys = { pw: fk(kp), nw: fk(kn), def: fk(kp.outside ? kn : kp) };
     const ft = 0.15, fd = t + 0.04;
     const fbox = (s0, s1, h0, h1, keys = frameKeys, depth = fd, solid = false, off = 0) => {
@@ -227,7 +227,7 @@ export function buildWall(L, w, bat) {
       strip(side, e, e + cw, sill, head + cw, dep, key);
       strip(side, s - cw, e + cw, head, head + cw, dep, key);
       if (withSill) {
-        if (k.outside) strip(side, s - cw - 0.05, e + cw + 0.05, sill - 0.14, sill, 0.14, 'extTrim');
+        if (k.outside) strip(side, s - cw - 0.05, e + cw + 0.05, sill - 0.14, sill, 0.14, 'winTrim');
         else { strip(side, s - cw - 0.08, e + cw + 0.08, sill - 0.06, sill + 0.02, 0.2, key); strip(side, s - cw, e + cw, sill - 0.36, sill - 0.06, dep, key); }
       }
     };
@@ -263,7 +263,9 @@ export function buildWall(L, w, bat) {
         } else hang(s + ft, e - ft, hingeEnd, swingSide, head - ft - 0.02, style, color, type === 'x' ? 80 : 85, null, type !== 'x');
         break;
       }
-      case 'e': { // entry: oak door with leaded oval-glass lites, leaded-glass sidelights over oak panels
+      case 'e': { // entry: as built = oak door with leaded oval-glass lites and sidelights; Classic refresh = black glass double door
+        const keep = [bat, RS, TAG];
+        bat = renoBat('off:classic', L.id); RS = TAG = 'off:classic';
         const sl = 1.15;
         for (const [a0, a1] of [[s + ft, s + ft + sl], [e - ft - sl, e - ft]]) {
           fbox(a0, a1, sill, sill + 2.2, 'frontDoor', 0.15, true);
@@ -273,6 +275,11 @@ export function buildWall(L, w, bat) {
         }
         fbox(s + ft + sl, s + ft + sl + 0.2, sill, head); fbox(e - ft - sl - 0.2, e - ft - sl, sill, head);
         hang(s + ft + sl + 0.2, e - ft - sl - 0.2, hingeEnd, swingSide, head - ft - 0.02, 'entry', 'frontDoor', 80, null, false);
+        bat = renoBat('on:classic', L.id); RS = TAG = 'on:classic';
+        { const pid = L.id + ':classic:' + s.toFixed(1), mid = (s + e) / 2;
+          hang(s + ft, mid, 's', swingSide, head - ft - 0.02, 'glassdoor', 'black', 80, pid, false);
+          hang(mid, e - ft, 'e', swingSide, head - ft - 0.02, 'glassdoor', 'black', 80, pid, false); }
+        [bat, RS, TAG] = keep;
         break;
       }
       case 'f': {
@@ -362,7 +369,8 @@ export function buildWall(L, w, bat) {
       rail(x0, x1, y0, y0 + b, zoff); rail(x0, x1, y1 - b, y1, zoff); rail(x0, x0 + b, y0, y1, zoff); rail(x1 - b, x1, y0, y1, zoff);
       return [x0 + b, x1 - b, y0 + b, y1 - b];
     };
-    const cs = (x0, x1) => { const f = sashFrame(x0, x1, h0, h1); glassAndGrid(f[0], f[1], f[2], f[3]); };
+    const gk = outSide && L.id !== 'b' ? new Kit(renoBat('on:classic', L.id), 'on:classic').at(k.ox, k.oz, k.oy, k.rot) : null;
+    const cs = (x0, x1) => { const f = sashFrame(x0, x1, h0, h1); glassAndGrid(f[0], f[1], f[2], f[3]); if (gk) grid(gk, f[0], f[1], f[2], f[3], 2, f[3] - f[2] > 3.2 ? 3 : 2, 'black', outSide * 0.05, 0.03); };
     if (style === 'cs2') { cs(0, w / 2); cs(w / 2, w); }
     else if (style === 'cs' || style === 'gb') cs(0, w);
     else { const mid = h0 + h / 2; const lo = sashFrame(0, w, h0, mid + 0.06, 0.06), hi = sashFrame(0, w, mid - 0.06, h1, -0.06); glassAndGrid(lo[0], lo[1], lo[2], lo[3], 0.06); glassAndGrid(hi[0], hi[1], hi[2], hi[3], -0.06); }
@@ -415,6 +423,12 @@ export function buildWall(L, w, bat) {
         k.box('brass', x - 0.04, y0 + 3.06, -th / 2 - 0.01, x + gw + 0.04, y0 + 3.1, th / 2 + 0.01);
         for (let i = 1; i < 4; i++) k.box('brass', x + gw / 2 - 0.01, y0 + 3.1 + (i * (h - 3.7)) / 4, -0.03, x + gw / 2 + 0.01, y0 + 3.1 + (i * (h - 3.7)) / 4 + 0.6, 0.03);
       }
+    } else if (style === 'glassdoor') { // black steel-look frame, full glass with simulated divided lites
+      const st = 0.3;
+      k.box(key, 0, y0, -th / 2, st, y0 + h, th / 2); k.box(key, w - st, y0, -th / 2, w, y0 + h, th / 2);
+      k.box(key, st, y0 + h - st, -th / 2, w - st, y0 + h, th / 2); k.box(key, st, y0, -th / 2, w - st, y0 + 0.7, th / 2);
+      k.box('glass', st, y0 + 0.7, -0.02, w - st, y0 + h - st, 0.02);
+      grid(k, st, w - st, y0 + 0.7, y0 + h - st, 2, 5, key, 0, 0.07);
     } else if (style === 'french' || style === 'full' || style === 'half') {
       const st = style === 'french' ? 0.32 : 0.38;
       k.box(key, 0, y0, -th / 2, st, y0 + h, th / 2); k.box(key, w - st, y0, -th / 2, w, y0 + h, th / 2);
@@ -786,10 +800,10 @@ function buildExterior(bats) {
   veneer(b1, [646, 563.5], [685, 563.5], [0, 1], 7.0, 10, 'shake', 0, 0, 0.06);
   veneer(b2, [646, 563.5], [685, 563.5], [0, 1], 10, 12.4, 'shake', 0, 0, 0.06);
   for (const [bat, y0, y1] of [[b1, 2.72, 10], [b2, 10, 17.3]]) {
-    veneer(bat, [642, 563.5], [646, 563.5], [0, 1], y0, y1, 'extTrim', 0, 0, 0.1);
-    veneer(bat, [685, 563.5], [689, 563.5], [0, 1], y0, y1, 'extTrim', 0, 0, 0.1);
+    veneer(bat, [642, 563.5], [646, 563.5], [0, 1], y0, y1, 'winTrim', 0, 0, 0.1);
+    veneer(bat, [685, 563.5], [689, 563.5], [0, 1], y0, y1, 'winTrim', 0, 0, 0.1);
   }
-  veneer(b2, [642, 563.5], [689, 563.5], [0, 1], 16.95, 17.3, 'extTrim', 0, 0, 0.1);
+  veneer(b2, [642, 563.5], [689, 563.5], [0, 1], 16.95, 17.3, 'winTrim', 0, 0, 0.1);
   veneer(b1, [700, 563.5], [700, 722.5], [-1, 0], -0.9, 2.6, 'brickExt', 0, 0.6);
   veneer(b1, [700, 722.5], [987.5, 722.5], [0, 1], -0.9, 2.6, 'brickExt', 0.6, 0.6);
   // brick pier at the garage's front corner with a lantern on top (driveway photo)

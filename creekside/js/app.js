@@ -69,7 +69,7 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const state = {
   view: 'ext', labels: true, furniture: true, mode: 'orbit', layout: '0',
-  reno: { kitchen: false, openLiving: false, refresh: false, pbath: false, mud: false, facade: false, patio: false, play: false },
+  reno: { kitchen: false, openLiving: false, refresh: false, pbath: false, mud: false, facade: false, classic: false, patio: false, play: false },
   style: { ...STYLE_PRESETS[DEFAULT_PRESET].values },
 };
 const STORE = 'creekside-options';
@@ -102,7 +102,7 @@ function applyView() {
   const showLabels = (lv) => state.labels && state.mode === 'orbit' && v === lv;
   for (const id of ['b', 'f1', 'f2']) {
     furn[id].visible = state.furniture;
-    for (const l of labels[id]) l.visible = showLabels(id) && !HIDE_LABELS.some(([r, n]) => state.reno[r] && n.test(l.userData.name));
+    for (const l of labels[id]) l.visible = showLabels(id) && !HIDE_LABELS.some(([r, n]) => state.reno[r] && n.test(l.userData.name)) && !(id === 'b' && state.layout === 'D' && /^(Hall|Recreation Room)$/.test(l.userData.name));
   }
   for (const l of RENO_LABELS) l.visible = showLabels(l.userData.level) && activeTag(l.userData.rs);
   $$('.views button').forEach((b) => b.classList.toggle('on', b.dataset.view === v));
@@ -124,18 +124,27 @@ const renoSets = [...renos, ...(site.userData.renos || [])];
 // labels of as-built rooms a renovation relabels
 const HIDE_LABELS = [['kitchen', /^(Kitchen|Dining Area)$/], ['pbath', /^Primary Bath$/], ['mud', /^Laundry$/]];
 // the modern facade re-finishes the exterior materials
-const FACADE = { siding: 'bnb:#2e3135', brickExt: 'paintbrick:#ebe7df', extTrim: '#1f2022', winExt: '#1f2022', shingle: 'shingleDark', garageDoor: 'plank:#a66d3c', frontDoor: '#1f2022', shake: 'plank:#a66d3c', gutter: '#1f2022' };
-let facadeOn = false;
+const FACADE = { siding: 'bnb:#2e3135', brickExt: 'paintbrick:#ebe7df', extTrim: '#1f2022', winExt: '#1f2022', winTrim: '#1f2022', shingle: 'shingleDark', garageDoor: 'plank:#a66d3c', frontDoor: '#1f2022', shake: 'plank:#a66d3c', gutter: '#1f2022' };
+// classic refresh (AI rendering): brick + roof stay; warm greige siding and bay panels, black window casings/sashes, black gutters
+const CLASSIC = { siding: 'lap:#aa9e8d', shake: 'shake:#b0a493', winTrim: '#1c1c1d', winExt: '#1c1c1d', gutter: '#1c1c1d', extTrim: '#ece7dc', garageDoor: '#8a7e70' };
+let facadeOn = null;
 function applyReno() {
   for (const g of renoSets) g.visible = activeTag(g.userData.rs);
-  if (facadeOn !== state.reno.facade) { facadeOn = state.reno.facade; for (const [k, v] of Object.entries(FACADE)) applyFinish(k, facadeOn ? v : ORIGIN[k]); }
+  const ext = state.reno.facade ? 'facade' : state.reno.classic ? 'classic' : 'none';
+  if (facadeOn !== ext) { facadeOn = ext; for (const k of new Set([...Object.keys(FACADE), ...Object.keys(CLASSIC)])) applyFinish(k, ext === 'facade' ? FACADE[k] ?? ORIGIN[k] : ext === 'classic' ? CLASSIC[k] ?? ORIGIN[k] : ORIGIN[k]); }
   document.querySelectorAll('[data-reno]').forEach((el) => { el.checked = !!state.reno[el.dataset.reno]; });
   document.querySelectorAll('[name=basement-layout]').forEach((r) => { r.checked = r.value === state.layout; });
   $('#suggested').checked = isSuggested();
   applyView();
   saveOptions();
 }
-document.querySelectorAll('[data-reno]').forEach((el) => el.addEventListener('change', () => { state.reno[el.dataset.reno] = el.checked; applyReno(); }));
+document.querySelectorAll('[data-reno]').forEach((el) => el.addEventListener('change', () => {
+  state.reno[el.dataset.reno] = el.checked;
+  // the two exterior looks are alternatives
+  if (el.checked && el.dataset.reno === 'facade') state.reno.classic = false;
+  if (el.checked && el.dataset.reno === 'classic') state.reno.facade = false;
+  applyReno();
+}));
 // one switch for the whole suggested plan (basement: layout A)
 const SUGGESTED = ['kitchen', 'openLiving', 'refresh', 'pbath', 'mud', 'facade', 'patio', 'play'];
 const isSuggested = () => Object.keys(state.reno).every((k) => !!state.reno[k] === SUGGESTED.includes(k)) && state.layout === 'A';
@@ -217,6 +226,7 @@ function activeTag(tag) {
   if (tag.includes('|')) return tag.split('|').some(activeTag);
   if (tag.includes('&')) return tag.split('&').every(activeTag);
   if (tag.startsWith('on:') || tag.startsWith('off:')) { const [st, name] = tag.split(':'); return st === 'on' ? !!state.reno[name] : !state.reno[name]; }
+  if (tag.startsWith('not:')) return !activeTag(tag.slice(4));
   if (tag.startsWith('lay:')) return state.layout === tag.slice(4);
   if (tag === 'furn' || tag.endsWith('F')) return state.furniture;
   return true;

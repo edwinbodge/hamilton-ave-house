@@ -123,7 +123,8 @@ export function buildSite() {
   { const k = new Kit(bat, 'site'); k.box({ pv: 'paving', def: 'foundation' }, doorX - 3.6, G, porchZ, doorX + 3.6, -0.35, porchZ + 4.2); k.box({ pv: 'paving', def: 'foundation' }, doorX - 2.6, G, porchZ + 4.2, doorX + 2.6, -0.68, porchZ + 5.4); }
   addFloorPoly([[doorX - 3.6, porchZ], [doorX + 3.6, porchZ], [doorX + 3.6, porchZ + 4.2], [doorX - 3.6, porchZ + 4.2]], [], -0.35, 'site');
   addFloorPoly([[doorX - 2.6, porchZ + 4.2], [doorX + 2.6, porchZ + 4.2], [doorX + 2.6, porchZ + 5.4], [doorX - 2.6, porchZ + 5.4]], [], -0.68, 'site');
-  ribbon(bat, 'paving', curve([[doorX + 1, porchZ + 5], [doorX + 4, gzF - 1.5], [30, gzF + 2.8], [45, gzF + 3.6], [gx + 4, gzF + 3.6]], 32), 4, G + 0.045);
+  const walk = curve([[doorX + 1, porchZ + 5], [doorX + 4, gzF - 1.5], [30, gzF + 2.8], [45, gzF + 3.6], [gx + 4, gzF + 3.6]], 32);
+  ribbon(bat, 'paving', walk, 4, G + 0.045);
   // existing back patio off the dining slider (replaced by the bigger patio option), with steps from the slider
   {
     const pb = off('off:patio');
@@ -195,5 +196,44 @@ export function buildSite() {
   for (let x = F(705, 0)[0]; x < gx - 3; x += 3.4) shrub(trees, x, gzF + 1.3, 1.1);
   for (const [x, z] of [[18, 1.0], [27.5, 1.0], [-1.8, 20], [-1.8, 42], [-1.8, 47]]) shrub(trees, x, z, 2.2, yewMat);
   group.add(trees);
+
+  // Classic refresh landscaping: white hydrangeas + clipped evergreens in the front beds, a small ornamental
+  // tree at the garage corner, warm path lights along the walk and uplights at the tower (AI rendering)
+  const classic = new THREE.Group();
+  classic.userData.rs = 'on:classic';
+  const flowerMat = new THREE.MeshStandardMaterial({ color: '#f4f1e6', roughness: 0.9, flatShading: true, emissive: '#3a372e', emissiveIntensity: 0.15 });
+  const leafDk = new THREE.MeshStandardMaterial({ color: '#3f6332', roughness: 1, flatShading: true });
+  const box = new THREE.MeshStandardMaterial({ color: '#2f5a2c', roughness: 1, flatShading: true });
+  const glow = new THREE.MeshStandardMaterial({ color: '#ffd9a0', emissive: '#ffbf66', emissiveIntensity: 1.2 });
+  const blk = new THREE.MeshStandardMaterial({ color: '#1c1c1d', roughness: 0.5 });
+  const hydrangea = (x, z, s = 1.5) => {
+    shrub(classic, x, z, s, leafDk);
+    const r = rng(Math.round(x * 31 + z * 17) + 5);
+    for (let i = 0; i < 11; i++) { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(s * 0.36, 0), flowerMat); const a = r() * 6.28, d = s * (0.35 + r() * 0.45); m.position.set(x + Math.cos(a) * d, G + s * (0.75 + r() * 0.35), z + Math.sin(a) * d); classic.add(m); }
+  };
+  const boxwood = (x, z, s = 1.0) => { const m = new THREE.Mesh(new THREE.SphereGeometry(s, 8, 6), box); m.scale.y = 0.8; m.position.set(x, G + s * 0.7, z); classic.add(m); };
+  const [ex0] = F(477, 0), [ex1] = F(700, 0);
+  for (let x = 3; x < 15.5; x += 2.6) (Math.round(x) % 2 ? hydrangea : boxwood)(x, 56.1, 1.25);
+  for (const x of [ex0 + 1.4, doorX - 4.6]) hydrangea(x, porchZ + 2.6, 1.4);
+  for (let x = doorX + 5; x < ex1 - 1; x += 2.8) (Math.round(x * 2) % 3 ? hydrangea : boxwood)(x, porchZ + 2.5 + (x - doorX) * 0.18, 1.3);
+  for (let x = ex1 + 2.5; x < gx - 3; x += 3.2) (Math.round(x) % 2 ? hydrangea : boxwood)(x, gzF + 1.3, 1.15);
+  // ornamental tree (serviceberry-like) at the garage's front-west corner
+  { const t = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, 7, 6), barkMat); t.position.set(ex1 + 1.6, G + 3.5, gzF + 1.6); classic.add(t);
+    const r = rng(77); for (let i = 0; i < 6; i++) { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(1.1 + r() * 0.6, 1), leafMats[(i + 1) % 4]); m.position.set(ex1 + 1.6 + (r() - 0.5) * 2.4, G + 7 + r() * 2.5, gzF + 1.6 + (r() - 0.5) * 3); classic.add(m); }
+    addSolid(V(ex1 + 1.4, 0, gzF + 1.4), V(0.4, 0, 0), V(0, 0, 0.4), G, G + 6, 'on:classic'); }
+  // path lights along both sides of the walk
+  for (let i = 2; i < walk.length - 1; i += 4) {
+    const [ax, az] = walk[i - 1], [bx, bz] = walk[i + 1], l = Math.hypot(bx - ax, bz - az), nx = -(bz - az) / l, nz = (bx - ax) / l;
+    for (const sgn of i % 8 ? [1] : [-1]) {
+      const x = walk[i][0] + nx * 2.6 * sgn, z = walk[i][1] + nz * 2.6 * sgn;
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.6, 6), blk); post.position.set(x, G + 0.8, z); classic.add(post);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.18, 0.18, 8), blk); cap.position.set(x, G + 1.75, z); classic.add(cap);
+      const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.18, 8), glow); lamp.position.set(x, G + 1.57, z); classic.add(lamp);
+    }
+  }
+  // uplights at the tower piers
+  for (const [px, py] of [[340, 660], [458, 660]]) { const [x, z] = F(px, py + 12); const m = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.3, 8), glow); m.position.set(x, G + 0.15, z); classic.add(m); }
+  group.add(classic);
+  group.userData.renos.push(classic);
   return group;
 }

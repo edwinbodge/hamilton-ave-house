@@ -989,11 +989,11 @@ export function buildFixtures(bats) {
     const s = fb(720, 90); s.cyl('col:#2d4f86', 0, 0, 0.45, 0.45, 0, 3.6, 12); s.cyl('col:#e3e3df', 1.1, 0, 0.6, 0.6, 0, 2.6, 12);
   }
   // brown accent paint + pilasters on the rec room's long partition (photo)
-  { const [x, z0] = P('b', 532.1, 330.5), [, z1] = P('b', 0, 537); new Kit(bats.b, 'b').at(0, 0, H.basement).box('paint:#8a6448', x - 0.03, 0, z0, x, 8.0, z1); }
+  { const [x, z0] = P('b', 532.1, 330.5), [, z1] = P('b', 0, 537); new Kit(renoBat('not:lay:D', 'b'), 'not:lay:D').at(0, 0, H.basement).box('paint:#8a6448', x - 0.03, 0, z0, x, 8.0, z1); }
   // sump pit lid in the stair hall corner
   { const k = fb(646, 344); k.cyl('black', 0, 0, 0.9, 0.9, 0, 0.06, 16); }
   // ---- exterior lights
-  exteriorLantern(f1(480, 566.6, 0), 6.0);
+  { const [lx, lz] = F(480, 566.6); exteriorLantern(new Kit(renoBat('off:classic', 'f1'), 'off:classic').at(lx, lz, 0, 0), 6.0); }
   for (const y of [400, 603, 716]) exteriorLantern(f1(990.6, y, 90), 7.2);
   exteriorLantern(f1(905, 375.4, 180), 6.6);
   exteriorLantern(f1(345, 194.4, 180), 6.6);

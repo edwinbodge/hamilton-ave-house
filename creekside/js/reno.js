@@ -399,7 +399,7 @@ function buildPlay() {
 // ------------------------------------------------------------------ basement finish + layouts
 // lay:A  rec room + guest suite + gym, lay:B  theater + playroom + office, lay:C  open rec + ping-pong + craft room
 function buildBasement() {
-  const ALL = 'lay:A|lay:B|lay:C', bat = renoBat(ALL, 'b'), Lb = LV.b, y0 = H.basement;
+  const ALL = 'lay:A|lay:B|lay:C|lay:D', bat = renoBat(ALL, 'b'), Lb = LV.b, y0 = H.basement;
   const rooms = Lb._rooms.filter((r) => !/Utility|^Closet$/.test(r.name));
   for (const r of rooms) bat.poly(/Bath/.test(r.name) ? 'tile:#cfcac1' : 'lvp:#b49b7d', r.pts, y0 + 0.025);
   // the roughed-in bath, finished: toilet, vanity, 3 x 4 ft shower
@@ -447,6 +447,64 @@ function buildBasement() {
   lay('C', 930.7, 320, -90, (k) => shelving(k, 6, 1.5, 6.5));
 }
 
+
+// ------------------------------------------------------------------ classic refresh (finishes swap in app.js)
+function coachLantern(k, y) { // black coach lantern, back at z = 0
+  k.box('black', -0.2, y - 0.9, 0, 0.2, y + 0.4, 0.1);
+  k.box('black', -0.04, y - 0.1, 0.1, 0.04, y - 0.02, 0.55);
+  k.cyl('black', 0, 0.75, 0.28, 0.4, y + 0.45, y + 0.8, 4); k.cyl('black', 0, 0.75, 0.05, 0.05, y + 0.8, y + 1.0, 4);
+  k.cyl('bulb', 0, 0.75, 0.24, 0.3, y - 0.65, y + 0.45, 4);
+  for (let i = 0; i < 4; i++) { const a = (i / 4) * Math.PI * 2 + Math.PI / 4; k.box('black', Math.cos(a) * 0.3 - 0.03, y - 0.7, 0.75 + Math.sin(a) * 0.3 - 0.03, Math.cos(a) * 0.3 + 0.03, y + 0.45, 0.75 + Math.sin(a) * 0.3 + 0.03); }
+  k.cyl('black', 0, 0.75, 0.32, 0.22, y - 0.85, y - 0.65, 4);
+}
+function buildClassic() {
+  const rs = 'on:classic', bat = renoBat(rs, 'f1');
+  const [lx, lz] = F(477, 575); coachLantern(new Kit(bat, rs).at(lx + 0.58, lz, 0, 90), 6.3);   // on the tower's brick return
+  const [rx, rz] = F(553, 596.3); coachLantern(new Kit(bat, rs).at(rx, rz, 0, 0), 6.3);           // on the brick pier
+  const [px, pz] = F(517, 575); const k = new Kit(bat, rs).at(px, pz, 0); k.cyl('black', 0, 0, 0.02, 0.02, 11, 17.9, 4); coachLantern(new Kit(bat, rs).at(px, pz - 0.75, 0, 0), 10.3); // hanging lantern in the 2-story recess
+}
+
+// ------------------------------------------------------------------ basement "Open plan" (layout D)
+// Main beam assumption: a steel/LVL beam on steel posts runs front-to-back under the 1st floor's main bearing line
+// (kitchen|hall and living|foyer walls, bedroom 3 / bedroom 2 walls above), i.e. along the long rec-room partition
+// whose brown "pilasters" in the listing photo are the wrapped posts. A second line follows the stair's east wall.
+const BEAM1 = { x: 534.5, y0: 236, y1: 601.5, posts: [373.5, 458.5, 535.5] };
+const BEAM2 = { x: 687.5, y0: 208.5, y1: 458.5, posts: [330.5] };
+function buildOpenBasement() {
+  const rs = 'lay:D', bat = renoBat(rs, 'b'), Lb = LV.b, y0 = H.basement, ceil = y0 + Lb.ceiling;
+  const k = new Kit(bat, rs);
+  for (const B of [BEAM1, BEAM2]) {
+    const [x, z0] = P(Lb, B.x, B.y0), [, z1] = P(Lb, B.x, B.y1);
+    k.box('plaster', x - 0.45, ceil - 0.95, z0, x + 0.45, ceil, z1);                     // dropped soffit around the beam
+    k.box('trim', x - 0.5, ceil - 1.0, z0, x + 0.5, ceil - 0.95, z1);
+    for (const py of B.posts) {
+      const [, z] = P(Lb, B.x, py), c = new Kit(bat, rs).at(x, z, y0);
+      c.cbox('plaster', 0, 0, 0.9, 0.9, 0, ceil - 0.95 - y0);                           // post wrapped as a square column
+      c.cbox('trim', 0, 0, 1.1, 1.1, 0, 0.45); c.cbox('trim', 0, 0, 1.05, 1.05, ceil - 1.25 - y0, ceil - 0.95 - y0);
+      c.solid(-0.55, -0.55, 0.55, 0.55, 0, 8);
+    }
+  }
+  // under-stair storage closed off now that the stair-hall walls are gone
+  buildWall(Lb, [636.5, 458.5, 687.5, 458.5, 'i', [[646, 678, 'd', { hinge: 'lo', into: '-y', color: '#d9b98a' }]], { rs }]);
+  const room = roleRoom(Lb, { name: 'Open Rec Room', dims: 'partitions removed · beam + 4 wrapped posts', floor: 'concrete', wall: 'paint:#e4e2de',
+    poly: [[380, 236], [541, 236], [541, 208.5], [784.5, 208.5], [784, 330.5], [784, 354.5], [809.5, 354.5], [809.5, 403.5], [784, 403.5], [784, 472.5], [687.5, 472.5], [687.5, 601.5], [534, 601.5], [534, 702], [501, 702], [494, 721.5], [426, 721.5], [419, 702], [380, 702], [380, 528.5], [346, 528.5], [346, 374.5], [380, 374.5]] }, 0, 'od');
+  RENO_ROOMS.push({ rs, level: 'b', room });
+  RENO_LABELS.push(...buildLabels(Lb, renoGroup(rs, 'b'), [{ ...room, pts: [P(Lb, 440, 420), P(Lb, 480, 420), P(Lb, 480, 460), P(Lb, 440, 460)] }]).map((l) => ((l.userData.rs = rs), l)));
+  // furniture: sectional + TV on the back wall, game table in the bay, play area in the old hall, gym in the north room
+  const at = (x, y, rot = 0) => { const [lx, lz] = P(Lb, x, y); return new Kit(renoBat(rs, 'b'), rs).at(lx, lz, y0, rot); };
+  wallTV(at(460, 238.3, 0), 75); mediaConsole(at(460, 238.3, 0), 6);
+  { const kk = at(460, 340, 180); sofa(kk, 10, { color: '#6d6458', cushion: '#766c60', pillows: ['#b48a5a', '#5d6b73'] }); }
+  { const kk = at(395, 300, 90); sofa(kk, 6.5, { color: '#6d6458', cushion: '#766c60', pillows: ['#b48a5a'] }); }
+  coffeeTable(at(460, 300, 0), 5, 2.4, '#4b3426'); rug(at(455, 300, 0), 10, 13, '#c9bda9', '#8a7d6c');
+  { const kk = at(455, 655, 0); for (const [cx, cz, r] of [[0, 2.7, 180], [0, -2.7, 0], [2.7, 0, -90], [-2.7, 0, 90]]) { const p = kk.P(cx, 0, cz); chair(new Kit(kk.bat, kk.tag).at(p.x, p.z, kk.oy, r), '#3e4a54', '#2b2b2b'); } kk.cyl(wood('#2f2219'), 0, 0, 2.0, 2.0, 2.4, 2.5, 20); kk.cyl(wood('#2f2219'), 0, 0, 0.2, 0.25, 0, 2.4, 8); kk.solid(-1.5, -1.5, 1.5, 1.5, 0, 2.5); }
+  rug(at(595, 405, 0), 8, 10, '#a9c4d6', '#3d6e8a');
+  { const kk = at(600, 390, 0); kk.box(wood('#e8d9bf'), -1.5, 0, -1, 1.5, 1.8, 1); kk.box('col:#d9452f', -1.4, 1.8, -0.9, -0.2, 2.6, 0.9); kk.box('col:#2f6fbf', 0.2, 1.8, -0.9, 1.4, 2.4, 0.9); kk.solid(-1.5, -1, 1.5, 1, 0, 2.6); }
+  { const kk = at(634.2, 405, -90); for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) kk.box('col:' + ['#f2b632', '#3a9b4a', '#d9452f', '#2f6fbf'][(i + j) % 4], -2.6 + i * 1.8, 0.1 + j * 1.3, 0.1, -1.0 + i * 1.8, 1.2 + j * 1.3, 1.3); kk.box(wood('#e8d9bf'), -2.8, 0, 0, 2.8, 2.7, 0.1); kk.solid(-2.8, 0, 2.8, 1.3, 0, 2.7); }
+  rubberFloor(at(662, 138, 0), 17, 9.5); powerRack(at(543.3, 138, 90)); liftBench(at(625, 138, 90)); dumbbellRack(at(745, 69.8, 0), 5.5); pelotonBike(at(760, 175, -90));
+  // east room as a guest room / office
+  officeDesk(at(860, 238.3, 0), 5.5); officeChair(at(860, 272, 180)); sofa(at(930.7, 330, -90), 7, { color: '#8a7d6c' });
+}
+
 export function buildRenovations() {
   buildKitchen();
   buildOpenLiving();
@@ -457,5 +515,7 @@ export function buildRenovations() {
   buildPatio();
   buildPlay();
   buildBasement();
+  buildClassic();
+  buildOpenBasement();
 }
 export { shaker };
