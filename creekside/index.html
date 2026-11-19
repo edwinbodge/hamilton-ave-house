@@ -147,6 +147,10 @@
   #edit-pop .ep-link { border: 0; background: none; color: var(--accent); font: inherit; font-size: 12px; cursor: pointer; padding: 6px 0 0; }
   #edit-pop .ep-cap { margin: 0 0 6px; font-size: 11.5px; }
   #edit-pop .ep-div { height: 1px; background: var(--line); margin: 8px 0; }
+  #edit-share { position: fixed; z-index: 45; left: 50%; top: 16px; transform: translateX(-50%); display: flex; gap: 8px; align-items: center; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 6px 6px 6px 14px; box-shadow: 0 8px 24px rgba(0,0,0,.18); font-size: 13px; max-width: calc(100vw - 32px); }
+  #edit-share button { border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 999px; padding: 5px 12px; font: inherit; cursor: pointer; }
+  #edit-share button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  #edit-compare:active { background: var(--accent); color: var(--accent-ink); }
   #edit-pop .ep-sub { margin-top: 8px; }
   #edit-pop .ep-nudge { display: flex; align-items: center; gap: 4px; margin-top: 6px; font-size: 11.5px; }
   #edit-pop .ep-nudge span { margin-right: 4px; }
@@ -298,7 +302,11 @@
 
     <section>
       <h2>Point &amp; click edits</h2>
-      <p class="muted">Click any piece of furniture, wall or floor (in the walk-through, walk up to it and press F or click) to recolor, resize, move or remove it, repaint a room, or add a TV, plant, sofa and more. You can also type what you want, like "make these chairs white".</p>
+      <p class="muted">Click any piece, wall, floor or ceiling (in the walk-through, walk up to it and press F) to swap, recolor, resize, move or remove it, repaint a room, or add something. Drag a selected piece to move it. Hold <kbd>C</kbd> to compare with the house as listed.</p>
+      <div class="row">
+        <button class="btn" id="edit-compare" style="width:auto" title="Hold to see the house as listed">Hold to compare</button>
+        <button class="btn" id="edit-share-btn" style="width:auto" title="Copy a link that opens the house with your edits">Share link</button>
+      </div>
       <div class="row">
         <button class="btn" id="edit-undo" style="width:auto">Undo</button>
         <button class="btn" id="edit-reset" style="width:auto">Reset all edits</button>
@@ -367,7 +375,7 @@
   <div id="hud-room"></div>
   <div id="hud-door" hidden></div>
   <div id="hud-edit" hidden></div>
-  <div id="hud-help"><span class="lockhelp">WASD move · mouse look · E: doors · F or click: edit what the dot is on · Ctrl+Z undo · Esc pause</span><span class="draghelp">WASD / arrows move · drag to look · tap or F: edit · E: doors · Esc exits</span></div>
+  <div id="hud-help"><span class="lockhelp">WASD move · mouse look · E: doors · F or click: edit what the dot is on · hold C: compare · Ctrl+Z undo · Esc pause</span><span class="draghelp">WASD / arrows move · drag to look · tap or F: edit · E: doors · Esc exits</span></div>
   <button id="hud-exit">Exit walk-through</button>
   <button id="hud-options">Options (O)</button>
 </div>

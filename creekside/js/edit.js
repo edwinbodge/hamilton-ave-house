@@ -80,7 +80,7 @@ export function initEditor(env) {
     });
   }
   function applyItem(it) {
-    const s = E.items[it.id] || {}, g = it.group;
+    const s = (comparing ? null : E.items[it.id]) || {}, g = it.group;
     if (!g) return;
     g.visible = !s.removed && shown(it);
     g.scale.set(s.sx || 1, s.sy || 1, s.sz || 1);
@@ -89,6 +89,7 @@ export function initEditor(env) {
     // a different option of the family in the same spot ("Change"), or a repainted car
     const fam = FAMILIES[famOf(it)], paintable = !!fam?.paintable;
     const want = s.opt || s.glb || (paintable && s.color ? baseOpt(it) : null);
+    if (!want && it.altGroup) it.altGroup.visible = false;
     const key = want ? want + '|' + (paintable ? s.color || '' : '') : null;
     if (key && it.altKey !== key) setItemOption(it, want, key);
     const alt = !!key && it.altKey === key && it.altReady;
@@ -114,7 +115,7 @@ export function initEditor(env) {
   function shown(it) {
     if (!env.levelShown) return true;
     const lvl = levelOf(it);
-    if (it.added && !env.levelShown(lvl)) return false;
+    if (it.added && (comparing || !env.levelShown(lvl))) return false;
     if (isCeilingItem(it) && !env.ceilingShown(lvl)) return false;
     return true;
   }
@@ -226,10 +227,14 @@ export function initEditor(env) {
   function pickAt(ndc) {
     ray.setFromCamera(ndc, camera);
     const hits = ray.intersectObjects([house, site, addedGroup], true).filter((h) => h.object.isMesh && isVisible(h.object) && !(h.object.material && h.object.material.transparent && h.object.material.opacity < 0.9) && h.object.userData.measurable !== false);
-    const h = hits[0];
+    let h = null, it = null;
+    for (const c of hits) { // (the pieces being moved are see-through to the pointer)
+      let ci = null;
+      for (let o = c.object; o; o = o.parent) if (o.name === 'item' && o.userData.item) { ci = o.userData.item; break; }
+      if (pending && ci && pending.items.includes(ci)) continue;
+      h = c; it = ci; break;
+    }
     if (!h || h.distance > 120) return null;
-    let it = null;
-    for (let o = h.object; o; o = o.parent) if (o.name === 'item' && o.userData.item) { it = o.userData.item; break; }
     const n = h.face ? h.face.normal.clone().transformDirection(h.object.matrixWorld) : new THREE.Vector3(0, 1, 0);
     if (n.dot(ray.ray.direction) > 0) n.negate();
     const key = h.object.name || '';
@@ -470,42 +475,119 @@ export function initEditor(env) {
     cur = { ...t, item: it, kind: 'item' }; all = false; view = 'main'; render(); highlight([it]);
     say(`Added ${NAMED.has(famId) ? optionOf(famId, optId).name : 'a ' + SINGULAR[famId]}. Move it, or nudge it with the arrows.`);
   }
-  function startMove(copy = false) {
-    pending = { items: targets(), copy };
-    const n = pending.items.length, it = pending.items[0];
-    close(true);
-    const where = isWallItem(it) ? 'a spot on a wall' : isCeilingItem(it) ? 'a spot on the ceiling' : 'the floor (or a wall to back it against)';
-    hint.hidden = false; hint.textContent = `${copy ? 'Copy' : 'Move'} ${n > 1 ? n + ' pieces' : 'the ' + nameOf(it)}: click ${where} · Esc cancels`;
-  }
-  async function finishMove(t) {
-    const { items, copy } = pending, first = items[0];
-    const wallTarget = t && (t.kind === 'wall' || (t.kind === 'item' && Math.abs(t.normal.y) < 0.3 && isWallItem(first)));
-    if (isCeilingItem(first)) {
-      if (!t || t.kind !== 'ceiling') { toast('Click a spot on the ceiling · Esc cancels', 4000); return false; }
-    } else if (isWallItem(first) && !wallTarget) { toast('Click a spot on a wall to hang it there · Esc cancels', 4000); return false; }
-    pending = null; hint.hidden = true;
-    if (!t) return false;
-    if (wallTarget && !copy) return moveToWall(items, t);
-    if (!copy && t.kind !== 'floor' && t.kind !== 'ceiling') return false;
-    const s0 = E.items[first.id] || {};
-    const ddx = t.point.x - (first.x + (s0.dx || 0)), ddz = t.point.z - (first.z + (s0.dz || 0));
-    const dl = isCeilingItem(first) ? t.point.y - (first.y + (first.ctx?.ceil || 0)) : 0;
+  // ---------------------------------------------------------------- moving
+  // Move (or dragging a selected piece in the overhead views) makes the piece follow the pointer, or the
+  // crosshair in the walk-through, live: it snaps to a 3" grid, hangs on walls, backs up to them, and the clear
+  // space around it is shown as you go. Click (or let go) to drop it, Esc to cancel.
+  const gridSnap = (v) => Math.round(v * 4) / 4;
+  async function startMove(copy = false, grabAt = null) {
+    let items = targets();
+    if (!items.length) return;
     snapshot();
     if (copy) {
-      for (const it of items) {
-        const s = E.items[it.id] || {}, id = nextId();
-        E.added.push({ id, kind: 'copy', src: it.kind === 'copy' ? it.src : it.id });
-        E.items[id] = { ...s, removed: false, dx: (s.dx || 0) + ddx, dz: (s.dz || 0) + ddz, dl: (s.dl || 0) + dl };
-      }
-      await syncAdded(); save();
-      return true;
+      const ids = [];
+      for (const it of items) { const s0 = E.items[it.id] || {}, id = nextId(); E.added.push({ id, kind: 'copy', src: it.kind === 'copy' ? it.src : it.id }); E.items[id] = { ...s0, removed: false }; ids.push(id); }
+      await syncAdded(); items = ids.map((id) => ADDED.get(id)).filter(Boolean);
+      if (!items.length) return;
     }
-    for (const it of items) { const s = st(it.id); s.dx = (s.dx || 0) + ddx; s.dz = (s.dz || 0) + ddz; if (dl) s.dl = (s.dl || 0) + dl; applyItem(it); }
-    if (items.length === 1 && !isCeilingItem(first)) snapBack(first);
+    const first = items[0], s0 = E.items[first.id] || {}, bx = first.x + (s0.dx || 0), bz = first.z + (s0.dz || 0);
+    // where the pointer holds the piece: where you grabbed it, else the middle of its footprint
+    let grab = [0, 0];
+    if (grabAt) grab = [grabAt.x - bx, grabAt.z - bz];
+    else if (!isWallItem(first) && !isCeilingItem(first)) {
+      const fp = footprint(first), r = (first.rot + (s0.spin || 0)) * R, lx = fp.dx || 0, lz = fp.back ? (fp.d || 0) / 2 : fp.dz || 0;
+      grab = [lx * Math.cos(r) + lz * Math.sin(r), -lx * Math.sin(r) + lz * Math.cos(r)];
+    }
+    pending = { items, copy, drag: !!grabAt, grab, last: null,
+      orig: items.map((it) => [it.id, E.items[it.id] ? JSON.stringify(E.items[it.id]) : null]),
+      rel: items.map((it) => { const s1 = E.items[it.id] || {}; return [it.x + (s1.dx || 0) - bx, it.z + (s1.dz || 0) - bz]; }) };
+    close(true);
+    const where = isWallItem(first) ? 'a wall' : isCeilingItem(first) ? 'the ceiling' : 'the floor';
+    pending.label = `${copy ? 'Copy of' : 'Moving'} ${items.length > 1 ? items.length + ' pieces' : 'the ' + nameOf(first)}`;
+    showHint(`${pending.label}: point at ${where} · ${grabAt ? 'let go' : 'click'} to drop · Esc cancels`);
+  }
+  function preview(t) {
+    if (!pending || !t) return;
+    const { items } = pending, first = items[0];
+    if (isCeilingItem(first)) { if (t.kind !== 'ceiling') return; placeAt(t.point.x, t.point.z, { ceilY: t.point.y }); }
+    else if (isWallItem(first)) { if (!(t.kind === 'wall' || (t.kind === 'item' && Math.abs(t.normal.y) < 0.3))) return; hangAt(first, t); }
+    else if (t.kind === 'floor' || (t.kind === 'item' && t.normal.y > 0.7 && t.point.y - (env.floorAt(t.point.x, t.point.z, t.point.y + 0.5)) < 0.5)) { // floor, or a rug on it
+      const f = env.floorAt(t.point.x, t.point.z, t.point.y + 0.5);
+      placeAt(t.point.x, t.point.z, { floorY: f === -Infinity ? t.point.y : f });
+    }
+    else if (t.kind === 'wall' && items.length === 1) hangAt(first, t);
+    else return;
+    pending.last = t;
+    const c = clearance(first);
+    showHint(`${pending.label}${c ? ' · ' + c : ''} · ${pending.drag ? 'let go' : 'click'} to drop · Esc cancels`);
+    gfx.dirty();
+  }
+  function placeAt(x, z, o) {
+    const { items, rel, grab } = pending;
+    const X = gridSnap(x - grab[0]), Z = gridSnap(z - grab[1]);
+    items.forEach((it, i) => {
+      const s1 = st(it.id);
+      s1.dx = X + rel[i][0] - it.x; s1.dz = Z + rel[i][1] - it.z;
+      if (o.floorY !== undefined) s1.dl = o.floorY - it.y;
+      if (o.ceilY !== undefined) s1.dl = o.ceilY - (it.y + (it.ctx?.ceil || 0));
+      applyItem(it);
+    });
+  }
+  // quick version of snapToWall for the live preview (no centering): square to the wall, at its floor
+  function hangAt(it, t) {
+    const n = t.normal.clone().setY(0).normalize(); { const [ax, az] = axisOf(n.x, n.z); if (Math.abs(ax ? n.x : n.z) > 0.96) n.set(ax, 0, az); }
+    const rot = Math.atan2(n.x, n.z) / R, s1 = st(it.id), wall = isWallItem(it), fp = wall ? { back: true } : footprint(it);
+    const off = wall || fp.back ? 0.03 : (fp.d || 2) / 2 + 0.05;
+    const tg = new THREE.Vector3(n.z, 0, -n.x), along = wall ? 0 : -(fp.dx || 0) * (s1.sx || 1);
+    const px = t.point.x + n.x * off + tg.x * along, pz = t.point.z + n.z * off + tg.z * along, f = env.floorAt(px, pz, t.point.y + 0.5);
+    s1.dx = px - it.x; s1.dz = pz - it.z; s1.spin = rot - it.rot; if (f !== -Infinity) s1.dl = f - it.y;
+    applyItem(it);
+  }
+  async function drop(t) {
+    if (!pending) return false;
+    preview(t);
+    const { items, last } = pending, first = items[0];
+    if (!last) { cancelMove(); toast(isWallItem(first) ? 'Point at a wall to hang it.' : isCeilingItem(first) ? 'Point at the ceiling to place it.' : 'Point at the floor to place it.', 2500); return true; }
+    pending = null; hideHint();
+    if (items.length === 1 && !isCeilingItem(first)) { if (last.kind === 'wall' || isWallItem(first)) snapToWall(first, last, true); else snapBack(first); }
     save(); gfx.dirty();
+    cur = { item: first, kind: 'item', point: last.point, normal: last.normal };
     return true;
   }
-  function moveToWall(items, t) { snapshot(); snapToWall(items[0], t, true); save(); return true; }
+  function cancelMove() {
+    if (!pending) return;
+    const { items, orig, copy } = pending;
+    pending = null;
+    if (copy) { const ids = new Set(items.map((i) => i.id)); E.added = E.added.filter((a) => !ids.has(a.id)); for (const id of ids) delete E.items[id]; syncAdded(); }
+    else for (const [id, j] of orig) { if (j) E.items[id] = JSON.parse(j); else delete E.items[id]; const it = itemById(id); if (it) applyItem(it); }
+    undo.pop(); hideHint(); save(); gfx.dirty();
+  }
+  // clear space around a floor piece (front / back / sides, as the piece faces), for walkways and fit
+  const fmt = (d) => { const i = Math.max(0, Math.round(d * 12)); return i < 12 ? `${i}"` : `${Math.floor(i / 12)}'${i % 12 ? ` ${i % 12}"` : ''}`; };
+  function clearance(it) {
+    if (isWallItem(it) || isCeilingItem(it)) return '';
+    const fp = footprint(it); if (!fp.w) return '';
+    const s1 = E.items[it.id] || {}, r = (it.rot + (s1.spin || 0)) * R, sx = s1.sx || 1, sz = s1.sz || 1;
+    const f = new THREE.Vector3(Math.sin(r), 0, Math.cos(r)), side = new THREE.Vector3(Math.cos(r), 0, -Math.sin(r));
+    const o = new THREE.Vector3(it.x + (s1.dx || 0), it.y + (s1.dl || 0) + Math.min(1.4, (fp.h || 2) * 0.5), it.z + (s1.dz || 0));
+    const ext = { front: (fp.back ? fp.d : fp.d / 2 + (fp.dz || 0)) * sz, back: (fp.back ? 0 : fp.d / 2 - (fp.dz || 0)) * sz, right: (fp.w / 2 + (fp.dx || 0)) * sx, left: (fp.w / 2 - (fp.dx || 0)) * sx };
+    const dirs = { front: f, back: f.clone().negate(), left: side.clone().negate(), right: side };
+    const out = {};
+    for (const [k, d] of Object.entries(dirs)) {
+      probe.set(o, d); probe.far = 30;
+      const h = probe.intersectObjects([house, addedGroup], true).find((x) => {
+        if (!x.object.isMesh || !isVisible(x.object) || (x.object.material && x.object.material.transparent)) return false;
+        for (let q = x.object; q; q = q.parent) if (q.name === 'item' && q.userData.item === it) return false;
+        return true;
+      });
+      out[k] = h ? h.distance - ext[k] : null;
+    }
+    const part = (k, label) => (out[k] === null ? null : `${out[k] < 0.05 ? 'touching' : fmt(out[k])} ${label}`);
+    return ['Clear: ' + [part('front', 'in front'), part('back', 'behind'), part('left', 'left'), part('right', 'right')].filter(Boolean).join(', ')].join('');
+  }
+  function showHint(t) { clearTimeout(toastT); hint.hidden = false; hint.textContent = t; }
+  function hideHint() { if (!pending) hint.hidden = true; }
+  async function finishMove(t) { return drop(t); }
 
   // ---------------------------------------------------------------- snapping: the house's axes, walls, furniture
   // the house is laid out on its x / z axes: placements face along them and nudges move along them
@@ -642,14 +724,72 @@ export function initEditor(env) {
   }
   function openAhead() {
     if (!pop.hidden) { close(true); return true; }
-    if (pending) { finishMove(pickAt(new THREE.Vector2(0, 0))); return true; }
+    if (pending) { drop(pickAt(new THREE.Vector2(0, 0))); return true; }
     const t = aim();
     if (!t) return false;
     open(t, innerWidth / 2, innerHeight / 2, true);
     return true;
   }
+  // overhead views: the moving piece follows the mouse; grab a selected piece to drag it
+  let dragging = false;
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    if (env.walking() || pop.hidden || !cur?.item || e.button !== 0 || pending) return;
+    const t = pickAt(ndc(e.clientX, e.clientY));
+    if (!t || !t.item || !targets().includes(t.item)) return;
+    e.stopImmediatePropagation(); e.preventDefault();
+    env.orbit.enabled = false; dragging = true;
+    startMove(false, t.point);
+  }, true);
+  addEventListener('pointermove', (e) => { if (pending && !env.walking() && (dragging || !pending.drag)) preview(pickAt(ndc(e.clientX, e.clientY))); });
+  addEventListener('pointerup', (e) => {
+    if (!dragging) return;
+    dragging = false; env.orbit.enabled = true; e.stopPropagation();
+    drop(pickAt(ndc(e.clientX, e.clientY))).then(() => { const it = cur && cur.item; if (it) open({ ...cur }, e.clientX, e.clientY); });
+  }, true);
+  // compare: hold C (or the panel button) to see the house as listed
+  let comparing = false;
+  function compare(on) {
+    if (on === comparing || pending) return;
+    comparing = on;
+    if (on) { close(false); reapplyStyle(); showHint('The house as listed · let go to see your edits'); }
+    else { reapplyPaint(); hint.hidden = true; }
+    for (const it of ITEMS) if (it.group && (E.items[it.id] || it.altGroup)) applyItem(it);
+    for (const it of ADDED.values()) applyItem(it);
+    gfx.dirty();
+  }
+  addEventListener('keyup', (e) => { if (e.code === 'KeyC') compare(false); });
+  addEventListener('blur', () => compare(false));
+  const cmpBtn = document.querySelector('#edit-compare');
+  if (cmpBtn) { cmpBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); compare(true); }); for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) cmpBtn.addEventListener(ev, () => compare(false)); }
+  // share: the edits travel in the link (compressed), so whoever opens it sees the same house
+  const b64u = (buf) => { let bin = ''; const a = new Uint8Array(buf); for (let i = 0; i < a.length; i += 0x8000) bin += String.fromCharCode.apply(null, a.subarray(i, i + 0x8000)); return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+  const unb64u = (t) => Uint8Array.from(atob(t.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+  async function shareLink() {
+    if (!countText()) return toast('Make an edit first, then share it.', 2500);
+    const buf = await new Response(new Blob([JSON.stringify(E)]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer();
+    const url = location.origin + location.pathname + '#edits=' + b64u(buf);
+    try { await navigator.clipboard.writeText(url); toast('Link copied. Whoever opens it sees the house with your edits.', 4000); }
+    catch { window.prompt('Copy this link to share your edits:', url); }
+  }
+  async function readShared() {
+    const m = /[#&]edits=([\w-]+)/.exec(location.hash);
+    if (!m) return;
+    let shared;
+    try { shared = JSON.parse(await new Response(new Blob([unb64u(m[1])]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text()); } catch { return; }
+    history.replaceState(null, '', location.pathname + location.search);
+    if (!shared || !shared.items) return;
+    const n = Object.keys(shared.items).length + Object.keys(shared.paint || {}).length + (shared.added || []).length;
+    const bar = document.createElement('div'); bar.id = 'edit-share';
+    bar.innerHTML = `<span>Someone shared ${n} edit${n === 1 ? '' : 's'} to this house.</span><button class="primary">Show them</button><button>Not now</button>`;
+    document.body.appendChild(bar);
+    const done = () => bar.remove();
+    bar.children[1].addEventListener('click', async () => { done(); snapshot(); await restore(JSON.stringify({ items: shared.items, paint: shared.paint || {}, added: shared.added || [] })); toast(`Showing the shared edits. Undo puts yours back.`, 4000); });
+    bar.children[2].addEventListener('click', done);
+  }
+  document.querySelector('#edit-share-btn')?.addEventListener('click', shareLink);
   addEventListener('keydown', (e) => {
-    if (e.code === 'Escape' && (pending || !pop.hidden)) { e.preventDefault(); e.stopPropagation(); if (pending) { pending = null; hint.hidden = true; } if (!pop.hidden) close(false); }
+    if (e.code === 'KeyC' && !e.repeat && !e.metaKey && !e.ctrlKey && !(e.target.matches && e.target.matches('input, textarea, select'))) compare(true);
+    if (e.code === 'Escape' && (pending || !pop.hidden)) { e.preventDefault(); e.stopPropagation(); if (pending) cancelMove(); if (!pop.hidden) close(false); }
     if (e.code === 'KeyZ' && (e.ctrlKey || e.metaKey) && !(e.target.matches && e.target.matches('input, textarea'))) { e.preventDefault(); doUndo(); toast('Undone.', 1500); }
   }, true);
   pop.addEventListener('pointerdown', (e) => e.stopPropagation());
@@ -658,6 +798,8 @@ export function initEditor(env) {
   document.querySelector('#edit-reset')?.addEventListener('click', () => { if (confirm('Remove all your point-and-click edits to this house?')) resetAll(); });
   addEventListener('resize', () => { if (!pop.hidden) clamp(); });
   // start: rebuild what was saved
-  (async () => { await syncAdded(); applyAll(); updateCount(); })();
-  return { clickAt, aim, openAhead, applyLevels, isOpen: () => !pop.hidden, isPending: () => !!pending, close, refresh: () => { rebuildCopies(); applyAll(); }, reapplyPaint, command: (s) => command(s), open, pickAt, E: () => E, toast };
+  (async () => { await syncAdded(); applyAll(); updateCount(); readShared(); })();
+  // walk-through: the moving piece follows the crosshair
+  function tick() { if (pending && env.walking()) preview(pickAt(new THREE.Vector2(0, 0))); }
+  return { clickAt, aim, openAhead, applyLevels, tick, isComparing: () => comparing, isOpen: () => !pop.hidden, isPending: () => !!pending, close, refresh: () => { rebuildCopies(); applyAll(); }, reapplyPaint, command: (s) => command(s), open, pickAt, E: () => E, toast };
 }

@@ -447,11 +447,14 @@ function updateWalk(dt) {
   $('#hud-room').textContent = r && !r.void ? `${r.name} · ${lvlName}` : walk.feet < 4 && walk.feet > -2 && !r ? 'Outside' : lvlName;
   const di = doorAhead(7);
   $('#hud-door').hidden = di < 0;
+  // a piece being moved follows the crosshair
+  walk.moveT = (walk.moveT || 0) - dt;
+  if (walk.moveT <= 0) { walk.moveT = 0.05; editor.tick(); }
   // what's under the crosshair and close enough to edit (checked a few times a second)
   walk.aimT = (walk.aimT || 0) - dt;
   if (walk.aimT <= 0) {
     walk.aimT = 0.12;
-    const t = di < 0 && !editor.isOpen() ? editor.aim() : null;
+    const t = di < 0 && !editor.isOpen() && !editor.isPending() ? editor.aim() : null;
     $('#hud-edit').hidden = !t;
     if (t) $('#hud-edit').textContent = `${plc.isLocked ? 'F or click' : 'F or tap'}: ${t.label}`;
   }
@@ -726,7 +729,7 @@ function roomName(point, normal) {
   return r && !r.void && r.name ? r.name : f < 0.5 && f > -2 ? 'Outside' : '';
 }
 editor = initEditor({
-  scene, camera, renderer, house, site, gfx, isVisible, roomName, floorAt,
+  scene, camera, renderer, house, site, gfx, isVisible, roomName, floorAt, orbit, walking: () => state.mode === 'walk',
   levelShown: (lvl) => groups[lvl].visible && state.furniture,
   ceilingShown: (lvl) => (lvl === 'b' ? groups.f1.visible : lvl === 'f1' ? groups.f2.visible : groups.roof.visible),
   reapplyStyle: () => applyStyle(state.style),
