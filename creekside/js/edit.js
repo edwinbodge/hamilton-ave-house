@@ -82,7 +82,7 @@ export function initEditor(env) {
   function applyItem(it) {
     const s = E.items[it.id] || {}, g = it.group;
     if (!g) return;
-    g.visible = !s.removed;
+    g.visible = !s.removed && shown(it);
     g.scale.set(s.sx || 1, s.sy || 1, s.sz || 1);
     g.position.set(it.x + (s.dx || 0), it.y + (s.dl || 0) + (s.dy || 0), it.z + (s.dz || 0));
     g.rotation.y = (it.rot + (s.spin || 0)) * R;
@@ -109,6 +109,20 @@ export function initEditor(env) {
       so.y0 = it.y + yo + (o.y0 - it.y) * sy; so.y1 = it.y + yo + (o.y1 - it.y) * sy;
     }
   }
+  // which floor a piece is on, and whether that floor (and, for ceiling lights, the ceiling above it) is shown
+  const levelOf = (it) => { const s = E.items[it.id] || {}, y = it.y + (s.dl || 0) - (isCeilingItem(it) && !(it.ctx?.ceil) ? 6 : 0); return y < -4.5 ? 'b' : y < 5.5 ? 'f1' : 'f2'; };
+  function shown(it) {
+    if (!env.levelShown) return true;
+    const lvl = levelOf(it);
+    if (it.added && !env.levelShown(lvl)) return false;
+    if (isCeilingItem(it) && !env.ceilingShown(lvl)) return false;
+    return true;
+  }
+  function applyLevels() {
+    for (const it of ITEMS) if (it.group && (E.items[it.id] || isCeilingItem(it))) it.group.visible = !(E.items[it.id] || {}).removed && shown(it);
+    for (const it of ADDED.values()) it.group.visible = !(E.items[it.id] || {}).removed && shown(it);
+    gfx.dirty();
+  }
   // the original piece's box in its own frame (what a replacement is sized and placed to)
   function footprint(it) {
     if (it.fp) return it.fp;
@@ -118,7 +132,7 @@ export function initEditor(env) {
     src.traverse((m) => { if (m.isMesh && m.geometry) { if (!m.geometry.boundingBox) m.geometry.computeBoundingBox(); box.union(m.geometry.boundingBox.clone().applyMatrix4(inv.clone().multiply(m.matrixWorld))); } });
     if (box.isEmpty()) return {};
     const back = Math.abs(box.min.z) < 0.4;
-    const fp = { w: box.max.x - box.min.x, d: back ? box.max.z : box.max.z - box.min.z, h: box.max.y - box.min.y, back, dx: (box.min.x + box.max.x) / 2, dz: back ? 0 : (box.min.z + box.max.z) / 2 };
+    const fp = { w: box.max.x - box.min.x, d: back ? box.max.z : box.max.z - box.min.z, h: box.max.y - box.min.y, cy: (box.min.y + box.max.y) / 2, top: box.max.y, back, dx: (box.min.x + box.max.x) / 2, dz: back ? 0 : (box.min.z + box.max.z) / 2 };
     if (it.modelGroup && !it.modelGroup.children.length) return fp; // models not loaded yet: don't cache
     return (it.fp = fp);
   }
@@ -272,7 +286,7 @@ export function initEditor(env) {
     return `${cap(cur.kind === 'other' ? 'here' : cur.kind)}${room ? ' · ' + room : ''}`;
   }
   function btn(label, icon, fn, cls = '') { const b = document.createElement('button'); b.className = cls; b.innerHTML = `<span class="ic">${icon}</span>${label}`; b.addEventListener('click', (e) => { e.stopPropagation(); fn(); }); return b; }
-  const go = (v) => { view = v; render(); };
+  const go = (v) => { view = view === v ? 'main' : v; render(); }; // tapping an open tab closes it
   function optionGrid(famId, onPick, currentId) {
     const g = document.createElement('div'); g.className = 'ep-thumbs';
     for (const o of FAMILIES[famId].options) {
@@ -304,9 +318,9 @@ export function initEditor(env) {
         pop.appendChild(l);
       }
       row.append(btn(fam?.paintable ? 'Paint' : 'Recolor', '◐', () => go('color'), view === 'color' ? 'on' : ''));
-      if (fam) row.append(btn('Change', '⇄', () => go('change'), view === 'change' ? 'on' : ''));
+      if (fam) row.append(btn('Swap', '⇄', () => go('change'), view === 'change' ? 'on' : ''));
       row.append(btn('Resize', '⤢', () => go('size'), view === 'size' ? 'on' : ''), btn('Remove', '✕', () => act('remove')));
-      if (view === 'main') {
+      { // always there, whatever tab is open: move / turn / copy / reset and the nudge arrows
         const more = document.createElement('div'); more.className = 'ep-more';
         more.append(btn('Move', '✥', () => startMove()), btn('Turn', '↻', () => act('spin', 90)), btn('Copy', '⧉', () => startMove(true)), btn('Reset', '⟲', () => act('reset')));
         sub.appendChild(more);
@@ -315,6 +329,7 @@ export function initEditor(env) {
         nudge.append(Object.assign(document.createElement('span'), { className: 'muted', textContent: 'Nudge 6"' }));
         for (const [l, d, t] of wallish ? [['←', 'left', 'Left'], ['→', 'right', 'Right'], ['↑', 'up', 'Up'], ['↓', 'down', 'Down']] : [['←', 'left', 'Left'], ['→', 'right', 'Right'], ['↑', 'away', 'Away from you'], ['↓', 'closer', 'Toward you']]) { const b = btn(l, '', () => act('nudge', d)); b.title = t; nudge.appendChild(b); }
         sub.appendChild(nudge);
+        if (view !== 'main') sub.appendChild(Object.assign(document.createElement('div'), { className: 'ep-div' }));
       }
       if (view === 'change') {
         sub.appendChild(optionGrid(famId, (id) => act('opt', id), curOpt(it)));
@@ -403,13 +418,14 @@ export function initEditor(env) {
       const s = st(it.id);
       if (op === 'remove') { if (it.added) { E.added = E.added.filter((a) => a.id !== it.id); delete E.items[it.id]; } else s.removed = true; }
       if (op === 'color') { if (arg) s.color = arg; else delete s.color; }
-      if (op === 'spin') s.spin = ((s.spin || 0) + arg) % 360;
+      if (op === 'spin') s.spin = (arg % 90 ? (s.spin || 0) + arg : Math.round((it.rot + (s.spin || 0) + arg) / 90) * 90 - it.rot) % 360; // turns land square to the house
       if (op === 'opt') { delete s.glb; if (arg && arg !== baseOpt(it)) s.opt = arg; else delete s.opt; }
       if (op === 'scale') { const [ax, f] = arg; for (const k of ax === 'all' ? ['sx', 'sy', 'sz'] : [ax]) s[k] = Math.max(0.3, Math.min(3, (s[k] || 1) * f)); }
       if (op === 'nudge') {
         const r = (it.rot + (s.spin || 0)) * R, tx = Math.cos(r), tz = -Math.sin(r), step = 0.5;
-        const cr = new THREE.Vector3(); camera.getWorldDirection(cr); const fl = Math.hypot(cr.x, cr.z) || 1, fx = cr.x / fl, fz = cr.z / fl, rx = -fz, rz = fx;
-        if (isWallItem(it) && (arg === 'left' || arg === 'right')) { const k = (arg === 'right' ? 1 : -1) * (Math.sign(tx * rx + tz * rz) || 1) * step; s.dx = (s.dx || 0) + tx * k; s.dz = (s.dz || 0) + tz * k; }
+        const cr = new THREE.Vector3(); camera.getWorldDirection(cr);
+        const [fx, fz] = axisOf(cr.x, cr.z), rx = -fz, rz = fx; // the house axis closest to where you're looking (and to your right)
+        if (isWallItem(it) && (arg === 'left' || arg === 'right')) { const [ax, az] = axisOf(tx, tz), k = (arg === 'right' ? 1 : -1) * (Math.sign(ax * rx + az * rz) || 1) * step; s.dx = (s.dx || 0) + ax * k; s.dz = (s.dz || 0) + az * k; }
         else if (arg === 'left' || arg === 'right') { const k = arg === 'right' ? step : -step; s.dx = (s.dx || 0) + rx * k; s.dz = (s.dz || 0) + rz * k; }
         else if (arg === 'up' || arg === 'down') s.dy = (s.dy || 0) + (arg === 'up' ? step : -step);
         else { const k = arg === 'away' ? step : -step; s.dx = (s.dx || 0) + fx * k; s.dz = (s.dz || 0) + fz * k; }
@@ -422,7 +438,7 @@ export function initEditor(env) {
     if (op === 'remove') { close(true); toast(`Removed ${n}. Ctrl+Z (or Undo in the panel) brings it back.`); return; }
     highlight(list);
     const msg = { color: `Recolored ${n}.`, spin: `Turned ${n}.`, scale: `Resized ${n}.`, reset: `Put ${n} back as it was.`, opt: arg ? `Changed to ${optionOf(famOf(list[0]), arg)?.name || 'that one'}.` : `Back to the original.`, nudge: `Nudged ${n}.` }[op] || 'Done.';
-    view = { color: 'color', scale: 'size', opt: 'change' }[op] || 'main'; render(); say(msg);
+    if (op === 'color' || op === 'scale' || op === 'opt') view = { color: 'color', scale: 'size', opt: 'change' }[op]; render(); say(msg);
   }
   function paint(hex) {
     if (!cur || !cur.key) return say('Click a painted wall to repaint a room.');
@@ -441,15 +457,16 @@ export function initEditor(env) {
     if (fam.place === 'ceiling') { rot = 0; where = 'ceiling'; ctx = { ceil: 0, hang: Math.min(2.6, Math.max(1.2, (p.y - env.floorAt(p.x, p.z, p.y - 0.5)) - 6.2)) }; }
     else if (t.kind === 'wall') { // back against the wall, facing into the room, on that room's floor
       const n = t.normal.clone().setY(0).normalize();
-      where = fam.place === 'wall' ? 'wall' : 'floor'; rot = Math.atan2(n.x, n.z) / R;
+      where = fam.place === 'wall' ? 'wall' : 'floor'; rot = snapRot(Math.atan2(n.x, n.z) / R, 12);
       p.addScaledVector(n, fam.back || fam.place === 'wall' ? 0.02 : 1.6);
       y = env.floorAt(p.x, p.z, p.y + 0.5); if (y === -Infinity) y = p.y - 4;
-    } else rot = Math.round((Math.atan2(toCam.x, toCam.z) / R) / 15) * 15;
+    } else rot = snapRot(Math.atan2(toCam.x, toCam.z) / R); // square to the house, facing you
     snapshot();
     const a = { id: nextId(), fam: famId, opt: optId, x: p.x, y, z: p.z, rot, where, ctx };
     E.added.push(a); save();
     const it = await buildAdded(a);
     if (!it) return;
+    if (t.kind === 'wall') snapToWall(it, t, false); else if (fam.place === 'floor') snapBack(it);
     cur = { ...t, item: it, kind: 'item' }; all = false; view = 'main'; render(); highlight([it]);
     say(`Added ${NAMED.has(famId) ? optionOf(famId, optId).name : 'a ' + SINGULAR[famId]}. Move it, or nudge it with the arrows.`);
   }
@@ -484,19 +501,88 @@ export function initEditor(env) {
       return true;
     }
     for (const it of items) { const s = st(it.id); s.dx = (s.dx || 0) + ddx; s.dz = (s.dz || 0) + ddz; if (dl) s.dl = (s.dl || 0) + dl; applyItem(it); }
+    if (items.length === 1 && !isCeilingItem(first)) snapBack(first);
     save(); gfx.dirty();
     return true;
   }
-  // back a piece against the clicked wall, facing into the room (TVs and art keep their height)
-  function moveToWall(items, t) {
-    const n = t.normal.clone().setY(0).normalize(), rot = Math.atan2(n.x, n.z) / R;
-    snapshot();
-    const it = items[0], s = st(it.id), fp = isWallItem(it) ? { back: true } : footprint(it);
-    const off = fp.back ? 0.02 : (fp.d || 2) / 2 + 0.05;
-    const px = t.point.x + n.x * off, pz = t.point.z + n.z * off, f = env.floorAt(px, pz, t.point.y + 0.5);
-    s.dx = px - it.x; s.dz = pz - it.z; s.spin = rot - it.rot; s.dl = f === -Infinity ? 0 : f - it.y;
-    applyItem(it); save(); gfx.dirty();
-    return true;
+  function moveToWall(items, t) { snapshot(); snapToWall(items[0], t, true); save(); return true; }
+
+  // ---------------------------------------------------------------- snapping: the house's axes, walls, furniture
+  // the house is laid out on its x / z axes: placements face along them and nudges move along them
+  function snapRot(deg, tol = 360) { const r = Math.round(deg / 90) * 90, d = Math.abs((((deg - r) % 360) + 540) % 360 - 180); return d <= tol ? r : deg; }
+  const axisOf = (x, z) => (Math.abs(x) >= Math.abs(z) ? [Math.sign(x) || 1, 0] : [0, Math.sign(z) || 1]);
+  const probe = new THREE.Raycaster();
+  const inItem = (o) => { for (let p = o; p; p = p.parent) if (p.name === 'item' || p.name === 'added items') return true; return false; };
+  function cast(o, d, far) { probe.set(o, d); probe.far = far; return probe.intersectObject(house, true).find((h) => h.object.isMesh && isVisible(h.object) && !(h.object.material && h.object.material.transparent) && !inItem(h.object)) || null; }
+  // the stretch of plain wall around P (no openings, corners or trim), as offsets [lo, hi] along the wall
+  function wallSpan(P, n, tg, ys) {
+    const out = [0, 0], back = n.clone().negate();
+    for (const dir of [-1, 1]) {
+      let last = 0;
+      for (let d = 0.25; d <= 14; d += 0.25) {
+        const ok = ys.every((y) => { const o = P.clone().addScaledVector(tg, dir * d).addScaledVector(n, 0.45); o.y = y; const h = cast(o, back, 0.9); return h && Math.abs(h.distance - 0.45) < 0.12; });
+        if (!ok) break;
+        last = d;
+      }
+      out[dir < 0 ? 0 : 1] = dir * last;
+    }
+    return out;
+  }
+  // a low piece standing against this wall (sofa, console, bed, dresser) for art / a TV to center over
+  function furnitureBelow(P, n, tg, lo, hi, floorY, self) {
+    let best = null;
+    const box = new THREE.Box3();
+    for (const o of [...ITEMS, ...ADDED.values()]) {
+      if (o === self || !o.group || !isVisible(o.group) || isWallItem(o) || isCeilingItem(o)) continue;
+      box.setFromObject(o.group); if (box.isEmpty()) continue;
+      const top = box.max.y - floorY; if (top < 1 || top > 4.4 || box.min.y > floorY + 1) continue;
+      const cs = [[box.min.x, box.min.z], [box.max.x, box.min.z], [box.min.x, box.max.z], [box.max.x, box.max.z]].map(([x, z]) => [(x - P.x) * tg.x + (z - P.z) * tg.z, (x - P.x) * n.x + (z - P.z) * n.z]);
+      const t0 = Math.min(...cs.map((c) => c[0])), t1 = Math.max(...cs.map((c) => c[0])), d0 = Math.min(...cs.map((c) => c[1]));
+      if (d0 > 2.5 || d0 < -0.6 || t1 < lo - 0.5 || t0 > hi + 0.5 || t1 - t0 < 1.5) continue;
+      const c = (t0 + t1) / 2;
+      if (!best || Math.abs(c) < Math.abs(best.c)) best = { c, top: box.max.y, w: t1 - t0 };
+    }
+    return best;
+  }
+  // put a piece on the wall at t (a pick on a wall): square to it, centered on the plain stretch of wall (or over
+  // the sofa / console / bed below it), at a sensible height. Floor pieces back up against the wall.
+  function snapToWall(it, t, keepClick) {
+    const n = t.normal.clone().setY(0).normalize(); { const [ax, az] = axisOf(n.x, n.z); if (Math.abs(ax ? n.x : n.z) > 0.96) n.set(ax, 0, az); }
+    const rot = Math.atan2(n.x, n.z) / R, tg = new THREE.Vector3(n.z, 0, -n.x), s = st(it.id), wall = isWallItem(it);
+    const fl = env.floorAt(t.point.x + n.x * 0.6, t.point.z + n.z * 0.6, t.point.y + 0.5), floorY = fl === -Infinity ? t.point.y - 4 : fl;
+    const fp = footprint(it), w = (fp.w || 2) * (s.sx || 1), h = (fp.h || 2) * (s.sy || 1);
+    const P = t.point.clone(); P.y = floorY;
+    let c = 0, dy = s.dy || 0;
+    if (wall) {
+      const yc = floorY + (fp.cy ?? 4.5) * (s.sy || 1) + dy;
+      const [lo, hi] = wallSpan(P, n, tg, [Math.max(floorY + 0.8, yc - h / 2 + 0.15), Math.min(floorY + 7.6, yc + h / 2 - 0.15)]);
+      const under = furnitureBelow(P, n, tg, lo, hi, floorY, it);
+      if (under) { c = Math.max(lo + w / 2, Math.min(hi - w / 2, under.c)); const gap = famOf(it) === 'tv' ? 1.0 : 0.75; dy = under.top + gap + h / 2 - (floorY + (fp.cy ?? 4.5) * (s.sy || 1)); }
+      else c = (lo + hi) / 2;
+      if (hi - lo < w && !under) c = (lo + hi) / 2;
+    } else {
+      const [lo, hi] = wallSpan(P, n, tg, [floorY + 1.0, floorY + 2.6]);
+      c = hi - lo <= w * 2.2 ? (lo + hi) / 2 : Math.max(lo + w / 2, Math.min(hi - w / 2, 0)); // a bed / sofa centers on a short wall
+      dy = 0;
+    }
+    const off = wall || fp.back ? 0.03 : (fp.d || 2) / 2 + 0.05;
+    const pos = P.clone().addScaledVector(tg, c).addScaledVector(n, off - (fp.back || wall ? 0 : 0));
+    const ix = fp.dx || 0; // a hand-built piece whose box is off-center: keep the box (not the origin) where it belongs
+    pos.addScaledVector(tg, wall || fp.back ? -ix * (s.sx || 1) : 0);
+    s.dx = pos.x - it.x; s.dz = pos.z - it.z; s.spin = rot - it.rot; s.dl = floorY - it.y; s.dy = dy || undefined;
+    if (!s.dy) delete s.dy;
+    applyItem(it); gfx.dirty();
+  }
+  // a piece set on the floor with its back near a wall (within a foot or so) backs right up to it
+  function snapBack(it) {
+    const fp = footprint(it); if (!fp.back) return;
+    const s = st(it.id), r = (it.rot + (s.spin || 0)) * R, f = new THREE.Vector3(Math.sin(r), 0, Math.cos(r));
+    const o = new THREE.Vector3(it.x + (s.dx || 0), it.y + (s.dl || 0) + 1.6, it.z + (s.dz || 0)).addScaledVector(f, Math.min(1, (fp.d || 2) / 2));
+    const h = cast(o, f.clone().negate(), Math.min(1, (fp.d || 2) / 2) + 1.6);
+    if (!h || h.face.normal.clone().transformDirection(h.object.matrixWorld).dot(f) < 0.85) return;
+    const gap = h.distance - Math.min(1, (fp.d || 2) / 2) - 0.03;
+    s.dx = (s.dx || 0) - f.x * gap; s.dz = (s.dz || 0) - f.z * gap;
+    applyItem(it);
   }
   async function doUndo() { if (!undo.length) return; await restore(undo.pop()); if (cur) { render(); say('Undone.'); highlight(targets()); } }
   async function resetAll() { snapshot(); await restore(JSON.stringify({ items: {}, paint: {}, added: [] })); }
@@ -533,7 +619,7 @@ export function initEditor(env) {
     if (/\b(turn|rotate|spin|flip|face)\b/.test(t)) { act('spin', /\b(around|180|flip|other way)\b/.test(t) ? 180 : /\bleft\b/.test(t) ? 90 : /\b45\b/.test(t) ? 45 : -90); did = true; }
     if (color && !(opt && optionOf(famOf(cur.item), opt)?.name.toLowerCase().includes(color))) { act('color', COLORS[color]); did = true; }
     if (/\b(move|put it|over there|somewhere else)\b/.test(t) && !did) return startMove();
-    if (!did) say(`I can recolor it ("white", "navy"), change it to another ${nameOf(cur.item)} (try a name from Change), resize, turn, move or remove it.`);
+    if (!did) say(`I can recolor it ("white", "navy"), swap it for another ${nameOf(cur.item)} (try a name from Swap), resize, turn, move or remove it.`);
   }
 
   // ---------------------------------------------------------------- entry points used by app.js
@@ -573,5 +659,5 @@ export function initEditor(env) {
   addEventListener('resize', () => { if (!pop.hidden) clamp(); });
   // start: rebuild what was saved
   (async () => { await syncAdded(); applyAll(); updateCount(); })();
-  return { clickAt, aim, openAhead, isOpen: () => !pop.hidden, isPending: () => !!pending, close, refresh: () => { rebuildCopies(); applyAll(); }, reapplyPaint, command: (s) => command(s), open, pickAt, E: () => E, toast };
+  return { clickAt, aim, openAhead, applyLevels, isOpen: () => !pop.hidden, isPending: () => !!pending, close, refresh: () => { rebuildCopies(); applyAll(); }, reapplyPaint, command: (s) => command(s), open, pickAt, E: () => E, toast };
 }

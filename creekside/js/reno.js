@@ -177,7 +177,7 @@ function buildKitchen() {
     for (const dx of [-3.0, -1.0, 1.0, 3.0]) { const p = ik.P(dx, 0, -2.7); swap(new Kit(renoBat('on:kitchen&furn', 'f1'), 'on:kitchen&furn').at(p.x, p.z, 0, -90), { glb: 'Chair24' }, (h) => stool(h, '#c9bba6')); }
     for (const dz of [-3, 0, 3]) item(new Kit(bat, rs).at(ix, iz + dz, 0), (k) => pendant(k, H.ceil1, 2.4), null, null, { ceil: H.ceil1, hang: 2.4 });
   }
-  for (const [x, y] of [[360, 220], [360, 330], [470, 230]]) recessed(at(x, y), H.ceil1);
+  for (const [x, y] of [[360, 220], [360, 330], [470, 230]]) item(at(x, y), (k) => recessed(k, H.ceil1), null, 'recessed', { ceil: H.ceil1 });
   // old kitchen -> dining: banquette in the window bump, table for six, fridge + pantry wall on the hall side
   {
     const { k, len } = runKit(bat, rs, F(294.9, 360), F(294.9, 488), [1, 0]);

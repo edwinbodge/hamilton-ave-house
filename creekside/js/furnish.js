@@ -245,8 +245,8 @@ function sideTable(k, s = 1.6) {
 }
 
 function rug(k, w, d, field, border) {
-  k.box(fab(border), -w / 2, 0.003, -d / 2, w / 2, 0.025, d / 2);
-  k.box(fab(field), -w / 2 + 0.5, 0.004, -d / 2 + 0.5, w / 2 - 0.5, 0.028, d / 2 - 0.5);
+  k.box(fab(border), -w / 2, 0.01, -d / 2, w / 2, 0.035, d / 2);       // (layers kept well apart so they never flicker)
+  k.box(fab(field), -w / 2 + 0.5, 0.012, -d / 2 + 0.5, w / 2 - 0.5, 0.06, d / 2 - 0.5);
 }
 function chair(k, color = '#a59f94', woodc = '#6b4a33') { // dining chair, centered, faces +z
   const w = 1.55, d = 1.65;
@@ -1413,11 +1413,11 @@ export function buildFixtures(bats) {
   { const { k, len } = runKit(renoBat('off:mud', 'f1'), 'off:mud', F(723.4, 382), F(723.4, 449), [-1, 0]); linenShelves(k, len, 31); }
   { const { k, len } = runKit(bats.f1, 'f1', F(723.4, 455), F(723.4, 491), [-1, 0]); linenShelves(k, len, 37); }
   // ---- lights, 1st floor (8 ft ceilings)
-  for (const [x, y] of [[335, 372], [335, 452], [372, 470], [440, 455], [440, 390], [372, 330], [440, 335]]) recessed(f1(x, y), H.ceil1);
+  for (const [x, y] of [[335, 372], [335, 452], [372, 470], [440, 455], [440, 390], [372, 330], [440, 335]]) item(f1(x, y), (k) => recessed(k, H.ceil1), null, 'recessed', { ceil: H.ceil1 });
   { const [lx, lz] = F(398, 250); item(new Kit(renoBat('off:refresh&off:kitchen', 'f1'), 'off:refresh&off:kitchen').at(lx, lz, 0), (k) => bellChandelier(k, H.ceil1, 3.0, 5), null, null, { ceil: H.ceil1, hang: 3.0 }); }
-  for (const [x, y] of [[520, 330], [520, 400], [600, 400]]) recessed(f1(x, y), H.ceil1);
-  for (const [x, y] of [[740, 250], [800, 250], [740, 330], [800, 310]]) recessed(f1(x, y), H.ceil1);
-  for (const [x, y] of [[530, 90], [645, 90], [530, 200], [645, 200], [588, 270]]) recessed(f1(x, y), vaultUnder(y));
+  for (const [x, y] of [[520, 330], [520, 400], [600, 400]]) item(f1(x, y), (k) => recessed(k, H.ceil1), null, 'recessed', { ceil: H.ceil1 });
+  for (const [x, y] of [[740, 250], [800, 250], [740, 330], [800, 310]]) item(f1(x, y), (k) => recessed(k, H.ceil1), null, 'recessed', { ceil: H.ceil1 });
+  for (const [x, y] of [[530, 90], [645, 90], [530, 200], [645, 200], [588, 270]]) item(f1(x, y), (k) => recessed(k, vaultUnder(y)), null, 'recessed', { ceil: vaultUnder(y) });
   item(f1(400, 575), (k) => crystalFlush(k, 8.7), null, null, { ceil: 8.7 }); // crystal flush mount in the tray
   { const [lx, lz] = F(520, 500); item(new Kit(renoBat('off:refresh', 'f1'), 'off:refresh').at(lx, lz, 0), (k) => { chandelier(k, H.ceil2, 5.5, 8); for (let i = 0; i < 3; i++) k.cyl('frosted', 0, 0, 0.9 - i * 0.25, 0.75 - i * 0.25, 11.5 + i * 0.5, 11.9 + i * 0.5, 10, 1, false); }, null, 'chandelier', { ceil: H.ceil2, hang: 5.5 }); } // 2-story foyer crystal chandelier
   for (const [x, y, c] of [[640, 340, H.ceil1], [640, 400, H.ceil1], [845, 550, 8.4], [845, 650, 8.4]]) item(f1(x, y), (k) => flushDome(k, c), null, 'flushDome', { ceil: c });
@@ -1450,7 +1450,7 @@ export function buildFixtures(bats) {
   swap(f2(864, 119.3, 90), { glb: 'Toilet03', back: true }, toilet);
   { const [sx, sz] = G2(911, 110.5); goldShower(new Kit(PB, 'off:pbath').at(sx, sz, H.f2, 0), G2(930, 0)[0] - sx, G2(0, 140)[1] - sz); }
   whirlpool(pb2(930.5, 160.5, -90), 3.1, 6.4);
-  for (const [x, y] of [[880, 150], [880, 175], [895, 118]]) recessed(f2(x, y), 8);
+  for (const [x, y] of [[880, 150], [880, 175], [895, 118]]) item(f2(x, y), (k) => recessed(k, 8), null, 'recessed', { ceil: 8 });
   // closets
   { const { k, len } = runKit(bats.f2, 'f2', G2(752, 163), G2(782, 163), [0, 1], H.f2); wicRun(k, len); hangingClothes(k, len, 41, 0.3); }
   { const { k, len } = runKit(bats.f2, 'f2', G2(678, 241), G2(732, 241), [0, 1], H.f2); wicRun(k, len); hangingClothes(k, len, 53, 0.4); }
@@ -1460,12 +1460,12 @@ export function buildFixtures(bats) {
   // lights, 2nd floor (8 ft)
   item(f2(897, 236), (k) => ceilingFan(k, 8, { body: 'steel', blade: 'col:#ebe9e4', drop: 0.75 }), null, null, { ceil: 8 }); // 52" brushed-nickel fan, white blades, bowl light (photos 25-28)
   for (const [x, y] of [[714, 150], [714, 295], [742, 218], [840, 250]]) item(f2(x, y), (k) => flushDome(k, 8), null, 'flushDome', { ceil: 8 });
-  for (const [x, y] of [[790, 178], [815, 200], [770, 200]]) recessed(f2(x, y), 8);
+  for (const [x, y] of [[790, 178], [815, 200], [770, 200]]) item(f2(x, y), (k) => recessed(k, 8), null, 'recessed', { ceil: 8 });
   wallGrille(f2(864.6, 226, 90), 6.4, 1.3, 0.6); // primary bedroom return over the dresser (photo 27)
   for (const [x, y, r] of [[972.5, 222, 90], [713, 340, 0], [714, 114, 0], [680, 290, 90]]) floorRegister(f2(x, y, r).at(...G2(x, y), H.f2 + 0.013, r));
   // ---- basement (as listed: drywall, bare concrete floors, recessed cans, rough-in bath)
   const fb = (x, y, rot = 0) => { const [lx, lz] = P('b', x, y); return new Kit(bats.b, 'b').at(lx, lz, H.basement, rot); };
-  for (const [x, y] of [[420, 290], [470, 290], [420, 400], [480, 420], [420, 520], [480, 560], [440, 640], [600, 260], [700, 260], [650, 130], [720, 130], [600, 130], [860, 300], [860, 360], [735, 400], [590, 530]]) recessed(fb(x, y), 8);
+  for (const [x, y] of [[420, 290], [470, 290], [420, 400], [480, 420], [420, 520], [480, 560], [440, 640], [600, 260], [700, 260], [650, 130], [720, 130], [600, 130], [860, 300], [860, 360], [735, 400], [590, 530]]) item(fb(x, y), (k) => recessed(k, 8), null, 'recessed', { ceil: 8 });
   bareBulb(new Kit(renoBat('lay:0', 'b'), 'lay:0').at(...P('b', 735, 520), H.basement), 8); // keyless porcelain fixture in the rough-in bath (photo 41)
   { // rough-in bath: stub-outs and a capped drain (photo)
     const k = fb(700, 520, 90); k.box('white', 0.0, 1.6, 0, 0.12, 1.75, 0.4); k.cyl('white', 0.5, 0.5, 0.18, 0.18, 0, 0.05, 10); k.box('chrome', 0, 1.9, 0.6, 0.05, 2.0, 0.9);

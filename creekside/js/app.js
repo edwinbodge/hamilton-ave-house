@@ -53,6 +53,24 @@ scene.add(house);
 const site = buildSite();
 scene.add(site);
 const trees = site.getObjectByName('trees');
+const MULCH = []; site.traverse((o) => { if (o.isMesh && o.name === 'mulch') MULCH.push(o); });
+// floor views: trees between the camera and the house get a see-through tunnel cut in them (a cone along the
+// line of sight, wider at the house), so you can look at the house from any side
+const treeCut = { cam: { value: new THREE.Vector3() }, tgt: { value: new THREE.Vector3() }, on: { value: 0 } };
+trees.traverse((m) => {
+  if (!m.isMesh || m.material.userData.treeCut) return;
+  const mat = m.material, prev = mat.onBeforeCompile, prevKey = mat.customProgramCacheKey && mat.customProgramCacheKey.bind(mat);
+  mat.userData.treeCut = true;
+  mat.onBeforeCompile = (sh, r) => {
+    if (prev) prev.call(mat, sh, r);
+    Object.assign(sh.uniforms, { tcCam: treeCut.cam, tcTgt: treeCut.tgt, tcOn: treeCut.on });
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vTcW;').replace('#include <project_vertex>', '#include <project_vertex>\nvTcW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vTcW; uniform vec3 tcCam; uniform vec3 tcTgt; uniform float tcOn;')
+      .replace('void main() {', 'void main() {\n  if (tcOn > 0.5) { vec3 dd = tcTgt - tcCam; float L = length(dd); vec3 u = dd / L; float t = dot(vTcW - tcCam, u); if (t > 0.0 && t < L + 20.0) { float rr = length(vTcW - tcCam - u * t); if (rr < mix(6.0, 34.0, clamp(t / L, 0.0, 1.0))) discard; } }');
+  };
+  mat.customProgramCacheKey = () => (prevKey ? prevKey() : '') + '|treecut';
+  mat.needsUpdate = true;
+});
 // the shadow camera covers the lot (house + yard), not the neighbours
 const lotBox = new THREE.Box3().setFromObject(house);
 lotBox.expandByPoint(V(LOT.xSouth - 12, -12, LOT.zBack - 12)).expandByPoint(V(LOT.xNorth + 12, lotBox.max.y + 4, LOT.zFront + 12));
@@ -102,6 +120,8 @@ function applyView() {
   }
   for (const l of RENO_LABELS) l.visible = showLabels(l.userData.level) && activeTag(l.userData.rs);
   $$('.views button').forEach((b) => b.classList.toggle('on', b.dataset.view === v));
+  for (const m of MULCH) m.visible = v !== 'b'; // the front beds would sit like a lid over the basement cutaway
+  editor && editor.applyLevels();
   gfx.dirty();
 }
 function setView(v, fly = true) {
@@ -707,6 +727,8 @@ function roomName(point, normal) {
 }
 editor = initEditor({
   scene, camera, renderer, house, site, gfx, isVisible, roomName, floorAt,
+  levelShown: (lvl) => groups[lvl].visible && state.furniture,
+  ceilingShown: (lvl) => (lvl === 'b' ? groups.f1.visible : lvl === 'f1' ? groups.f2.visible : groups.roof.visible),
   reapplyStyle: () => applyStyle(state.style),
   onOpen: () => { document.body.classList.add('editing'); if (state.mode === 'walk') { walk.paused = true; if (plc.isLocked) plc.unlock(); } },
   onClose: (relock) => {
@@ -736,6 +758,11 @@ function frame() {
   }
   if (state.mode === 'walk') updateWalk(dt);
   else orbit.update();
+  // depth precision: a nearer near-plane only while walking (rugs and wall art stop flickering from afar)
+  const near = state.mode === 'walk' ? 0.2 : 1.0;
+  if (camera.near !== near) { camera.near = near; camera.updateProjectionMatrix(); }
+  treeCut.on.value = state.mode === 'orbit' && state.view !== 'ext' && trees.visible ? 1 : 0;
+  treeCut.cam.value.copy(camera.position); treeCut.tgt.value.copy(orbit.target);
   const cr = state.mode === 'walk' ? (walk.room ? { r: walk.room, f: walk.feet } : null) : roomAtCam();
   gfx.setContext({ walking: state.mode === 'walk' || !!cr, inside: !!cr, room: cr && cr.r, floorY: cr ? cr.f : 0, view: state.view });
   gfx.update(dt, pip);

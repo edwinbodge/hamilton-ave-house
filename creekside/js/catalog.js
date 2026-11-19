@@ -9,7 +9,7 @@
 import * as THREE from 'three';
 import { Kit, Batcher, MODEL_BASE } from './geom.js';
 import {
-  rug, plant, floorLamp, tableLamp, bookcase, wallTV, mediaConsole, standTV, chandelier, bellChandelier, globePendant, lantern, flushDome, crystalFlush,
+  rug, plant, floorLamp, recessed, tableLamp, bookcase, wallTV, mediaConsole, standTV, chandelier, bellChandelier, globePendant, lantern, flushDome, crystalFlush,
   ceilingFan, sconce, sideTable, rivianR2, acuraMDX, teslaModelY, hondaOdyssey, fordF150, toyotaCamry, porsche911,
 } from './furnish.js';
 import { pendant, orb, linearPendant } from './reno.js';
@@ -42,7 +42,7 @@ function tv(k, inches, where) { if (where === 'floor') { mediaConsole(k, Math.ma
 function textRug(k, ctx, field, border, stripe) {
   const w = ctx.w || 8, d = ctx.d || 10;
   rug(k, w, d, field, border);
-  if (stripe) for (const z of [-d / 2 + 0.9, d / 2 - 1.1]) k.box('fab:' + stripe, -w / 2 + 0.45, 0.026, z, w / 2 - 0.45, 0.03, z + 0.2);
+  if (stripe) for (const z of [-d / 2 + 0.9, d / 2 - 1.1]) k.box('fab:' + stripe, -w / 2 + 0.45, 0.04, z, w / 2 - 0.45, 0.075, z + 0.2);
 }
 // framed art, back at z = 0, centered about 5'3" up (or ctx.y)
 const ARTS = {
@@ -61,15 +61,15 @@ export function art(k, v = 'abstract', yc = 5.3) {
     for (let i = 0; i < 12; i++) { const t = (i / 12) * Math.PI; const hw = Math.sin(t + Math.PI / 24) * (w / 2 - 0.12); k.box('mirror', -hw, y0 + h / 2 - Math.cos(t) * (h / 2 - 0.12), 0.06, hw, y0 + h / 2 - Math.cos(t + Math.PI / 12) * (h / 2 - 0.12), 0.08); }
     return;
   }
-  if (a.pair) { for (const s of [-1, 1]) { const x0 = s < 0 ? -w / 2 : 0.15, x1 = s < 0 ? -0.15 : w / 2; k.box('col:#1d1d1f', x0, y0, 0, x1, y0 + h, 0.1); k.box('col:' + a.bg, x0 + 0.25, y0 + 0.25, 0.1, x1 - 0.25, y0 + h - 0.25, 0.11); k.box('col:' + (s < 0 ? '#7b8f9e' : '#c8a98a'), x0 + 0.5, y0 + 0.5, 0.11, x1 - 0.5, y0 + h - 0.5, 0.115); } return; }
+  if (a.pair) { for (const s of [-1, 1]) { const x0 = s < 0 ? -w / 2 : 0.15, x1 = s < 0 ? -0.15 : w / 2; k.box('col:#1d1d1f', x0, y0, 0, x1, y0 + h, 0.1); k.box('col:' + a.bg, x0 + 0.25, y0 + 0.25, 0.08, x1 - 0.25, y0 + h - 0.25, 0.13); k.box('col:' + (s < 0 ? '#7b8f9e' : '#c8a98a'), x0 + 0.5, y0 + 0.5, 0.11, x1 - 0.5, y0 + h - 0.5, 0.16); } return; }
   const f = a.frame ? 0.1 : 0, m = a.frame ? 0.22 : 0;
   if (a.frame) k.box('col:' + a.frame, -w / 2, y0, 0, w / 2, y0 + h, 0.12);
-  if (a.frame) k.box('col:#f5f2ea', -w / 2 + f, y0 + f, 0.12, w / 2 - f, y0 + h - f, 0.125);
-  const x0 = -w / 2 + f + m, x1 = w / 2 - f - m, b0 = y0 + f + m, b1 = y0 + h - f - m, z = a.frame ? 0.13 : 0.16;
-  k.box('col:' + a.bg, x0, b0, a.frame ? 0.125 : 0, x1, b1, z);
+  if (a.frame) k.box('col:#f5f2ea', -w / 2 + f, y0 + f, 0.1, w / 2 - f, y0 + h - f, 0.13);
+  const x0 = -w / 2 + f + m, x1 = w / 2 - f - m, b0 = y0 + f + m, b1 = y0 + h - f - m, z = a.frame ? 0.15 : 0.16;
+  k.box('col:' + a.bg, x0, b0, a.frame ? 0.11 : 0, x1, b1, z);
   const W = x1 - x0, H = b1 - b0;
-  for (const [c, lo, hi] of a.bands || []) k.box('col:' + c, x0, b0 + lo * H, z, x1, b0 + hi * H, z + 0.005);
-  for (const [c, px, py, pw, ph] of a.marks || []) k.box('col:' + c, x0 + px * W, b0 + py * H, z, x0 + (px + pw) * W, b0 + (py + ph) * H, z + 0.005);
+  for (const [c, lo, hi] of a.bands || []) k.box('col:' + c, x0, b0 + lo * H, z - 0.02, x1, b0 + hi * H, z + 0.02);
+  for (const [c, px, py, pw, ph] of a.marks || []) k.box('col:' + c, x0 + px * W, b0 + py * H, z - 0.02, x0 + (px + pw) * W, b0 + (py + ph) * H, z + 0.025);
 }
 
 // ---------------------------------------------------------------- the families
@@ -115,6 +115,7 @@ export const FAMILIES = {
     { id: 'pendant', name: 'Schoolhouse', build: (k, c) => pendant(k, C(c), HG(c, 2.4)) },
     { id: 'linear', name: 'Linear bar', build: (k, c) => linearPendant(k, C(c), HG(c, 2.4), 4.5) },
     { id: 'flushDome', name: 'Flush dome', build: (k, c) => flushDome(k, C(c)) },
+    { id: 'recessed', name: 'Recessed can', build: (k, c) => recessed(k, C(c)) },
     { id: 'crystal', name: 'Crystal flush', build: (k, c) => crystalFlush(k, C(c)) },
     { id: 'fanWhite', name: 'Fan, white', build: (k, c) => ceilingFan(k, C(c), { body: 'steel', blade: 'col:#ebe9e4', drop: 0.75 }) },
     { id: 'fanWood', name: 'Fan, wood', build: (k, c) => ceilingFan(k, C(c), { body: 'black', drop: 0.75 }) }] },
@@ -146,7 +147,7 @@ export const LABEL_FAMILY = {
   sideTable: ['side'], desk: ['desk'], officeDesk: ['desk'], bowDesk: ['desk'], dropLeafDesk: ['desk'], hutchDesk: ['desk'], toilet: ['toilet'], buffet: ['console'], mediaConsole: ['console'],
   rivianR2: ['car', 'rivianR2'], acuraMDX: ['car', 'acuraMDX'], chandelier: ['ceiling', 'chandelier8'], bellChandelier: ['ceiling', 'bell'], globePendant: ['ceiling', 'globe'],
   lantern: ['ceiling', 'lantern'], flushDome: ['ceiling', 'flushDome'], crystalFlush: ['ceiling', 'crystal'], ceilingFan: ['ceiling', 'fanWhite'], pendant: ['ceiling', 'pendant'],
-  linearPendant: ['ceiling', 'linear'], orb: ['ceiling', 'orb'], floorLamp: ['lamp', 'floorLamp'], sconce: ['sconce', 'candle'], wallTV: ['tv', 'tv65'], rug: ['rug'], plant: ['plant'],
+  linearPendant: ['ceiling', 'linear'], recessed: ['ceiling', 'recessed'], orb: ['ceiling', 'orb'], floorLamp: ['lamp', 'floorLamp'], sconce: ['sconce', 'candle'], wallTV: ['tv', 'tv65'], rug: ['rug'], plant: ['plant'],
   bookcase: ['bookcase', 'bcWalnut'],
 };
 export function familyOfGlb(glb) { for (const f of Object.values(FAMILIES)) if (f.options.some((o) => o.glb === glb)) return f.id; return null; }
