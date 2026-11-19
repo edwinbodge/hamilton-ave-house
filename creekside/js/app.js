@@ -11,6 +11,7 @@ import { RENO_LABELS, RENO_ROOMS } from './reno.js';
 import { buildSite } from './site.js';
 import { PHYS, pip, V, addSolid, addFloorPoly, applyFinish, ORIGIN, setModels } from './geom.js';
 import { LOT, LATITUDE, X_AZ, toFt } from './data.js';
+import { initEditor } from './edit.js';
 
 // ------------------------------------------------------------------ renderer & scene
 const app = document.getElementById('app');
@@ -115,6 +116,7 @@ async function applyModels() {
   try {
     await setModels(on, (n, of) => { st.textContent = `(loading ${n}/${of})`; gfx.dirty(); });
     st.textContent = '';
+    editor && editor.refresh();
   } catch (err) { st.textContent = '(could not load)'; console.error(err); }
   gfx.dirty();
 }
@@ -176,7 +178,7 @@ function renderStyle() {
     b.textContent = p.label;
     const match = Object.entries(p.values).every(([k, v]) => state.style[k] === v);
     b.className = match ? 'on' : '';
-    b.addEventListener('click', () => { state.style = { ...p.values }; applyStyle(state.style); renderStyle(); saveOptions(); });
+    b.addEventListener('click', () => { state.style = { ...p.values }; applyStyle(state.style); editor && editor.reapplyPaint(); renderStyle(); saveOptions(); });
     pre.appendChild(b);
   }
   const box = $('#style-controls');
@@ -187,7 +189,7 @@ function renderStyle() {
     const sel = document.createElement('select');
     for (const [val, name] of c.options) { const o = document.createElement('option'); o.value = val; o.textContent = name; sel.appendChild(o); }
     sel.value = state.style[c.id];
-    sel.addEventListener('change', () => { state.style[c.id] = sel.value; applyStyle(state.style); renderStyle(); saveOptions(); });
+    sel.addEventListener('change', () => { state.style[c.id] = sel.value; applyStyle(state.style); editor && editor.reapplyPaint(); renderStyle(); saveOptions(); });
     lab.appendChild(sel);
     box.appendChild(lab);
   }
@@ -261,6 +263,7 @@ function lockPointer() {
   } catch { document.body.classList.add('draglook'); }
 }
 const keys = {};
+let editor = null;
 addEventListener('keydown', (e) => { keys[e.code] = true; onKey(e); });
 addEventListener('keyup', (e) => { keys[e.code] = false; });
 const walk = { feet: -1, vy: 0, camY: 4.4, saved: null };
@@ -350,7 +353,7 @@ function exitWalk() {
   setView(walk.saved.view, false);
   applyView();
 }
-plc.addEventListener('unlock', () => { if (state.mode === 'walk' && !document.body.classList.contains('walk-panel')) { walk.paused = true; $('#walk-paused').hidden = false; } });
+plc.addEventListener('unlock', () => { if (state.mode === 'walk' && !document.body.classList.contains('walk-panel') && !document.body.classList.contains('editing')) { walk.paused = true; $('#walk-paused').hidden = false; } });
 function toggleWalkPanel(force) {
   const on = force ?? !document.body.classList.contains('walk-panel');
   document.body.classList.toggle('walk-panel', on);
@@ -369,7 +372,7 @@ $('#hud-exit').addEventListener('click', exitWalk);
 const look = new THREE.Euler(0, 0, 0, 'YXZ');
 let dragLook = null;
 renderer.domElement.addEventListener('mousedown', () => {
-  if (state.mode === 'walk' && plc.isLocked) { const i = doorAhead(); if (i >= 0) toggleDoor(i); }
+  if (state.mode === 'walk' && plc.isLocked) { const i = doorAhead(); if (i >= 0 && !editor.isPending()) toggleDoor(i); else editor.clickAt(0, 0, true); }
 });
 renderer.domElement.addEventListener('pointerdown', (e) => {
   if (state.mode !== 'walk' || plc.isLocked) return;
@@ -625,18 +628,22 @@ $('#doors-close').addEventListener('click', () => setAllDoors(0));
 let downAt = null;
 renderer.domElement.addEventListener('pointerdown', (e) => { downAt = [e.clientX, e.clientY]; });
 renderer.domElement.addEventListener('pointerup', (e) => {
-  if (state.mode !== 'orbit' || !downAt || tc.dragging) return;
+  if (!downAt || tc.dragging) return;
   if (Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5) return; // it was a drag
+  if (state.mode === 'walk') { if (!plc.isLocked) editor.clickAt(e.clientX, e.clientY); return; } // tap to edit (drag-to-look walk)
+  if (state.mode !== 'orbit') return;
   if (measuring) return measureClick(e);
   const hit = pick(e, [additionsGroup])[0];
   if (hit) return select(hit.object.userData.addition);
   const h2 = pick(e, [house])[0];
-  if (h2 && h2.object.userData.door !== undefined) return toggleDoor(h2.object.userData.door);
+  if (h2 && h2.object.userData.door !== undefined && !editor.isOpen() && !editor.isPending()) return toggleDoor(h2.object.userData.door);
   if (selected) select(null);
+  editor.clickAt(e.clientX, e.clientY);
 });
 
 function onKey(e) {
   if (e.target.matches && e.target.matches('input, select, textarea')) return;
+  if (editor.isOpen() || editor.isPending()) return; // Esc closes the edit menu first
   if (state.mode === 'walk') {
     if (e.code === 'Escape' && !plc.isLocked) exitWalk();
     if (e.code === 'KeyE') { const i = doorAhead(); if (i >= 0) toggleDoor(i); }
@@ -668,6 +675,28 @@ $('#sun-hour').value = 14;
 updateSun();
 applyView();
 
+// ------------------------------------------------------------------ point-and-click editing
+function roomName(point, normal) {
+  const p = point.clone().addScaledVector(normal, 0.6);
+  const f = floorAt(p.x, p.z, p.y + 0.5);
+  if (f === -Infinity) return '';
+  const lvl = f < -4.5 ? 'b' : f < 5.5 ? 'f1' : 'f2';
+  const rr = RENO_ROOMS.find((q) => q.level === lvl && activeTag(q.rs) && pip(q.room.pts, p.x, p.z));
+  const r = rr ? rr.room : roomAtPoint(lvl, p.x, p.z);
+  return r && !r.void && r.name ? r.name : f < 0.5 && f > -2 ? 'Outside' : '';
+}
+editor = initEditor({
+  scene, camera, renderer, house, site, gfx, isVisible, roomName, floorAt,
+  reapplyStyle: () => applyStyle(state.style),
+  onOpen: () => { document.body.classList.add('editing'); if (state.mode === 'walk') { walk.paused = true; if (plc.isLocked) plc.unlock(); } },
+  onClose: (relock) => {
+    document.body.classList.remove('editing');
+    if (state.mode !== 'walk') return;
+    walk.paused = false;
+    if (document.body.classList.contains('draglook')) return;
+    if (relock) lockPointer(); else { walk.paused = true; $('#walk-paused').hidden = false; }
+  },
+});
 gfx.mountUI($('#tgl-lot').closest('.toggles'));
 const clock = new THREE.Clock();
 function frame() {
@@ -719,5 +748,5 @@ function simWalk(path, start) {
   state.mode = 'orbit';
   return out;
 }
-window.__house = { gfx, renderer, scene, camera, orbit, PHYS, setView, state, simWalk, floorAt, DOORS, setAllDoors, setLayout, applyReno, applyStyle, applyExterior, activeTag, groups, renos };
+window.__house = { gfx, renderer, scene, camera, orbit, PHYS, setView, state, simWalk, floorAt, DOORS, setAllDoors, setLayout, applyReno, applyStyle, applyExterior, activeTag, groups, renos, editor, enterWalk, exitWalk, plc };
 applyReno();

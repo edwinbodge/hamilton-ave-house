@@ -25,7 +25,7 @@
 //   basement    (layout choice, below) finishes the lower level: LVP floors, finished bath, furniture.
 import * as THREE from 'three';
 import { toFt, F2, H, PX, vaultUnder } from './data.js';
-import { Kit, V, addFloorPoly, addSolid, swap } from './geom.js';
+import { Kit, V, addFloorPoly, addSolid, swap, item } from './geom.js';
 import { LV, P, F, CTX, renoBat, renoGroup, roleRoom, buildWall, buildLabels, rplane, railing, stairGeom, ROOF } from './build.js';
 import {
   toilet, vanity, lightBar, diningTable, chair, sofa, sectional, armchair, coffeeTable, floorLamp, plant, rug, runKit, recessed, flushDome,
@@ -197,7 +197,7 @@ function buildKitchen() {
     k.solid(5.6, 0, 8.3, 2.1, 0, 3.08); void u;
   }
   // family room restaged around the (now level) fireplace wall: sofa + two chairs, TV over the mantel
-  const FK = renoBat('on:kitchen&furn', 'f1'), fk = (x, y, rot, fn) => { const [lx, lz] = F(x, y); fn(new Kit(FK, 'on:kitchen&furn').at(lx, lz, 0, rot)); };
+  const FK = renoBat('on:kitchen&furn', 'f1'), fk = (x, y, rot, fn) => { const [lx, lz] = F(x, y); item(new Kit(FK, 'on:kitchen&furn').at(lx, lz, 0, rot), fn); };
   fk(588, 150, 0, (k) => rug(k, 9, 12, '#d8d3ca', '#9c9284'));
   fk(588, 205, 180, (k) => swap(k, { glb: 'Sofa08', w: 8.5, d: 3.15, back: true }, (h) => sofa(h, 8.5, { color: '#cfc6b8', cushion: '#d8d0c3', pillows: ['#5d6b73', '#b48a5a'] })));
   fk(588, 150, 180, (k) => swap(k, { glb: 'Table38', w: 4.5, d: 2.2 }, (h) => coffeeTable(h, 4.5, 2.4, '#8a6a4a')));
@@ -355,7 +355,7 @@ function buildPatio() {
     k.box('pavers', sx0, y, sz - 2.2, sx1, -0.66, sz); k.box('pavers', sx0 + 0.3, y, sz - 1.1, sx1 - 0.3, -0.33, sz); addFloorPoly([[sx0, sz - 2.2], [sx1, sz - 2.2], [sx1, sz - 1.1], [sx0, sz - 1.1]], [], -0.66, rs); addFloorPoly([[sx0 + 0.3, sz - 1.1], [sx1 - 0.3, sz - 1.1], [sx1 - 0.3, sz], [sx0 + 0.3, sz]], [], -0.33, rs); }
   const k = new Kit(bat, rs).at(0, 0, y, 0);
   pergola(k, 1.0, 13.5, 0.5, 9.5);
-  const FB = renoBat('on:patio&furn', 'site'), fk = (x, z, rot, fn) => fn(new Kit(FB, 'on:patio&furn').at(x, z, y, rot));
+  const FB = renoBat('on:patio&furn', 'site'), fk = (x, z, rot, fn) => item(new Kit(FB, 'on:patio&furn').at(x, z, y, rot), fn);
   { const t = new Kit(FB, 'on:patio&furn').at(7.2, 5, y, 90); for (const [cx, cz, r] of swap(t, { glb: 'Table03', w: 7, d: 3.5, h: 2.5 }, (h) => diningTable(h, 7, 3.5, { color: '#4a4a4a' }))) { const p = t.P(cx, 0, cz); swap(new Kit(FB, 'on:patio&furn').at(p.x, p.z, y, r), { glb: 'Chair04' }, (h) => patioChair(h)); } }
   // lounge: outdoor sectional + chairs around a fire pit
   fk(26, -6.5, 0, firePit);
@@ -414,7 +414,7 @@ function buildBasement() {
   }
   { const [x0, z0] = P(LV.b, 742, 520), [x1, z1] = P(LV.b, 782, 569); const k = new Kit(bat, ALL).at(0, 0, y0, 0);
     k.box('tile:#ecebe7', x0, 0, z0, x1, 0.25, z1); k.box('showerGlass', x0 - 0.02, 0.25, z0, x0 + 0.02, 6.8, z1 - 1.6); k.box('black', x0 - 0.03, 6.8, z0, x0 + 0.03, 6.85, z1); k.solid(x0 - 0.05, z0, x0 + 0.05, z1 - 1.6, 0, 6.8); }
-  const lay = (L, x, y, rot, fn) => { const t = 'lay:' + L; fn(at(renoBat(t, 'b'), t, x, y, rot)); };
+  const lay = (L, x, y, rot, fn) => { const t = 'lay:' + L; item(at(renoBat(t, 'b'), t, x, y, rot), fn); };
   // ---- A: TV on the brown accent wall with a sectional, game table in the bay, wet bar, gym in the north room, guest bedroom east
   lay('A', 532.2, 430, -90, (k) => wallTV(k, 75));
   lay('A', 532.2, 430, -90, (k) => swap(k, { glb: 'Drawer40', w: 6, d: 1.4, h: 2.2, back: true }, (h) => mediaConsole(h, 6)));

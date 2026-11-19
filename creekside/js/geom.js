@@ -285,27 +285,40 @@ export class Batcher {
       meshes.push(m);
     }
     this.b.clear();
-    // swappable pieces: the hand-built version and the asset-pack model sit side by side under this group
-    const twin = TWINS.get(this);
-    if (twin) { const g = new THREE.Group(); g.name = 'hand-built'; g.userData.alt = 'hand'; twin.build(g, { shadows }); group.add(g); ALT_GROUPS.push(g); }
-    const ms = MODELS.filter((m) => m.bat === this);
-    if (ms.length) { const g = new THREE.Group(); g.name = 'models'; g.userData.alt = 'model'; g.visible = false; ms.forEach((m) => { m.parent = g; }); group.add(g); ALT_GROUPS.push(g); }
+    // furniture items placed through this batcher: each gets its own group (selectable / editable)
+    for (const it of ITEMS) if (it.parentBat === this) buildItem(it, group, shadows);
     return meshes;
   }
 }
 
-// ---------------------------------------------------------------- furniture models (asset pack)
-// swap(k, spec, fn): fn draws the hand-built piece with a Kit at k's spot (into a twin batcher), and the
-// GLB named spec.glb is placed there too; setModels(true) shows the models and hides the hand-built twins.
+// ---------------------------------------------------------------- furniture items
+// item(k, fn, model?): fn draws a piece with its own Kit at k's spot, into its own batcher, so the piece is
+// one group in the scene: it can be picked, recolored, resized, moved or removed (edit.js). swap(k, spec, fn)
+// is an item that also has an asset-pack model; setModels(true) shows the model and hides the hand-built twin.
 // Models are exported front = +z, origin at the bottom center, in meters. spec: { glb, w, d, h } in feet
 // (any of them; missing axes scale with the others, none = true size), back: true when the hand-built
-// piece has its back at z = 0 (beds, sofas, dressers) instead of being centered, dz/rot: extra offsets.
-const TWINS = new Map(), MODELS = [], ALT_GROUPS = [];
-export function swap(k, spec, fn) {
-  if (!TWINS.has(k.bat)) TWINS.set(k.bat, new Batcher());
-  const out = fn(new Kit(TWINS.get(k.bat), k.tag).at(k.ox, k.oz, k.oy, k.rot));
-  MODELS.push({ ...spec, bat: k.bat, x: k.ox, y: k.oy, z: k.oz, rot: k.rot });
+// piece has its back at z = 0 (beds, sofas, dressers) instead of being centered, dx/dz/dy/turn: offsets.
+export const ITEMS = [];
+const firstCall = (fn) => { if (fn.name) return fn.name; const m = /^\s*\(?\w*\)?\s*=>\s*\{?\s*(?:const [^;]*;\s*)?(\w+)\(/.exec(fn.toString()); return m ? m[1] : null; };
+export function item(k, fn, model = null, label = null) {
+  const first = firstCall(fn);
+  if (!model && first === 'swap') return fn(k); // the swap makes the item
+  const hb = new Batcher();
+  const it = { id: ITEMS.length, parentBat: k.bat, hb, x: k.ox, y: k.oy, z: k.oz, rot: k.rot, tag: k.tag, model: model && { ...model }, label: label || first || 'piece' };
+  ITEMS.push(it);
+  const n0 = PHYS.solids.length;
+  const out = fn(new Kit(hb, k.tag).at(k.ox, k.oz, k.oy, k.rot));
+  it.solids = PHYS.solids.slice(n0).map((s) => ({ s, o: { ...s } }));
   return out;
+}
+export function swap(k, spec, fn) { return item(k, fn, spec); }
+function buildItem(it, group, shadows) {
+  const g = new THREE.Group(); g.name = 'item'; g.userData.item = it; it.group = g;
+  g.position.set(it.x, it.y, it.z); g.rotation.y = (it.rot * Math.PI) / 180; g.updateMatrix();
+  const inner = new THREE.Group(); inner.applyMatrix4(g.matrix.clone().invert()); g.add(inner); it.inner = inner;
+  const hand = new THREE.Group(); hand.name = 'hand-built'; it.hb.build(hand, { shadows }); inner.add(hand); it.hand = hand;
+  if (it.model) { const m = new THREE.Group(); m.name = 'models'; m.visible = false; inner.add(m); it.modelGroup = m; }
+  group.add(g);
 }
 export const MODEL_BASE = new URL('../../models/', import.meta.url).href;
 let modelsOn = false, loading = null;
@@ -314,32 +327,37 @@ export async function setModels(on, onProgress) {
   modelsOn = on;
   if (on && !loading) loading = loadModels(onProgress);
   if (on) await loading;
-  for (const g of ALT_GROUPS) g.visible = (g.userData.alt === 'model') === modelsOn;
+  for (const it of ITEMS) if (it.modelGroup) { it.modelGroup.visible = modelsOn; it.hand.visible = !modelsOn; }
+}
+const GLB = {}, FT = 3.28084;
+export async function loadGLB(name) {
+  if (!GLB[name]) GLB[name] = (async () => {
+    const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+    const gltf = await new GLTFLoader().loadAsync(MODEL_BASE + name + '.glb');
+    gltf.scene.traverse((o) => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; o.userData.measurable = true; } });
+    return gltf.scene;
+  })();
+  return GLB[name];
+}
+// a model instance sized by spec, in the frame of a Kit at (x, y, z, rot)
+export function placeModel(src, m, x, y, z, rot) {
+  const o = src.clone(true), size = new THREE.Vector3();
+  new THREE.Box3().setFromObject(src).getSize(size);
+  const tx = size.x * FT, ty = size.y * FT, tz = size.z * FT;
+  const f = [m.w && m.w / tx, m.d && m.d / tz, m.h && m.h / ty].filter(Boolean);
+  const avg = f.length ? f.reduce((a, b) => a + b, 0) / f.length : 1;
+  const sx = (m.w ? m.w / tx : avg) * FT, sy = (m.h ? m.h / ty : avg) * FT, sz = (m.d ? m.d / tz : avg) * FT;
+  o.scale.set(sx, sy, sz);
+  const r = (rot * Math.PI) / 180, lz = (m.back ? (size.z * sz) / 2 : 0) + (m.dz || 0), lx = m.dx || 0;
+  o.position.set(x + lx * Math.cos(r) + lz * Math.sin(r), y + (m.dy || 0), z - lx * Math.sin(r) + lz * Math.cos(r));
+  o.rotation.y = r + ((m.turn || 0) * Math.PI) / 180;
+  return o;
 }
 async function loadModels(onProgress) {
-  const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
-  const loader = new GLTFLoader(), names = [...new Set(MODELS.map((m) => m.glb))], src = {};
+  const withModel = ITEMS.filter((it) => it.model), names = [...new Set(withModel.map((it) => it.model.glb))];
   let n = 0;
-  await Promise.all(names.map(async (name) => {
-    const gltf = await loader.loadAsync(MODEL_BASE + name + '.glb');
-    gltf.scene.traverse((o) => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; o.userData.measurable = true; } });
-    src[name] = gltf.scene;
-    onProgress && onProgress(++n, names.length);
-  }));
-  const FT = 3.28084, box = new THREE.Box3(), size = new THREE.Vector3();
-  for (const m of MODELS) {
-    const o = src[m.glb].clone(true);
-    box.setFromObject(src[m.glb]).getSize(size);
-    const tx = size.x * FT, ty = size.y * FT, tz = size.z * FT;
-    const f = [m.w && m.w / tx, m.d && m.d / tz, m.h && m.h / ty].filter(Boolean);
-    const avg = f.length ? f.reduce((a, b) => a + b, 0) / f.length : 1;
-    const sx = (m.w ? m.w / tx : avg) * FT, sy = (m.h ? m.h / ty : avg) * FT, sz = (m.d ? m.d / tz : avg) * FT;
-    o.scale.set(sx, sy, sz);
-    const r = (m.rot * Math.PI) / 180, lz = (m.back ? (size.z * sz) / 2 : 0) + (m.dz || 0), lx = m.dx || 0;
-    o.position.set(m.x + lx * Math.cos(r) + lz * Math.sin(r), m.y + (m.dy || 0), m.z - lx * Math.sin(r) + lz * Math.cos(r));
-    o.rotation.y = r + ((m.turn || 0) * Math.PI) / 180;
-    m.parent.add(o);
-  }
+  await Promise.all(names.map(async (name) => { await loadGLB(name); onProgress && onProgress(++n, names.length); }));
+  for (const it of withModel) it.modelGroup.add(placeModel(await loadGLB(it.model.glb), it.model, it.x, it.y, it.z, it.rot));
 }
 
 // ---------------------------------------------------------------- Kit

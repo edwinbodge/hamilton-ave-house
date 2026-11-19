@@ -2,6 +2,10 @@
 
 Three walkable 3D house models; pick between them from the dropdown in the panel header. Harrison Ave is at `/`, Creekside Ln at `/creekside/` and Hamilton Rd at `/hamilton-rd/`, each with its own copy of the engine (`js`, `creekside/js`, `hamilton-rd/js`). Garages hold a true-size Rivian R2 and Acura MDX plus bikes, golf bags and tennis rackets, and the sectional garage doors open like the other doors (`E` in walk mode).
 
+## Point & click edits (Creekside Ln)
+
+Click any piece of furniture, wall or floor (in the walk-through, click whatever is under the dot) and a small menu opens next to it: recolor, resize, move, turn, copy or remove a piece (or all matching pieces), repaint a room, or add a TV, sofa, plant, bed and more. There's also a box to type requests like "make these chairs white" or "add a lamp", handled by a small rule-based parser in `creekside/js/edit.js`. Edits are saved in the viewer's browser and can be undone or reset from the panel.
+
 ## Hamilton Rd
 
 All-brick 4 bed / 3.5 bath on a wooded lot with a walk-out basement, built from the listing's CubiCasa plans (scaled from the MLS room sizes) and photos. Two-story great room with wet bar, kitchen octagon, deck with fireplace, 3-car garage. Renovation toggles: kitchen opened to dining, cosmetic refresh, primary bath, laundry/mudroom, exterior refresh, deck + walk-out patio, playground.

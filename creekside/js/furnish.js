@@ -2,7 +2,7 @@
 // dimensions in feet. Components use a Kit (see geom.js): local x = width, z = depth with
 // the front at +z, y = up. Wall-mounted pieces have their back at z = 0.
 import { LEVELS, toFt, F2, H, PX, vaultUnder, trayOct } from './data.js';
-import { Kit, V, swap } from './geom.js';
+import { Kit, V, swap, item } from './geom.js';
 import { renoBat } from './build.js';
 
 const LV = Object.fromEntries(LEVELS.map((L) => [L.id, L]));
@@ -1452,9 +1452,9 @@ export function buildFixtures(bats) {
 
 export function buildFurniture(bats) {
   const at = (lv, x, y, rot = 0, y0) => { const [lx, lz] = P(lv, x, y); return new Kit(bats[lv + 'F'], lv + 'F').at(lx, lz, y0 ?? LV[lv].floor, rot); };
-  const place = (lv, x, y, rot, fn, y0) => fn(at(lv, x, y, rot, y0));
+  const place = (lv, x, y, rot, fn, y0) => item(at(lv, x, y, rot, y0), fn);
   const fam = H.family;
-  const placeK = (x, y, rot, fn, y0 = 0) => fn(atK(x, y, rot, y0));
+  const placeK = (x, y, rot, fn, y0 = 0) => item(atK(x, y, rot, y0), fn);
   const KF = renoBat('off:kitchen&furn', 'f1'), atK = (x, y, rot = 0, y0 = 0) => { const [lx, lz] = F(x, y); return new Kit(KF, 'off:kitchen&furn').at(lx, lz, y0, rot); };
   // ---- family room (staged like the photos: patterned sofa + loveseat, blue leather recliners, TV on gray cabinets)
   placeK(479, 150, 90, (k) => swap(k, { glb: 'Sofa17', w: 7.6, d: 3.1, back: true }, (h) => sofa(h, 7.6, { roll: true, color: '#4b4262', cushion: '#54486c', pillows: ['#b0283a', '#c9b49a', '#8d2f3a'] })), fam);
@@ -1471,7 +1471,7 @@ export function buildFurniture(bats) {
   }
   // ---- living room (photos 19-20): burgundy leather reclining sofa under the side window, iron-and-glass console; no rug
   // (as listed only: the front-room options below bring their own furniture)
-  const LR = 'off:frontOffice&off:frontDining&furn', placeL = (x, y, rot, fn, tag = LR) => { const [lx, lz] = F(x, y); fn(new Kit(renoBat(tag, 'f1'), tag).at(lx, lz, 0, rot)); };
+  const LR = 'off:frontOffice&off:frontDining&furn', placeL = (x, y, rot, fn, tag = LR) => { const [lx, lz] = F(x, y); item(new Kit(renoBat(tag, 'f1'), tag).at(lx, lz, 0, rot), fn); };
   placeL(327.5, 578, 90, (k) => swap(k, { glb: 'Sofa36', w: 7.2, d: 3.2, back: true }, (h) => leatherSofa(h, 7.2)));
   place('f1', 326.6, 577.5, 90, (k) => drapes(k, 5.2, 7.7, '#5d4d5a'));
   placeL(473.5, 615, -90, (k) => { k.box('glass', -2.0, 2.5, 0, 2.0, 2.56, 1.2); k.box('glass', -1.85, 0.5, 0.15, 1.85, 0.53, 1.05); for (const x of [-1.9, 1.9]) for (const z of [0.12, 1.08]) k.box('col:#7d7a72', x - 0.04, 0, z - 0.04, x + 0.04, 2.5, z + 0.04); k.box('col:#7d7a72', -1.95, 2.35, 0.08, 1.95, 2.5, 0.16); k.solid(-2, 0, 2, 1.2, 0, 2.5); });
@@ -1520,7 +1520,7 @@ export function buildFurniture(bats) {
   place('f1', 703, 640, 90, (k) => shelving(k, 8, 1.6, 6), H.garage);
   place('f1', 703, 700, 90, (k) => shelving(k, 3, 1.6, 6), H.garage);
   // ---- 2nd floor
-  const p2 = (x, y, rot, fn) => { const [lx, lz] = G2(x, y); fn(new Kit(bats.f2F, 'f2F').at(lx, lz, H.f2, rot)); };
+  const p2 = (x, y, rot, fn) => { const [lx, lz] = G2(x, y); item(new Kit(bats.f2F, 'f2F').at(lx, lz, H.f2, rot), fn); };
   // primary (photos 25-28): queen bed with a white arched headboard on the front wall, one nightstand (bump side),
   // white dresser with an arched mirror + two urn lamps and a tall chest on the closet wall, white armoire beside the
   // bath door, floral sofa and a drop-leaf desk in the bump
@@ -1545,13 +1545,13 @@ export function buildFurniture(bats) {
   p2(810, 166, 0, (k) => { k.box(wood('#e8d9bf'), -3.0, 2.45, 0, 3.0, 2.55, 2.0); for (const x of [-3.0, 1.8]) { k.box(wood('#e8d9bf'), x, 0, 0, x + 1.2, 2.45, 2.0); for (let y = 0.6; y < 2.4; y += 0.6) k.box('col:' + ['#7a3b2e', '#2e4a6e', '#c9a96e', '#3e5a3c'][Math.floor(y * 3) % 4], x + 0.1, y - 0.5, 0.3, x + 1.1, y - 0.05, 1.6); } tableLamp(k, -2.4, 1.0, 2.55); tableLamp(k, 2.4, 1.0, 2.55); k.solid(-3, 0, 3, 2, 0, 2.55); });
   p2(810, 178, 180, (k) => swap(k, { glb: 'Chair07' }, (h) => chair(h, '#f4f2ee', '#f4f2ee')));
   // ---- basement as listed: a pair of cream swivel chairs and carpet remnants in the rec room, a dresser in the north room
-  const pb = (x, y, rot, fn) => { const [lx, lz] = P('b', x, y); fn(new Kit(renoBat('lay:0&furn', 'b'), 'lay:0&furn').at(lx, lz, H.basement, rot)); };
+  const pb = (x, y, rot, fn) => { const [lx, lz] = P('b', x, y); item(new Kit(renoBat('lay:0&furn', 'b'), 'lay:0&furn').at(lx, lz, H.basement, rot), fn); };
   pb(500, 300, -100, (k) => swap(k, { glb: 'Chair11' }, (h) => armchair(h, { color: '#efe9dd' })));
   pb(500, 360, -80, (k) => swap(k, { glb: 'Chair11' }, (h) => armchair(h, { color: '#efe9dd' })));
   pb(450, 330, 0, (k) => rug(k, 7, 12, '#cdbd9f', '#cdbd9f'));
   pb(660, 200, 180, (k) => swap(k, { glb: 'Drawer40', w: 4, d: 1.6, h: 2.6, back: true }, (h) => { h.box(wood('#2f2219'), -2.0, 0, 0, 2.0, 1.6, 1.6); h.solid(-2, 0, 2, 1.6, 0, 1.6); }));
   // ---- back patio as it is: four cast-aluminum chairs around a fire bowl, grill
-  const pat = (x, z, rot, fn) => fn(new Kit(renoBat('off:patio', 'site'), 'off:patio').at(x, z, -0.96, rot));
+  const pat = (x, z, rot, fn) => item(new Kit(renoBat('off:patio', 'site'), 'off:patio').at(x, z, -0.96, rot), fn);
   pat(10.5, 8, 0, (k) => { k.cyl('col:#5a3a2a', 0, 0, 1.2, 0.8, 0, 1.2, 14); k.cyl('ember', 0, 0, 0.9, 0.9, 1.15, 1.2, 12); k.solid(-1, -1, 1, 1, 0, 1.2); });
   for (const [dx, dz] of [[-2.6, -2.2], [2.6, -2.2], [-2.6, 2.2], [2.6, 2.2]]) pat(10.5 + dx, 8 + dz, (Math.atan2(-dx, -dz) * 180) / Math.PI, (k) => swap(k, { glb: 'Chair04' }, (h) => patioChair(h)));
   // gas grill (photo 46): ~4 ft wide with side shelves x 2 ft deep x 4 ft tall lid closed; on the patio by the
