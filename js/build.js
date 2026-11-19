@@ -88,9 +88,10 @@ function sideKey(L, kind, x, z) {
 // Turned balusters are instanced (one lathe geometry per level).
 const BALUSTERS = { b: [], f1: [], f2: [] }; // keyed by tag (level id or reno set)
 function balusterGeometry() {
-  const pr = [[0.0, 0], [0.075, 0], [0.075, 0.35], [0.06, 0.4], [0.07, 0.55], [0.045, 0.75], [0.035, 1.5], [0.05, 1.9], [0.035, 2.05],
-    [0.055, 2.25], [0.055, 2.75], [0.07, 2.8], [0.07, 2.9], [0, 2.9]].map(([r, y]) => new THREE.Vector2(r, y));
-  return new THREE.LatheGeometry(pr, 8);
+  // slim colonial baluster (photos 12-13): 1-1/4" square-ish foot and top block, vase and ring turnings between
+  const pr = [[0.0, 0], [0.058, 0], [0.058, 0.42], [0.042, 0.47], [0.052, 0.56], [0.044, 0.62], [0.034, 0.82], [0.026, 1.25], [0.028, 1.6],
+    [0.042, 1.9], [0.03, 2.04], [0.046, 2.13], [0.034, 2.22], [0.05, 2.3], [0.05, 2.8], [0.058, 2.83], [0.058, 2.9], [0, 2.9]].map(([r, y]) => new THREE.Vector2(r, y));
+  return new THREE.LatheGeometry(pr, 10);
 }
 
 // ------------------------------------------------------------------ walls
@@ -235,6 +236,22 @@ export function buildWall(L, w, bat) {
     fbox(s, s + ft, sill, head); fbox(e - ft, e, sill, head); fbox(s, e, head - ft, head);
     if (type === 'w') {
       fbox(s, e, sill, sill + ft); windowSashes(op, s + ft, e - ft, sill + ft, head - ft, outSide);
+      if (oo.blind && outSide) { // raised blind inside the jamb (bedroom photos 32-37), with its lift cords
+        const k = sashKit(s + ft, -outSide * 0.19), w = e - s - 2 * ft, top = head - ft;
+        if (oo.blind === 'woven') { // woven-wood roman shade folded up under the head (photo 34)
+          k.box('col:#7d5c3c', 0.01, top - 0.42, -0.05, w - 0.01, top, 0.05);
+          for (let y = top - 0.4; y < top - 0.05; y += 0.09) k.box('col:#5f4329', 0.01, y, -0.055, w - 0.01, y + 0.025, 0.055);
+        } else { // white 1" aluminum mini blind: headrail, slat stack, bottom rail
+          k.box('col:#f3f1ea', 0.01, top - 0.1, -0.06, w - 0.01, top, 0.06);
+          k.box('col:#ebe8df', 0.02, top - 0.32, -0.05, w - 0.02, top - 0.1, 0.05);
+          for (let y = top - 0.31; y < top - 0.11; y += 0.045) k.box('col:#d9d5ca', 0.02, y, -0.052, w - 0.02, y + 0.008, 0.052);
+          k.box('col:#f3f1ea', 0.01, top - 0.38, -0.055, w - 0.01, top - 0.32, 0.055);
+        }
+        const cx = oo.blind === 'woven' ? w - 0.12 : w - 0.15, sgn = -outSide; // lift cords hang past the sill
+        const cz = sgn * 0.3; // (out over the window stool)
+        for (const dx of [0, 0.04]) k.box('col:#efece2', cx + dx, sill - 1.3, cz - 0.008, cx + dx + 0.012, top - 0.3, cz + 0.008);
+        k.box('col:#e6e2d6', cx - 0.02, sill - 1.42, cz - 0.025, cx + 0.06, sill - 1.3, cz + 0.025); // tassel
+      }
       if (oo.sh && outSide) { // dark green louvered vinyl shutters hugging the casing (two louver panels + center rail)
         const sw = Math.min(1.45, (e - s) * 0.5 + 0.1), cw = 0.22;
         const N = n.clone().multiplyScalar(outSide), off = t / 2 + 0.08;
@@ -471,8 +488,12 @@ export function buildWall(L, w, bat) {
     const rows = [[0.06, 0.4], [0.45, 0.76], [0.8, 0.95]];
     for (const [r0, r1] of rows) for (const [c0, c1] of [[0.12, 0.47], [0.53, 0.88]]) {
       for (const s of [-1, 1]) {
-        k.box(key === 'door' ? 'doorLine' : key === 'cherry' ? 'black' : tone(pk, -0.12), w * c0, y0 + h * r0, zoff + s * th / 2, w * c1, y0 + h * r1, zoff + s * (th / 2 + 0.02));
-        k.box(pk, w * c0 + 0.06, y0 + h * r0 + 0.06, zoff + s * th / 2, w * c1 - 0.06, y0 + h * r1 - 0.06, zoff + s * (th / 2 + 0.045));
+        // raised panel: a fine shadow line at the frame's sticking, a beveled slope, then the flat field
+        const x0 = w * c0, x1 = w * c1, ya = y0 + h * r0, yb = y0 + h * r1, z0 = zoff + s * th / 2, zs = (d) => zoff + s * (th / 2 + d);
+        k.box(key === 'door' ? 'doorLine' : key === 'cherry' ? 'black' : tone(pk, -0.12), x0, ya, Math.min(z0, zs(0.006)), x1, yb, Math.max(z0, zs(0.006)));
+        k.box(key, x0 + 0.022, ya + 0.022, Math.min(z0, zs(0.02)), x1 - 0.022, yb - 0.022, Math.max(z0, zs(0.02)));
+        k.box(pk, x0 + 0.07, ya + 0.07, Math.min(z0, zs(0.032)), x1 - 0.07, yb - 0.07, Math.max(z0, zs(0.032)));
+        k.box(pk, x0 + 0.11, ya + 0.11, Math.min(z0, zs(0.045)), x1 - 0.11, yb - 0.11, Math.max(z0, zs(0.045)));
       }
     }
   }
@@ -589,7 +610,20 @@ export function railing(bat, a, b, h0, h1, key = 'trim', tag = 'f1', style = 'tu
   if (len < 0.01) return;
   const n = V(-dz / len, 0, dx / len);
   const H = 2.9;
-  bat.box(key, V(a[0], h0 + H, a[1]).addScaledVector(n, -0.12), V(dx, h1 - h0, dz), V(0, 0.2, 0), n.clone().multiplyScalar(0.24));
+  if (style === 'square') bat.box(key, V(a[0], h0 + H, a[1]).addScaledVector(n, -0.12), V(dx, h1 - h0, dz), V(0, 0.2, 0), n.clone().multiplyScalar(0.24));
+  else { // oak handrail with a rounded (colonial) profile, swept along the run; a flat plowed subrail underneath
+    const prof = [[-0.075, 0], [0.075, 0], [0.105, 0.075], [0.105, 0.125], [0.07, 0.185], [0, 0.205], [-0.07, 0.185], [-0.105, 0.125], [-0.105, 0.075]];
+    const A = V(a[0], h0 + H, a[1]), B = V(b[0], h1 + H, b[1]);
+    const pt = (base, [w, y]) => base.clone().addScaledVector(n, w).add(V(0, y, 0));
+    for (let i = 0; i < prof.length; i++) {
+      const p0 = prof[i], p1 = prof[(i + 1) % prof.length];
+      const out = n.clone().multiplyScalar((p0[0] + p1[0]) / 2).add(V(0, (p0[1] + p1[1]) / 2 - 0.1, 0));
+      bat.face(key, [pt(A, p0), pt(A, p1), pt(B, p1), pt(B, p0)], out);
+    }
+    const ax = V(dx, h1 - h0, dz).normalize();
+    bat.face(key, prof.map((q) => pt(A, q)), ax.clone().negate()); bat.face(key, prof.map((q) => pt(B, q)), ax);
+    if (style !== 'hand') bat.box(key, V(a[0], h0 + H - 0.05, a[1]).addScaledVector(n, -0.07), V(dx, h1 - h0, dz), V(0, 0.06, 0), n.clone().multiplyScalar(0.14));
+  }
   if (style === 'hand') return;
   if (style === 'square') bat.box(key, V(a[0], h0 + 0.3, a[1]).addScaledVector(n, -0.08), V(dx, h1 - h0, dz), V(0, 0.15, 0), n.clone().multiplyScalar(0.16));
   const cnt = Math.max(2, Math.round(len / 0.4));
@@ -598,10 +632,18 @@ export function railing(bat, a, b, h0, h1, key = 'trim', tag = 'f1', style = 'tu
     if (style === 'square') bat.aabox(key, x - 0.06, h + 0.3, z - 0.06, x + 0.06, h + H, z + 0.06);
     else (BALUSTERS[tag] = BALUSTERS[tag] || []).push([x, h, z]);
   }
-  for (const [x, z, h] of [[a[0], a[1], h0], [b[0], b[1], h1]]) {
-    bat.aabox(key, x - 0.2, h, z - 0.2, x + 0.2, h + H + 0.35, z + 0.2);
-    bat.aabox(key, x - 0.25, h + H + 0.35, z - 0.25, x + 0.25, h + H + 0.45, z + 0.25);
-    if (style === 'turned') { const kk = new Kit(bat, tag).at(x, z, h); kk.cyl(key, 0, 0, 0.14, 0.18, H + 0.45, H + 0.6, 10); kk.cyl(key, 0, 0, 0.18, 0.02, H + 0.6, H + 0.85, 10); }
+  for (const [x, z, h] of [[a[0], a[1], h0], [b[0], b[1], h1]]) { // box newel: plinth, recessed-panel shaft, collar, cap
+    const kk = new Kit(bat, tag).at(x, z, h);
+    if (style === 'turned') {
+      kk.cbox(key, 0, 0, 0.36, 0.36, 0, 0.5); kk.cbox(key, 0, 0, 0.3, 0.3, 0.5, H + 0.2);
+      for (const [w, d] of [[0.326, 0.19], [0.19, 0.326]]) kk.cbox(key, 0, 0, w, d, 0.75, H - 0.1);           // raised panel on each face
+      kk.cbox(key, 0, 0, 0.36, 0.36, H + 0.2, H + 0.32); kk.cbox(key, 0, 0, 0.32, 0.32, H + 0.32, H + 0.4);
+      kk.cbox(key, 0, 0, 0.42, 0.42, H + 0.4, H + 0.48);                                               // cap
+      kk.cyl(key, 0, 0, 0.16, 0.13, H + 0.48, H + 0.56, 12); kk.cyl(key, 0, 0, 0.13, 0.15, H + 0.56, H + 0.66, 12); kk.cyl(key, 0, 0, 0.15, 0.03, H + 0.66, H + 0.82, 12);
+    } else {
+      bat.aabox(key, x - 0.2, h, z - 0.2, x + 0.2, h + H + 0.35, z + 0.2);
+      bat.aabox(key, x - 0.25, h + H + 0.35, z - 0.25, x + 0.25, h + H + 0.45, z + 0.25);
+    }
   }
   const u = V(dx / len, 0, dz / len);
   addSolid(V(a[0], 0, a[1]).addScaledVector(n, -0.15), u.clone().multiplyScalar(len), n.clone().multiplyScalar(0.3), Math.min(h0, h1), Math.max(h0, h1) + H, tag);
@@ -927,12 +969,21 @@ export function buildSunroomGable(group, yPlan = 49.5, tag = 'f1') {
       const P0 = (ang, rr) => V(xc + Math.cos(ang) * rr, head + Math.sin(ang) * rr, zz);
       bat.face('white', [P0(a0, r), P0(a1, r), P0(a1, r + w), P0(a0, r + w)], V(0, 0, -1));
     } }
-  for (let i = 0; i < 18; i++) { // arched casing
-    const a0 = (i / 18) * Math.PI, a1 = ((i + 1) / 18) * Math.PI;
-    const p0 = V(xc + Math.cos(a0) * r, head + Math.sin(a0) * r, z + 0.25), p1 = V(xc + Math.cos(a1) * r, head + Math.sin(a1) * r, z + 0.25);
-    const q0 = V(xc + Math.cos(a0) * (r + 0.3), head + Math.sin(a0) * (r + 0.3), z + 0.25), q1 = V(xc + Math.cos(a1) * (r + 0.3), head + Math.sin(a1) * (r + 0.3), z + 0.25);
-    bat.face('trim', [p0, p1, q1, q0], V(0, 0, 1));
-  }
+  // arched casing (proud of the wall like the straight casing, so it doesn't z-fight with the paint), the
+  // arch sash frame (oak inside, white outside) and a flat rail where the arch sits on the casements
+  const ring = (key, r0, r1, za, zb, n = 36) => {
+    for (let i = 0; i < n; i++) {
+      const a0 = (i / n) * Math.PI, a1 = ((i + 1) / n) * Math.PI, c0 = Math.cos(a0), s0 = Math.sin(a0), c1 = Math.cos(a1), s1 = Math.sin(a1);
+      const Q = (c, sn, rr, zz) => V(xc + c * rr, head + sn * rr, z + zz);
+      bat.face(key, [Q(c0, s0, r0, zb), Q(c1, s1, r0, zb), Q(c1, s1, r1, zb), Q(c0, s0, r1, zb)], V(0, 0, 1));
+      bat.face(key, [Q(c0, s0, r0, za), Q(c1, s1, r0, za), Q(c1, s1, r1, za), Q(c0, s0, r1, za)], V(0, 0, -1));
+      bat.face(key, [Q(c0, s0, r1, za), Q(c1, s1, r1, za), Q(c1, s1, r1, zb), Q(c0, s0, r1, zb)], V((c0 + c1) / 2, (s0 + s1) / 2, 0));
+      bat.face(key, [Q(c0, s0, r0, za), Q(c1, s1, r0, za), Q(c1, s1, r0, zb), Q(c0, s0, r0, zb)], V(-(c0 + c1) / 2, -(s0 + s1) / 2, 0));
+    }
+  };
+  ring('trim', r, r + 0.3, 0.25, 0.31);
+  ring('trim', r - 0.13, r, 0, 0.1); ring('white', r - 0.13, r, -0.1, 0);
+  k.box('trim', xc - r, head - 0.02, 0, xc + r, head + 0.1, 0.1); k.box('white', xc - r, head - 0.02, -0.1, xc + r, head + 0.1, 0);
   k.box('trim', wx0 - 0.3, sill - 0.3, 0.25, wx0, head, 0.31); k.box('trim', wx1, sill - 0.3, 0.25, wx1 + 0.3, head, 0.31);
   k.box('trim', wx0 - 0.4, sill - 0.08, 0.25, wx1 + 0.4, sill, 0.45); k.box('trim', wx0, head, 0.25, xc - r, head + 0.3, 0.31); k.box('trim', xc + r, head, 0.25, wx1, head + 0.3, 0.31);
   k.box('trim', x0 + 0.3, 0, 0.25, x1 - 0.3, 0.38, 0.3);

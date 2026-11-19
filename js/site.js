@@ -511,7 +511,8 @@ export function buildSite() {
   // big sugar maple in the middle of the back yard (yard photos: ~45 ft, broad crown)
   shadeTree(P, 24, -50, 46, 3, { w: 30 });
   // apple trees in the rock-edged island
-  for (const [x, z, s] of [[-9, -30, 5], [-13, -46, 9], [-6, -60, 13]]) fruitTree(P, x, z, 17, s);
+  // (the nearest one sits 4 ft further west so its crown clears the detached studio's back wall at z = -22)
+  for (const [x, z, s] of [[-9, -34, 5], [-13, -48, 9], [-6, -61, 13]]) fruitTree(P, x, z, 17, s);
   // row of young arborvitae in the back bed
   for (let x = -22; x < 62; x += 9) arborvitae(P, x + 3, -82.5 + Math.sin(x) * 1.5, 9 + (Math.abs(x) % 3), 3.0, 300 + x);
   // dwarf Alberta spruce at the garage's back corner (rear photos)

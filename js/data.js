@@ -84,7 +84,7 @@ export const LEVELS = [
       [255, 476.5, 524.5, 476.5, 'i', [[275, 505, 'o']], { reno: 'mud' }],
       [524.5, 392.5, 524.5, 654.5, 'i', [], { reno: 'mud' }],
       // laundry / half bath / kitchen rear
-      [255, 392.5, 847, 392.5, 'e', [[587, 649, 'x', { hinge: 'lo', into: '+y', style: 'half', color: BROWN, storm: 1 }], [743, 805, 'w', { g: 'cs', sill: 3.7, head: 6.6 }]], { reno: 'mud' }],
+      [255, 392.5, 847, 392.5, 'e', [[587, 649, 'x', { hinge: 'lo', into: '+y', style: 'half', color: BROWN, storm: 1 }], [743, 805, 'w', { g: 'cs', sill: 3.7, head: 6.6, blind: 'mini' }]], { reno: 'mud' }],
       [841, 349, 841, 392.5, 'e'],
       [835, 354.5, 1060, 354.5, 'e', [[898, 980, 'w', { g: 'cs2', sill: 3.5, head: 6.9 }]]],
       [1054, 360, 1054, 308, 'e', [], { reno: 'bump' }],
@@ -95,9 +95,9 @@ export const LEVELS = [
       [1308, 310.5, 1420.5, 310.5, 'e', [], { reno: 'bump' }],
       // sun room (west gable wall with the arched window is built separately)
       [1420.5, 310.5, 1420.5, 44, 'e', [[122, 247, 's']], { reno: 'bump' }],
-      [1703.5, 44, 1703.5, 1034, 'e', [[903, 979, 'w']]],
+      [1703.5, 44, 1703.5, 1034, 'e', [[903, 979, 'w', { blind: 'mini' }]]],
       // front
-      [835, 1028.5, 1709, 1028.5, 'e', [[880, 941, 'w', { sh: 1 }], [1019, 1081, 'w', { sh: 1 }], [1197, 1331, 'e', { hinge: 'hi', into: '-y' }], [1465, 1527, 'w', { sh: 1 }], [1605, 1667, 'w', { sh: 1 }]]], // front windows 2'7" (measured against the entry in the front photo)
+      [835, 1028.5, 1709, 1028.5, 'e', [[880, 941, 'w', { sh: 1 }], [1019, 1081, 'w', { sh: 1 }], [1197, 1331, 'e', { hinge: 'hi', into: '-y' }], [1465, 1527, 'w', { sh: 1, blind: 'mini' }], [1605, 1667, 'w', { sh: 1, blind: 'mini' }]]], // front windows 2'7" (measured against the entry in the front photo)
       [841, 654.5, 841, 1028.5, 'i'],
       // garage side wall facing the front porch
       [841, 1028.5, 841, 1187, 'e'],
@@ -156,16 +156,18 @@ export const LEVELS = [
       [384, 52.5, 384, 111.5, 'e'],
       [375, 52.5, 682, 52.5, 'e', [[449, 595, 'w', { g: 'cs2', sill: 4.0, head: 6.9 }]]],
       [673, 52.5, 673, 111.5, 'e'],
-      [663, 111.5, 1738, 111.5, 'e', [[1017, 1121, 'w', { g: 'cs', sill: 3.6 }], [1334, 1438, 'w', { g: 'cs', sill: 3.2 }]]],
-      [1729, 102, 1729, 1114, 'e', [[464, 567, 'w'], [897, 1015, 'w']]],
-      [1290, 1105, 1738, 1105, 'e', [[1361, 1457, 'w', { sh: 1 }], [1572, 1667, 'w', { sh: 1 }]]],
+      [663, 111.5, 1738, 111.5, 'e', [[1017, 1121, 'w', { g: 'cs', sill: 3.6, blind: 'mini' }], [1334, 1438, 'w', { g: 'cs', sill: 3.2, blind: 'woven' }]]],
+      [1729, 102, 1729, 1114, 'e', [[464, 567, 'w', { blind: 'woven' }], [897, 1015, 'w', { blind: 'mini' }]]],
+      [1290, 1105, 1738, 1105, 'e', [[1361, 1457, 'w', { sh: 1, blind: 'mini' }], [1572, 1667, 'w', { sh: 1, blind: 'mini' }]]],
       [1293.5, 1105, 1293.5, 1178, 'e'],
       [830, 1178, 1303, 1178, 'e', [[981, 1163, 'w', { sh: 1, g: 'dh2', cols: 2, rows: 2 }]]],
       [839.5, 1105, 839.5, 1178, 'e'],
-      [261, 1105, 849, 1105, 'e', [[475, 571, 'w', { sh: 1 }], [681, 777, 'w', { sh: 1 }]]],
+      [261, 1105, 849, 1105, 'e', [[475, 571, 'w', { sh: 1, blind: 'mini' }], [681, 777, 'w', { sh: 1, blind: 'mini' }]]],
       // interior
-      [270, 477, 1315, 477, 'i', [[377, 466, 'd', { hinge: 'hi', into: '-y' }], [737, 826, 'd', { hinge: 'lo', into: '-y' }], [1026, 1114, 'd', { hinge: 'lo', into: '-y' }], [1231, 1299, 'd', { hinge: 'hi', into: '+y' }]]],
-      [842, 477, 842, 1105, 'i', [[498, 594, 'd', { hinge: 'lo', into: '-x' }]]],
+      [270, 477, 1315, 477, 'i', [[377, 466, 'd', { hinge: 'hi', into: '-y' }], [737, 826, 'd', { hinge: 'hi', into: '-y' }], [1026, 1114, 'd', { hinge: 'lo', into: '-y' }], [1231, 1299, 'd', { hinge: 'hi', into: '+y' }]]],
+      // primary bedroom door: hinged on the far (east) jamb so it opens into the room clear of the walk-in
+      // closet door (photo 38 shows no leaf against the closet wall); the closet door's hinges are on its north jamb
+      [842, 477, 842, 1105, 'i', [[498, 594, 'd', { hinge: 'hi', into: '-x' }]]],
       // primary bath: shower partition, neo-angle shower front, linen closet
       [512, 382, 512, 477, 'i', [], { reno: 'pbath' }],
       [563, 332, 673, 332, 'i', [], { reno: 'pbath' }],

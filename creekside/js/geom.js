@@ -1,13 +1,34 @@
 // Low-level geometry helpers: a batcher that merges faces by material, polygon
 // utilities, and a tiny physics registry used by walk mode.
 import * as THREE from 'three';
-import { tex } from './textures.js';
+import { tex, texTint } from './textures.js';
 
 export const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const UP = V(0, 1, 0);
 
 // ---------------------------------------------------------------- materials
 const MATS = {};
+// texture by name, with its companion maps (normal / roughness, in texture.userData) and its tint:
+// color-parameterized patterns ('paint:#hex', 'grain:#hex' ...) share one neutral texture and the
+// material color carries the hex (see textures.js). name = null clears the maps (color untouched).
+function useMaps(m, name) {
+  const t = name ? tex(name) : null;
+  if (t) m.color.copy(texTint(name));
+  m.map = t || null;
+  const u = t ? t.userData : {};
+  m.normalMap = u.normalMap || null;
+  m.roughnessMap = u.roughnessMap || null;
+  if (u.normalMap) { const s = u.normalScale ?? 1; m.normalScale.set(s, s); }
+}
+// window glass: reflections rise toward grazing angles (Fresnel) instead of a flat opacity
+function fresnelGlass(m, edge) {
+  m.onBeforeCompile = (sh) => {
+    sh.fragmentShader = sh.fragmentShader.replace('#include <opaque_fragment>', `#include <opaque_fragment>
+      { float fr = pow(1.0 - abs(dot(normalize(vNormal), normalize(vViewPosition))), 4.0); gl_FragColor.a = clamp(gl_FragColor.a + fr * ${edge.toFixed(2)}, 0.0, 1.0); }`);
+  };
+  m.customProgramCacheKey = () => 'fresnelGlass' + edge;
+  return m;
+}
 // Themeable materials: walls ('W:<room>'), floors ('F:<group>') and these finish roles. Their
 // look is set with applyFinish(); ORIGIN holds the as-listed finish of each.
 export const ORIGIN = {
@@ -22,7 +43,7 @@ export const ORIGIN = {
 };
 export const THEMED = new Map();
 function roughFor(key, spec) {
-  if (key.startsWith('F:')) return /carpet|berber/.test(spec) ? 0.95 : 0.4;
+  if (key.startsWith('F:')) return /carpet|berber/.test(spec) ? 1 : /oak|plank|lvp/.test(spec) ? 0.5 : 0.45;
   if (key === 'counter' || key === 'vanityTop' || key === 'rcounter') return /marble|plank|laminate/.test(spec) ? 0.35 : 0.25;
   if (key === 'backsplash' || key === 'rsplash') return 0.3;
   if (key === 'backsplash') return 0.3;
@@ -30,13 +51,27 @@ function roughFor(key, spec) {
   if (key === 'shingle') return 0.95;
   return 0.45;
 }
+// stained-wood colors on wood parts get the grain texture automatically (painted colors stay flat)
+const WOODY = new Set(['cab', 'cabDoor', 'cabPanel', 'door', 'doorPanel', 'mantel', 'mantelPanel', 'island', 'trim', 'rcab', 'rcabDoor', 'rcabPanel']);
+function stainedWood(hex) {
+  const h = {}; new THREE.Color(hex).getHSL(h, THREE.SRGBColorSpace);
+  return h.h * 360 >= 15 && h.h * 360 <= 45 && h.s >= 0.3 && h.l >= 0.2 && h.l <= 0.66;
+}
 export function applyFinish(key, spec) {
   const m = material(key);
   if (!spec) return;
+  if (spec.startsWith('#') && WOODY.has(key) && stainedWood(spec)) spec = 'grain:' + spec;
   // hardwood floors run front-to-back (along z) in the photos: floor wood textures are rotated a quarter turn
   const rot = key.startsWith('F:') && /^(oak|plank)/.test(spec);
-  if (spec.startsWith('#')) { m.map = null; m.color.set(spec); } else { m.map = tex(rot ? spec + (spec.includes(':') ? ':r' : '::r') : spec); m.color.set('#ffffff'); }
+  if (spec.startsWith('#')) { useMaps(m, null); m.color.set(spec); } else useMaps(m, rot ? spec + (spec.includes(':') ? ':r' : '::r') : spec);
   m.roughness = roughFor(key, spec);
+  // the room probe's ceiling lights over-light floors through the diffuse term: damp it on carpet
+  // (rough, all diffuse) more than on wood and tile, which need it for their sheen
+  if (key === 'shingle') m.userData.envBase = m.envMapIntensity = 0.5; // roofs: less blue sky in the diffuse term
+  if (key.startsWith('F:')) m.userData.envBase = m.envMapIntensity = /carpet|berber/.test(spec) ? 0.45 : 0.75;
+  if (key.startsWith('W:')) { // a little even "bounce light" on wall paint (stands in for interreflection); same in both houses
+    m.emissiveMap = m.map; m.emissive.copy(m.color); m.emissiveIntensity = 0.2;
+  }
   m.needsUpdate = true;
 }
 // flat colors (roughness)
@@ -56,6 +91,8 @@ export function material(key) {
   let m;
   if (/^[WF]:/.test(key) || key in ORIGIN) {
     m = new THREE.MeshStandardMaterial({ roughness: 0.9 });
+    // the room environment map lights walls very unevenly by direction; damp it so paint reads true
+    if (key.startsWith('W:')) m.envMapIntensity = 0.55;
     MATS[key] = m; THEMED.set(key, m);
     applyFinish(key, ORIGIN[key]);
     return m;
@@ -63,34 +100,38 @@ export function material(key) {
   const [kind, arg] = key.split(':');
   if (kind === 'wall' || kind === 'col') {
     m = new THREE.MeshStandardMaterial({ color: arg, roughness: 0.9 });
-  } else if (kind === 'fab') { // fabric
-    m = new THREE.MeshStandardMaterial({ color: arg, roughness: 1 });
+  } else if (kind === 'fab') { // fabric: soft sheen at grazing angles (velvet / boucle / linen)
+    m = new THREE.MeshPhysicalMaterial({ color: arg, roughness: 1, sheen: 1, sheenRoughness: 0.75, sheenColor: new THREE.Color(arg).lerp(new THREE.Color('#ffffff'), 0.35).multiplyScalar(0.55) });
   } else if (kind === 'wood') {
     m = new THREE.MeshStandardMaterial({ color: arg, roughness: 0.5 });
   } else if (FLAT[key]) {
     const [c, r, mt = 0] = FLAT[key];
     m = new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: mt });
     // ceilings get almost no direct light; a touch of emissive stands in for bounce light
-    if (key === 'ceiling' || key === 'soffit') { m.emissive.set('#ffffff'); m.emissiveIntensity = key === 'ceiling' ? 0.32 : 0.12; }
+    if (key === 'ceiling' || key === 'soffit') { m.emissive.set('#ffffff'); m.emissiveIntensity = key === 'ceiling' ? 0.5 : 0.12; }
   } else if (GLOW[key]) {
     m = new THREE.MeshStandardMaterial({ color: GLOW[key], emissive: GLOW[key], emissiveIntensity: key === 'shade' ? 0.35 : 0.9, roughness: 0.8 });
-  } else if (key === 'glass') {
-    m = new THREE.MeshStandardMaterial({ color: '#bcd6e6', roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.25, depthWrite: false, side: THREE.DoubleSide });
+  } else if (key === 'glass') { // tint/opacity are adjusted by render.js for outside vs. inside views
+    m = fresnelGlass(new THREE.MeshStandardMaterial({ color: '#bcd6e6', roughness: 0.03, metalness: 0, transparent: true, opacity: 0.2, depthWrite: false, side: THREE.DoubleSide, envMapIntensity: 1.4 }), 0.7);
   } else if (key === 'showerGlass') {
-    m = new THREE.MeshStandardMaterial({ color: '#d7e6ea', roughness: 0.05, transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide });
+    m = fresnelGlass(new THREE.MeshStandardMaterial({ color: '#d7e6ea', roughness: 0.04, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide, envMapIntensity: 1.2 }), 0.5);
   } else if (key === 'smokeGlass') { // bronze-tinted shower glass (primary bath, photo 30)
-    m = new THREE.MeshStandardMaterial({ color: '#6b5a46', roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.38, depthWrite: false, side: THREE.DoubleSide });
+    m = fresnelGlass(new THREE.MeshStandardMaterial({ color: '#6b5a46', roughness: 0.06, metalness: 0, transparent: true, opacity: 0.34, depthWrite: false, side: THREE.DoubleSide, envMapIntensity: 1.2 }), 0.5);
   } else if (key === 'frosted') {
     m = new THREE.MeshStandardMaterial({ color: '#e7eef0', roughness: 0.6, transparent: true, opacity: 0.85 });
   } else if (key === 'skylight') {
     m = new THREE.MeshStandardMaterial({ color: '#33424e', roughness: 0.1, metalness: 0.3 });
   } else if (kind === 'floor') {
     const rest = key.slice(6);
-    m = new THREE.MeshStandardMaterial({ map: tex(rest), roughness: rest === 'oak' ? 0.35 : rest.startsWith('tile') || rest === 'slate' ? 0.4 : 0.95 });
+    m = new THREE.MeshStandardMaterial({ roughness: rest === 'oak' ? 0.5 : rest.startsWith('tile') || rest === 'slate' ? 0.45 : 1 });
+    useMaps(m, rest);
   } else {
     // textured: siding, shingle, brick, block, paving, asphalt, grass, droptile, concrete, faux:#, paint:#, ivy, grid, tile*, backsplash, mulch, felt...
-    m = new THREE.MeshStandardMaterial({ map: tex(key), roughness: key.startsWith('tile') || key === 'backsplash' ? 0.35 : 0.9 });
+    m = new THREE.MeshStandardMaterial({ roughness: key.startsWith('tile') || key === 'backsplash' ? 0.4 : 0.9 });
+    useMaps(m, key);
     if (key === 'droptile') { m.emissive.set('#ffffff'); m.emissiveIntensity = 0.25; }
+    if (key === 'grass' || key === 'mulch') { m.roughness = 1; m.envMapIntensity = 0.35; } // no sky sheen on lawns
+    if (/^shingle/.test(key)) m.envMapIntensity = 0.5; // roofs: less blue sky in the diffuse term
   }
   MATS[key] = m;
   return m;

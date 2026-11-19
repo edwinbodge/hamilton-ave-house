@@ -32,21 +32,28 @@ export const F2inv = (x, y) => [751 + (x - 474) / 2.035, 41 + (y - 57.5) / 2.04]
 const OAK = '#b9843f';
 
 // heights
+// Floor-to-floor is 9 ft (8 ft 1st-floor ceilings), not 10: the door/window-head to ceiling ratios in photos 12 (uppers
+// 30" with ~6" to the ceiling), 16 (patio door) and 17 (office closet + window) all give ~8 ft, and a camera fit on the
+// rear photo 45 puts the 2nd-floor sills ~1.7 ft above a 9 ft floor (photo 34 shows the same 1.7 ft from inside).
 export const H = {
-  f2: 10, ceil1: 9, ceil2: 18, basement: -9.2, grade: -1, family: -0.6, garage: -0.6,
-  pitch: 9 / 12, garagePitch: 7 / 12, wallTop2: 18,
+  f2: 9, ceil1: 8, ceil2: 17, basement: -9.2, grade: -1, family: -0.6, garage: -0.6,
+  pitch: 9 / 12, rearPitch: 10 / 12, garagePitch: 7 / 12, wallTop2: 17, plate1: 9,
 };
 export const ROOFT = 0.55;
-export const RY = H.wallTop2 + ROOFT; // main roof surface at the 2nd-floor wall line (underside meets the 18 ft ceiling)
-// Family room vault: the main roof's rear slope carries on down over the two-story family room
-// (catslide), so its ceiling is that plane's underside. yPx in 1st-floor plan px.
-export const vaultTop = (yPx) => RY + ((yPx - 197.5) / PX) * H.pitch;
+export const RY = H.wallTop2 + ROOFT; // main roof surface at the 2nd-floor side/front wall lines (underside meets the 17 ft ceiling)
+// The rear slope is a separate, steeper plane set ~3 ft higher: it is the family room's catslide carried straight up
+// (photo 45 fit: family eave fascia 9.8 ft, rear 2nd-floor fascia 19.5 ft one plane apart = 10/12). Where it meets the
+// lower 9/12 side slopes the rear walls show the short raked corners of photos 02/03/45/64.
+export const RR = 20.3; // rear plane surface at the 2nd-floor rear wall line (y = 197.5 px)
+// Family room vault: the rear plane's underside. yPx in 1st-floor plan px.
+export const vaultTop = (yPx) => RR + ((yPx - 197.5) / PX) * H.rearPitch;
 export const vaultUnder = (yPx) => vaultTop(yPx) - ROOFT;
+const FAMTOP = vaultUnder(57.5) - 0.02; // family room rear wall: up to the vault at its line
 
 // stacked family-room windows (both side walls): lower casements + stepped transoms that follow the roof
 const famWin = () => [
   [82, 114, 'w', { g: 'cs', sill: 1.4, head: 7.0 }], [117, 148, 'w', { g: 'cs', sill: 1.4, head: 7.0 }], [151, 184, 'w', { g: 'cs', sill: 1.4, head: 7.0 }],
-  [82, 114, 'w', { g: 'cs', sill: 8.0, head: 10.3 }], [117, 148, 'w', { g: 'cs', sill: 8.0, head: 12.4 }], [151, 184, 'w', { g: 'cs', sill: 8.0, head: 14.6 }],
+  [82, 114, 'w', { g: 'cs', sill: 8.0, head: 10.8 }], [117, 148, 'w', { g: 'cs', sill: 8.0, head: 11.8 }], [151, 184, 'w', { g: 'cs', sill: 8.0, head: 13.0 }], // heads measured on photo 02
 ];
 
 export const LEVELS = [
@@ -111,13 +118,13 @@ export const LEVELS = [
     ],
   },
   {
-    id: 'f1', name: '1st Floor', map: F1, floor: 0, extBottom: -0.9, extTop: 10, intTop: 9,
-    sill: 2.0, head: 7.0, ceiling: 9, grille: 'cs',
+    id: 'f1', name: '1st Floor', map: F1, floor: 0, extBottom: -0.9, extTop: H.f2, intTop: H.ceil1,
+    sill: 2.0, head: 7.0, ceiling: H.ceil1, grille: 'cs',
     walls: [
       // two-story family room: rear wall under the low eave, side walls follow the roof slope
-      [474, 57.5, 701.5, 57.5, 'e', [[487, 545, 'w', { g: 'cs2', sill: 1.6 }], [633, 691, 'w', { g: 'cs2', sill: 1.6 }]], { top: 9.33 }],
-      [474, 57.5, 474, 197.5, 'e', famWin(), { slope: [9.33, 18.0] }],
-      [701.5, 57.5, 701.5, 197.5, 'e', famWin(), { slope: [9.33, 18.0] }],
+      [474, 57.5, 701.5, 57.5, 'e', [[487, 545, 'w', { g: 'cs2', sill: 1.6 }], [633, 691, 'w', { g: 'cs2', sill: 1.6 }]], { top: FAMTOP }],
+      [474, 57.5, 474, 197.5, 'e', famWin(), { slope: [FAMTOP, vaultUnder(197.5)] }],
+      [701.5, 57.5, 701.5, 197.5, 'e', famWin(), { slope: [FAMTOP, vaultUnder(197.5)] }],
       // dining / kitchen wing
       [323.5, 197.5, 474, 197.5, 'e', [[354, 438, 's']]],
       [323.5, 197.5, 323.5, 351.5, 'e', [[233, 285, 'w', { g: 'cs2' }], [286, 338, 'w', { g: 'cs2' }]], { reno: 'kitchen' }],
@@ -143,12 +150,12 @@ export const LEVELS = [
       [839.5, 197.5, 839.5, 378.5, 'e', [[265, 326, 'w', { g: 'cs2', blind: true }]]],
       [701.5, 197.5, 839.5, 197.5, 'e', [[743, 804, 'w', { g: 'cs2', blind: true }]]],
       // ---- interior
-      [474, 197.5, 474, 305, 'i', [[212, 305, 'o', { head: 8.2 }]], { top: 10, reno: 'kitchen' }], // dining | family: open, short wing wall
-      [474, 305, 474, 318, 'i', [], { top: 10, reno: 'kitchen' }],                          // pier at the hall corner
+      [474, 197.5, 474, 305, 'i', [[212, 305, 'o', { head: H.ceil1 }]], { top: H.f2, reno: 'kitchen' }], // dining | family: open, short wing wall
+      [474, 305, 474, 318, 'i', [], { top: H.f2, reno: 'kitchen' }],                          // pier at the hall corner
       [475.5, 390, 475.5, 494.5, 'i'],                                                     // kitchen | hall (fridge wall)
       [323.5, 494.5, 476, 494.5, 'i', [[406, 444, 'o']], { reno: 'openLiving' }],          // kitchen | living room
       [477, 494.5, 477, 563.5, 'i', [[499, 552, 'o']]],                                     // living room | foyer
-      [562, 305, 701.5, 305, 'i', [], { top: 10 }],                                        // closet + half bath | family room
+      [562, 305, 701.5, 305, 'i', [], { top: H.f2 }],                                        // closet + half bath | family room
       [562, 305, 562, 378, 'i', [[312, 372, 'c']]],                                        // coat closet
       [597, 305, 597, 378, 'i'],
       [562, 378, 701.5, 378, 'i', [[601, 637, 'd', { hinge: 'lo', into: '-y' }]]],         // half bath door
@@ -161,7 +168,7 @@ export const LEVELS = [
       [725.5, 378.5, 725.5, 493.5, 'i'],
       [698, 493.5, 725.5, 493.5, 'i'],
       [700, 493.5, 700, 563.5, 'i', [[498, 532, 'd', { hinge: 'hi', into: '-x' }]]],      // laundry | garage
-      [701.5, 197.5, 701.5, 378.5, 'i', [[242, 302, 'f', { pair: true, into: '+x' }]], { top: 10 }], // family | office French doors
+      [701.5, 197.5, 701.5, 378.5, 'i', [[242, 302, 'f', { pair: true, into: '+x' }]], { top: H.f2 }], // family | office French doors
       [779, 343, 839.5, 343, 'i', [[783, 835, 'c']]], [779, 343, 779, 378.5, 'i'],          // office closet
     ],
     footprint: [
@@ -174,8 +181,8 @@ export const LEVELS = [
     garage: [[700, 493.5], [725.5, 493.5], [725.5, 378.5], [987.5, 378.5], [987.5, 722.5], [700, 722.5]],
     // flat ceilings for the 1-story parts (elsewhere the underside of the 2nd floor)
     ceilings: [
-      { pts: [[292, 351.5], [323.5, 351.5], [323.5, 494.5], [292, 494.5]], y: 9 },
-      { pts: [[700, 493.5], [725.5, 493.5], [725.5, 378.5], [987.5, 378.5], [987.5, 722.5], [700, 722.5]], y: 9.39 },
+      { pts: [[292, 351.5], [323.5, 351.5], [323.5, 494.5], [292, 494.5]], y: H.ceil1 },
+      { pts: [[700, 493.5], [725.5, 493.5], [725.5, 378.5], [987.5, 378.5], [987.5, 722.5], [700, 722.5]], y: 8.4 },
     ],
     rooms: [
       { name: 'Stair', floor: null, wall: 'paint:#f3f2ee', noLabel: true, poly: [[563.5, 422], [610.5, 422], [610.5, 563.5], [563.5, 563.5]] },
@@ -202,7 +209,7 @@ export const LEVELS = [
   },
   {
     id: 'f2', name: '2nd Floor', map: F2, floor: H.f2, extBottom: 0, extTop: 8, intTop: 8,
-    sill: 2.4, head: 6.9, ceiling: 8, grille: 'cs',
+    sill: 1.9, head: 6.9, ceiling: 8, grille: 'cs', // bedroom sills ~1.7 ft to the trim (photo 34, and the photo 45 camera fit)
     walls: [
       [677, 109.5, 677, 334.6, 'e', [[128, 158, 'w', { g: 'cs2', blind: true }], [203, 222, 'w', { g: 'cs', sill: 3.0, blind: 1.3 }], [275, 305, 'w', { g: 'cs2', blind: true }]]],
       [677, 109.5, 751, 109.5, 'e', [[698, 727, 'w', { g: 'cs2', blind: true }]]],
@@ -212,7 +219,7 @@ export const LEVELS = [
       [726.9, 344.7, 734.3, 334.6, 'e', [[336, 343, 'w', { g: 'cs', sill: 1.8 }]]],
       [734.3, 334.6, 751, 334.6, 'e'],
       [751, 289, 751, 334.6, 'e'],
-      [751, 289, 863, 289, 'e', [[755, 790, 'w', { g: 'cs2', sill: 1.8, head: 7.0 }], [835, 855, 'w', { g: 'cs' }]]],
+      [751, 289, 863, 289, 'e', [[755, 790, 'w', { g: 'cs', sill: 0.4, head: 4.3 }], [835, 855, 'w', { g: 'cs', sill: 3.5, head: 6.2 }]]], // foyer picture window: wide and low over the door (photos 06, 55, 61)
       [863, 276, 863, 289, 'e'],
       [863, 276, 931, 276, 'e'],
       [931, 268, 931, 276, 'e'],
@@ -224,7 +231,7 @@ export const LEVELS = [
       // interior
       [751, 109.5, 751, 191, 'i', [[166, 185, 'd', { pair: true, into: '-x', closed: true }]]],      // bedroom 3 | family void, its closet door
       [751, 162, 783, 162, 'i'], [783, 162, 783, 187, 'i'], [751, 187, 783, 187, 'i'],    // bedroom 3 walk-in closet
-      [677, 191, 751, 191, 'i', [[734, 750, 'd', { hinge: 'hi', into: '-y' }]]],
+      [677, 191, 751, 191, 'i', [[734, 750, 'd', { hinge: 'lo', into: '-y' }]]], // hinged away from the closet corner (photo 35)
       [733, 191, 733, 253, 'i', [[205, 222, 'd', { hinge: 'lo', into: '-x' }]]],        // hall bath door
       [707, 222, 707, 240, 'i'], [707, 222, 733, 222, 'i', [[710, 730, 'd', { hinge: 'lo', into: '-y', closed: true }]]], // linen (swings into the bath, so it starts closed)
       [677, 240, 733, 240, 'i'],
@@ -248,29 +255,29 @@ export const LEVELS = [
     rooms: [
       { name: 'Family Room (open to below)', floor: null, wall: 'paint:#f3f2ee', void: 'Family Room', noLabel: true, poly: [[751, 41], [863, 41], [863, 162], [751, 162]] },
       { name: 'Foyer (open to below)', floor: null, wall: 'paint:#f3f2ee', void: 'Foyer', noLabel: true, poly: [[751, 215], [795, 215], [795, 289], [751, 289]] },
-      { name: 'Closet', floor: 'carpet:#d6d0c6', wall: 'paint:#f2f1ee', noLabel: true, poly: [[751, 162], [783, 162], [783, 187], [751, 187]] },
+      { name: 'Closet', floor: 'carpet:#c4bcb1', wall: 'paint:#f2f1ee', noLabel: true, poly: [[751, 162], [783, 162], [783, 187], [751, 187]] },
       { name: 'Linen', floor: 'vinylDiamond', wall: 'paint:#f2f1ee', noLabel: true, poly: [[707, 222], [733, 222], [733, 240], [707, 240]] },
-      { name: 'Closet', floor: 'carpet:#d6d0c6', wall: 'paint:#f2f1ee', noLabel: true, poly: [[677, 240], [733, 240], [733, 253], [677, 253]] },
-      { name: 'Linen', floor: 'carpet:#d6d0c6', wall: 'paint:#f2f1ee', noLabel: true, poly: [[836, 162], [863, 162], [863, 185], [836, 185]] },
+      { name: 'Closet', floor: 'carpet:#c4bcb1', wall: 'paint:#f2f1ee', noLabel: true, poly: [[677, 240], [733, 240], [733, 253], [677, 253]] },
+      { name: 'Linen', floor: 'carpet:#c4bcb1', wall: 'paint:#f2f1ee', noLabel: true, poly: [[836, 162], [863, 162], [863, 185], [836, 185]] },
       { name: 'WC', floor: 'tileBeige', wall: 'paint:#f4f3f0', noLabel: true, poly: [[863, 109.5], [893, 109.5], [893, 129], [863, 129]] },
       { name: 'Bedroom 3', dims: "12'2\" x 13'9\"", floor: 'carpet:#c79a9b', wall: 'paint:#f2f1ee', poly: [[677, 109.5], [751, 109.5], [751, 191], [677, 191]] },
       { name: 'Bath', dims: "8'7\" x 7'10\" · tub/shower", floor: 'vinylDiamond', wall: 'paint:#ead9cd', poly: [[677, 191], [733, 191], [733, 222], [707, 222], [707, 240], [677, 240]] },
-      { name: 'Hall', dims: '', floor: 'carpet:#d6d0c6', wall: 'paint:#f2f1ee', noLabel: true, poly: [[733, 191], [751, 191], [751, 246], [733, 246]] },
-      { name: 'Bedroom 2', dims: "12'2\" x 14'2\" · bay", floor: 'carpet:#d6d0c6', wall: 'paint:#f2f1ee',
+      { name: 'Hall', dims: '', floor: 'carpet:#c4bcb1', wall: 'paint:#f2f1ee', noLabel: true, poly: [[733, 191], [751, 191], [751, 246], [733, 246]] },
+      { name: 'Bedroom 2', dims: "12'2\" x 14'2\" · bay", floor: 'carpet:#c4bcb1', wall: 'paint:#f2f1ee',
         poly: [[677, 253], [733, 253], [733, 246], [751, 246], [751, 334.6], [734.3, 334.6], [726.9, 344.7], [700.9, 344.7], [693.5, 334.6], [677, 334.6]] },
-      { name: 'Loft', dims: "14'0\" x 9'9\"", floor: 'carpet:#d6d0c6', wall: 'paint:#f2f1ee', poly: [[783, 162], [836, 162], [836, 215], [751, 215], [751, 187], [783, 187]] },
-      { name: 'Primary Bedroom', dims: "23'2\" x 15'9\" (incl. bump over garage)", floor: 'carpet:#d6d0c6', wall: 'paint:#d9d1c9',
+      { name: 'Loft', dims: "14'0\" x 9'9\"", floor: 'carpet:#c4bcb1', wall: 'paint:#f2f1ee', poly: [[783, 162], [836, 162], [836, 215], [751, 215], [751, 187], [783, 187]] },
+      { name: 'Primary Bedroom', dims: "23'2\" x 15'9\" (incl. bump over garage)", floor: 'carpet:#c4bcb1', wall: 'paint:#d9d1c9',
         poly: [[836, 185], [863, 185], [931, 185], [931, 198.8], [976, 198.8], [976, 268], [931, 268], [931, 276], [863, 276], [863, 215], [836, 215]] },
       { name: 'Primary Bath', dims: "11'5\" x 12'8\" · whirlpool + shower", floor: 'tileBeige', wall: 'paint:#f4f3f0', poly: [[863, 129], [893, 129], [893, 109.5], [931, 109.5], [931, 185], [863, 185]] },
-      { name: 'Walk-in Closet', dims: "7'2\" x 12'7\"", floor: 'carpet:#d6d0c6', wall: 'paint:#f2f1ee', poly: [[819, 215], [863, 215], [863, 289], [819, 289]] },
+      { name: 'Walk-in Closet', dims: "7'2\" x 12'7\"", floor: 'carpet:#c4bcb1', wall: 'paint:#f2f1ee', poly: [[819, 215], [863, 215], [863, 289], [819, 289]] },
     ],
   },
 ];
 
-// Stairs (1st-floor px). Main: 15 risers, 0 -> 10 ft, bottom at the front door, rising toward the back.
+// Stairs (1st-floor px). Main: 14 risers (7.7"), 0 -> 9 ft, bottom at the front door, rising toward the back.
 // Basement: 14 risers, -9.2 -> 0, under the main stair, top at the door off the back hall.
 export const STAIRS = {
-  main: { x0: 563.5, x1: 610.5, yBottom: 562, yTop: 412.5, risers: 15, flareX: 549 },
+  main: { x0: 563.5, x1: 610.5, yBottom: 562, yTop: 412.5, risers: 14, flareX: 549 },
   basement: { x0: 563.5, x1: 610.5, yTop: 422, yBottom: 551, risers: 14 },
 };
 
@@ -298,5 +305,11 @@ export const NEIGHBORS = [
   nb(28, 165, 68, 198, 17, 29, 'hip', '#b9c2c6'),
   nb(96, 168, 136, 200, 17, 28, 'gx', '#e2ddd2'),
 ];
+// living room tray ceiling (photos 19-20): octagon inside this px rectangle, corners chamfered by TRAY.c ft, 0.7 ft deep
+export const TRAY = { px: [338, 509, 462, 641], c: 1.3, depth: 0.7 };
+export const trayOct = () => {
+  const [x0, z0] = toFt([TRAY.px[0], TRAY.px[1]]), [x1, z1] = toFt([TRAY.px[2], TRAY.px[3]]), c = TRAY.c;
+  return [[x0 + c, z0], [x1 - c, z0], [x1, z0 + c], [x1, z1 - c], [x1 - c, z1], [x0 + c, z1], [x0, z1 - c], [x0, z0 + c]];
+};
 export const LATITUDE = 43.32;
 export { OAK };

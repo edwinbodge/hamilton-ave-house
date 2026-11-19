@@ -1,7 +1,7 @@
 // Fixtures (kitchen, baths, fireplace, lights...) and staged furniture, built to real
 // dimensions in feet. Components use a Kit (see geom.js): local x = width, z = depth with
 // the front at +z, y = up. Wall-mounted pieces have their back at z = 0.
-import { LEVELS, toFt, F2, H, PX, vaultUnder } from './data.js';
+import { LEVELS, toFt, F2, H, PX, vaultUnder, trayOct } from './data.js';
 import { Kit, V } from './geom.js';
 import { renoBat } from './build.js';
 
@@ -164,17 +164,30 @@ function desk(k, w = 4) {
 
 // ------------------------------------------------------------------ seating & tables
 function sofa(k, len, o = {}) {
-  const d = 3.15, base = fab(o.color || '#dcd3c6'), cush = fab(o.cushion || o.color || '#e3dbcf'), arm = 0.62;
-  for (const x of [-len / 2 + 0.3, len / 2 - 0.3]) for (const z of [0.3, d - 0.3]) taperLeg(k, DARKWOOD, x, z, 0.4, 0.05, 0.08);
-  k.soft(base, -len / 2, 0.38, 0.05, len / 2, 1.1, d, 0.12);                       // base
-  k.soft(base, -len / 2 + 0.05, 0.9, 0, len / 2 - 0.05, 2.75, 0.85, 0.24);          // back frame
-  k.soft(base, -len / 2, 0.9, 0.05, -len / 2 + arm, 2.12, d, 0.26);                 // rolled arms
-  k.soft(base, len / 2 - arm, 0.9, 0.05, len / 2, 2.12, d, 0.26);
+  const d = o.roll ? 3.3 : 3.15, base = fab(o.color || '#dcd3c6'), cush = fab(o.cushion || o.color || '#e3dbcf'), arm = o.roll ? 0.78 : 0.62;
+  if (o.roll) { // 90s traditional: skirted to the floor, big outward-rolled arms, pillow back (family room, photos 07-10)
+    k.soft(base, -len / 2 + 0.06, 0.0, 0.08, len / 2 - 0.06, 0.62, d - 0.02, 0.06);                  // skirt
+    k.soft(base, -len / 2 + 0.08, 0.5, 0.05, len / 2 - 0.08, 1.12, d - 0.04, 0.14);                 // deck
+    k.soft(base, -len / 2 + 0.12, 0.9, 0, len / 2 - 0.12, 2.6, 0.75, 0.26);                         // back frame
+    for (const sd of [-1, 1]) {
+      const x0 = sd < 0 ? -len / 2 + 0.06 : len / 2 - arm + 0.02, x1 = sd < 0 ? -len / 2 + arm - 0.02 : len / 2 - 0.06;
+      k.soft(base, x0 + (sd < 0 ? 0.08 : 0), 0.3, 0.05, x1 - (sd > 0 ? 0.08 : 0), 1.9, d - 0.05, 0.22);   // arm body
+      k.soft(base, x0 - (sd < 0 ? 0.06 : 0) , 1.55, 0.02, x1 + (sd > 0 ? 0.06 : 0), 2.28, d + 0.02, 0.36, 18, 10); // the roll, flaring out
+      k.soft(base, x0 + 0.05, 0.55, d - 0.12, x1 - 0.05, 2.15, d + 0.04, 0.3);                       // rounded arm front
+    }
+  } else {
+    for (const x of [-len / 2 + 0.3, len / 2 - 0.3]) for (const z of [0.3, d - 0.3]) taperLeg(k, DARKWOOD, x, z, 0.4, 0.05, 0.08);
+    k.soft(base, -len / 2, 0.38, 0.05, len / 2, 1.1, d, 0.12);                       // base
+    k.soft(base, -len / 2 + 0.05, 0.9, 0, len / 2 - 0.05, 2.75, 0.85, 0.24);          // back frame
+    k.soft(base, -len / 2, 0.9, 0.05, -len / 2 + arm, 2.12, d, 0.26);                 // rolled arms
+    k.soft(base, len / 2 - arm, 0.9, 0.05, len / 2, 2.12, d, 0.26);
+  }
   const seats = len > 6.5 ? 3 : 2, sw = (len - 2 * arm) / seats;
   for (let i = 0; i < seats; i++) {
     const x = -len / 2 + arm + i * sw;
-    k.soft(cush, x + 0.02, 1.0, 0.72, x + sw - 0.02, 1.5, d + 0.03, 0.16);         // seat cushion (18" seat)
-    k.soft(cush, x + 0.04, 1.45, 0.6, x + sw - 0.04, 2.72, 1.25, 0.28);            // back cushion
+    k.soft(cush, x + 0.02, 1.0, 0.72, x + sw - 0.02, 1.5, d + 0.03, o.roll ? 0.2 : 0.16);         // seat cushion (18" seat)
+    if (o.roll) k.soft(cush, x - 0.02, 1.4, 0.45, x + sw + 0.02, 2.95, 1.35, 0.42);       // overstuffed pillow back
+    else k.soft(cush, x + 0.04, 1.45, 0.6, x + sw - 0.04, 2.72, 1.25, 0.28);            // back cushion
   }
   const pc = o.pillows || ['#a77b6b', '#c9b49a', '#8d6e5d'];
   for (let i = 0; i < 2; i++) {
@@ -494,6 +507,33 @@ function officeDesk(k, w = 5.5) { // back at z = 0
   tableLamp(k, -w / 2 + 0.6, 0.6, h);
   k.solid(-w / 2, 0, w / 2, d, 0, h);
 }
+function bowDesk(k) { // office (photo 17): black bow-front top on a maple pedestal + panel leg; user on the straight side (z < 0), centered
+  const h = 2.5, arc = [...Array(17)].map((_, i) => { const a = Math.PI * (i / 16); return [-Math.cos(a) * 2.7, Math.sin(a) * 1.25]; });
+  k.prism({ top: 'col:#1e1e1f', bottom: 'col:#1e1e1f', side: 'col:#2a2a2a' }, [[2.7, -0.15], ...[...arc].reverse(), [-2.7, -0.15]], h - 0.1, h);
+  const m = wood('#d9b98a');
+  k.box(m, 1.15, 0, -0.05, 2.25, h - 0.1, 0.95);                                          // pedestal: drawer + file drawer
+  for (const [y0, y1] of [[0.12, 1.25], [1.3, 2.3]]) { k.box(wood('#d1ae7d'), 1.2, y0, -0.09, 2.2, y1, -0.05); k.box('steel', 1.55, (y0 + y1) / 2 - 0.02, -0.12, 1.85, (y0 + y1) / 2 + 0.02, -0.09); }
+  k.box(m, -2.35, 0, -0.05, -2.2, h - 0.1, 0.95);                                         // panel leg
+  k.box(m, -2.2, 0.8, 0.55, 1.15, h - 0.1, 0.62);                                         // modesty panel
+  k.box('black', 1.2, h, 0.1, 1.55, h + 1.25, 0.18); k.box('col:#1a2735', 1.22, h + 0.35, 0.18, 1.53, h + 1.2, 0.19); // tower + monitor at the end
+  k.box('black', -0.6, h, 0.35, 1.0, h + 0.05, 0.75); k.box('col:#cfcfcf', -1.6, h, -0.05, -0.6, h + 0.05, 0.55); // keyboard, laptop
+  k.solid(-2.7, -0.15, 2.7, 1.3, 0, h);
+}
+function hutchDesk(k, w = 4.2) { // office (photo 18): white desk + cubby hutch, black work surface; back at z = 0
+  const h = 2.5, d = 2.0, wt = 'col:#f2f1ec';
+  for (const x of [-w / 2, w / 2 - 0.08]) k.box(wt, x, 0, 0, x + 0.08, h - 0.08, d);
+  k.box(wt, -w / 2 + 0.08, 0.35, 0.02, w / 2 - 0.08, h - 0.08, 0.1);
+  k.box('col:#1c1c1d', -w / 2, h - 0.08, 0, w / 2, h, d + 0.05);
+  const H0 = h + 0.9, H1 = h + 3.4, hd = 1.0;
+  for (const x of [-w / 2, -w / 6, w / 6, w / 2 - 0.07]) k.box(wt, x, H0, 0, x + 0.07, H1, hd);
+  for (const y of [H0, H0 + 1.25, H1 - 0.07]) k.box(wt, -w / 2, y, 0, w / 2, y + 0.07, hd);
+  k.box(wt, -w / 2, H0, 0, w / 2, H1, 0.04);
+  for (const x of [-w / 2 + 0.07, w / 2 - 0.07]) k.box(wt, x - 0.04, h, 0.2, x + 0.04, H0, hd - 0.1); // hutch posts
+  for (const x of [-0.95, 0.95]) { k.box('black', x - 0.85, h + 0.45, 0.55, x + 0.85, h + 1.55, 0.62); k.box('col:#1a2735', x - 0.8, h + 0.5, 0.62, x + 0.8, h + 1.5, 0.63); k.cbox('black', x, 0.55, 0.12, 0.12, h, h + 0.45); }
+  k.box('col:#2a2a2a', -0.75, h, 1.1, 0.75, h + 0.05, 1.5);
+  for (let i = 0; i < 6; i++) k.box('col:' + ['#e8e3d6', '#cfc6b2', '#9a8f7c', '#e4dfd2', '#b8ad97', '#efe9dc'][i], -w / 2 + 0.2 + i * 0.6, H0 + 1.32, 0.15, -w / 2 + 0.55 + i * 0.6, H0 + 1.32 + 0.4 + (i % 3) * 0.15, 0.85); // binders and boxes
+  k.solid(-w / 2, 0, w / 2, d, 0, h);
+}
 function officeChair(k) { // centered, faces +z
   for (let i = 0; i < 5; i++) {
     const sub = new Kit(k.bat, k.tag).at(k.ox, k.oz, k.oy, k.rot + i * 72);
@@ -507,8 +547,8 @@ function officeChair(k) { // centered, faces +z
   for (const s of [-1, 1]) { k.box('black', s * 0.85 - 0.06, 1.75, -0.4, s * 0.85 + 0.06, 2.4, -0.3); k.box('black', s * 0.85 - 0.12, 2.4, -0.5, s * 0.85 + 0.12, 2.48, 0.35); }
   k.solid(-1, -1, 1, 1, 0, 3.7);
 }
-function bookcase(k, w = 2.8, h = 6.5, seed = 3) { // back at z = 0
-  const d = 1.05, c = wood('#5a3a26');
+function bookcase(k, w = 2.8, h = 6.5, seed = 3, color = '#5a3a26') { // back at z = 0
+  const d = 1.05, c = wood(color);
   k.box(c, -w / 2, 0, 0, -w / 2 + 0.08, h, d); k.box(c, w / 2 - 0.08, 0, 0, w / 2, h, d);
   k.box(c, -w / 2, 0, 0, w / 2, h, 0.05); k.box(c, -w / 2, h - 0.1, 0, w / 2, h, d);
   const cols = ['#7a2e2a', '#2d4a6b', '#c9b48a', '#3f5a3c', '#e3dccb', '#5b4a7a', '#b07a3a', '#262626'];
@@ -969,12 +1009,17 @@ function goldShower(k, w, d) { // framed glass shower, corner: glass on the two 
   k.solid(-0.05, 0, w, d + 0.05, 0, 6.6);
 }
 function looseChair(k, color) { armchair(k, { color }); }
-function recliner(k, color = '#28324a') { // leather recliner, centered, faces +z
-  const c = 'col:' + color;
-  k.soft(c, -1.5, 0.3, -1.4, 1.5, 1.55, 1.5, 0.25);
-  k.soft(c, -1.2, 1.2, -1.6, 1.2, 3.4, -0.6, 0.35);
-  for (const s of [-1, 1]) k.soft(c, s * 1.5 - 0.35, 0.3, -1.4, s * 1.5 + 0.35, 2.3, 1.3, 0.25);
-  k.soft(c, -1.0, 1.4, -0.7, 1.0, 1.8, 1.4, 0.2);
+function recliner(k, color = '#28324a') { // overstuffed leather rocker-recliner, centered, faces +z (photos 07, 09, 10)
+  const c = 'col:' + color, cd = 'col:' + shadeHex(color, -0.25);
+  k.soft(cd, -1.3, 0.0, -1.3, 1.3, 0.35, 1.25, 0.1);                                   // rocker base
+  k.soft(c, -1.35, 0.3, -1.4, 1.35, 1.35, 1.45, 0.3);                                  // seat box
+  k.soft(c, -0.95, 1.2, -0.85, 0.95, 1.75, 1.45, 0.24);                                // seat cushion, rolled front
+  k.soft(c, -1.05, 0.25, 1.18, 1.05, 1.25, 1.55, 0.2);                                 // closed footrest
+  for (const [y0, y1, z0, z1] of [[1.25, 2.15, -1.55, -0.7], [2.0, 2.85, -1.6, -0.85], [2.7, 3.5, -1.62, -0.98]]) k.soft(c, -1.05, y0, z0, 1.05, y1, z1, 0.36); // three channel rolls up the back
+  for (const s of [-1, 1]) {
+    k.soft(c, s * 1.38 - 0.42, 0.3, -1.45, s * 1.38 + 0.42, 2.05, 1.25, 0.35);         // padded arms
+    k.soft(c, s * 1.38 - 0.46, 1.6, -1.2, s * 1.38 + 0.46, 2.35, 1.4, 0.37);           // pillow-top arm rest
+  }
   k.solid(-1.6, -1.6, 1.6, 1.5, 0, 3.2);
 }
 
@@ -1106,30 +1151,31 @@ export function buildFixtures(bats) {
     const { k: kr, len: lr } = runKit(bats.f1, 'f1', F(612.6, 525), F(612.6, 537.6), [1, 0]);
     ped(kr, 0, lr); kr.box('counter', 0, 2.45, 0, lr, 2.58, 1.95); kr.solid(0, 0, lr, 1.95, 0, 2.58);
   }
-  flushDome(f1(655, 470), 9);
+  flushDome(f1(655, 470), H.ceil1);
   // ---- closets
   { const { k, len } = runKit(bats.f1, 'f1', F(564, 309), F(564, 374), [1, 0]); wicRun(k, len); hangingClothes(k, len, 67, 0, { coats: true }); }
   { const { k, len } = runKit(bats.f1, 'f1', F(783, 376.4), F(837, 376.4), [0, -1]); wicRun(k, len); hangingClothes(k, len, 23, 0.2); }
   { const { k, len } = runKit(renoBat('off:mud', 'f1'), 'off:mud', F(723.4, 382), F(723.4, 449), [-1, 0]); linenShelves(k, len, 31); }
   { const { k, len } = runKit(bats.f1, 'f1', F(723.4, 455), F(723.4, 491), [-1, 0]); linenShelves(k, len, 37); }
-  // ---- lights, 1st floor (9 ft ceilings)
-  for (const [x, y] of [[335, 372], [335, 452], [372, 470], [440, 455], [440, 390], [372, 330], [440, 335]]) recessed(f1(x, y), 9);
-  { const [lx, lz] = F(398, 250); bellChandelier(new Kit(renoBat('off:refresh&off:kitchen', 'f1'), 'off:refresh&off:kitchen').at(lx, lz, 0), 9, 3.0, 5); }
-  for (const [x, y] of [[520, 330], [520, 400], [600, 400]]) recessed(f1(x, y), 9);
-  for (const [x, y] of [[740, 250], [800, 250], [740, 330], [800, 310]]) recessed(f1(x, y), 9);
+  // ---- lights, 1st floor (8 ft ceilings)
+  for (const [x, y] of [[335, 372], [335, 452], [372, 470], [440, 455], [440, 390], [372, 330], [440, 335]]) recessed(f1(x, y), H.ceil1);
+  { const [lx, lz] = F(398, 250); bellChandelier(new Kit(renoBat('off:refresh&off:kitchen', 'f1'), 'off:refresh&off:kitchen').at(lx, lz, 0), H.ceil1, 3.0, 5); }
+  for (const [x, y] of [[520, 330], [520, 400], [600, 400]]) recessed(f1(x, y), H.ceil1);
+  for (const [x, y] of [[740, 250], [800, 250], [740, 330], [800, 310]]) recessed(f1(x, y), H.ceil1);
   for (const [x, y] of [[530, 90], [645, 90], [530, 200], [645, 200], [588, 270]]) recessed(f1(x, y), vaultUnder(y));
-  { const k = f1(400, 575); k.cyl('chrome', 0, 0, 0.5, 0.5, 9.62, 9.7, 12); for (let i = 0; i < 3; i++) k.cyl('frosted', 0, 0, 0.75 - i * 0.18, 0.6 - i * 0.18, 9.1 + i * 0.18, 9.3 + i * 0.18, 12); } // crystal flush mount in the tray
-  { const [lx, lz] = F(520, 500); const k = new Kit(renoBat('off:refresh', 'f1'), 'off:refresh').at(lx, lz, 0); chandelier(k, 18, 5.5, 8); for (let i = 0; i < 3; i++) k.cyl('frosted', 0, 0, 0.9 - i * 0.25, 0.75 - i * 0.25, 12.5 + i * 0.5, 12.9 + i * 0.5, 10, 1, false); } // 2-story foyer crystal chandelier
-  flushDome(f1(640, 340), 9); flushDome(f1(640, 400), 9); flushDome(f1(845, 550), 9.39); flushDome(f1(845, 650), 9.39);
-  // living room tray ceiling: octagonal raised panel with crown, 9 ft 8 in at the center
+  { const k = f1(400, 575); k.cyl('chrome', 0, 0, 0.5, 0.5, 8.62, 8.7, 12); for (let i = 0; i < 3; i++) k.cyl('frosted', 0, 0, 0.75 - i * 0.18, 0.6 - i * 0.18, 8.1 + i * 0.18, 8.3 + i * 0.18, 12); } // crystal flush mount in the tray
+  { const [lx, lz] = F(520, 500); const k = new Kit(renoBat('off:refresh', 'f1'), 'off:refresh').at(lx, lz, 0); chandelier(k, H.ceil2, 5.5, 8); for (let i = 0; i < 3; i++) k.cyl('frosted', 0, 0, 0.9 - i * 0.25, 0.75 - i * 0.25, 11.5 + i * 0.5, 11.9 + i * 0.5, 10, 1, false); } // 2-story foyer crystal chandelier
+  flushDome(f1(640, 340), H.ceil1); flushDome(f1(640, 400), H.ceil1); flushDome(f1(845, 550), 8.4); flushDome(f1(845, 650), 8.4);
+  // living room tray ceiling: octagonal raised panel with crown, 8 ft 8 in at the center
   {
     const r = LV.f1._rooms.find((q) => q.name === 'Living Room');
-    const [x0, z0] = F(338, 509), [x1, z1] = F(462, 641), c = 1.3;
-    const oct = [[x0 + c, z0], [x1 - c, z0], [x1, z0 + c], [x1, z1 - c], [x1 - c, z1], [x0 + c, z1], [x0, z1 - c], [x0, z0 + c]];
-    bats.f2.prism({ side: r.wall, top: 'ceiling' }, oct, 9, 9.7);
-    bats.f2.poly('ceiling', oct, 9.7, [], true);
+    const oct = trayOct();
+    { const cx = oct.reduce((q, p) => q + p[0], 0) / 8, cz = oct.reduce((q, p) => q + p[1], 0) / 8; // recess walls face into the tray
+      for (let i = 0; i < 8; i++) { const [ax, az] = oct[i], [bx, bz] = oct[(i + 1) % 8], mx = (ax + bx) / 2, mz = (az + bz) / 2;
+        bats.f2.face(r.wall, [V(ax, H.ceil1, az), V(bx, H.ceil1, bz), V(bx, H.ceil1 + 0.7, bz), V(ax, H.ceil1 + 0.7, az)], V(cx - mx, 0, cz - mz).normalize()); } }
+    bats.f2.poly('ceiling', oct, H.ceil1 + 0.7, [], true);
     const k = new Kit(bats.f2, 'f1');
-    for (let i = 0; i < 8; i++) { const [ax, az] = oct[i], [bx, bz] = oct[(i + 1) % 8]; const len = Math.hypot(bx - ax, bz - az), mx = (ax + bx) / 2, mz = (az + bz) / 2; const kk = new Kit(bats.f2, 'f1').at(mx, mz, 0, (Math.atan2(bx - ax, bz - az) * 180) / Math.PI - 90); kk.box('white', -len / 2, 9.0, -0.15, len / 2, 9.18, 0.0); }
+    for (let i = 0; i < 8; i++) { const [ax, az] = oct[i], [bx, bz] = oct[(i + 1) % 8]; const len = Math.hypot(bx - ax, bz - az), mx = (ax + bx) / 2, mz = (az + bz) / 2; const kk = new Kit(bats.f2, 'f1').at(mx, mz, 0, (Math.atan2(bx - ax, bz - az) * 180) / Math.PI - 90); kk.box('white', -len / 2, H.ceil1, -0.15, len / 2, H.ceil1 + 0.18, 0.0); }
     void k;
   }
   // ---- HVAC grilles as photographed: wall returns (family room, living room) and floor supply registers under windows
@@ -1217,8 +1263,8 @@ export function buildFurniture(bats) {
   const placeK = (x, y, rot, fn, y0 = 0) => fn(atK(x, y, rot, y0));
   const KF = renoBat('off:kitchen&furn', 'f1'), atK = (x, y, rot = 0, y0 = 0) => { const [lx, lz] = F(x, y); return new Kit(KF, 'off:kitchen&furn').at(lx, lz, y0, rot); };
   // ---- family room (staged like the photos: patterned sofa + loveseat, blue leather recliners, TV on gray cabinets)
-  placeK(479, 150, 90, (k) => sofa(k, 7.6, { color: '#4b4262', cushion: '#54486c', pillows: ['#b0283a', '#c9b49a', '#8d2f3a'] }), fam);
-  placeK(696.5, 165, -90, (k) => sofa(k, 5.8, { color: '#4b4262', cushion: '#54486c', pillows: ['#b0283a', '#c9b49a'] }), fam);
+  placeK(479, 150, 90, (k) => sofa(k, 7.6, { roll: true, color: '#4b4262', cushion: '#54486c', pillows: ['#b0283a', '#c9b49a', '#8d2f3a'] }), fam);
+  placeK(696.5, 165, -90, (k) => sofa(k, 5.8, { roll: true, color: '#4b4262', cushion: '#54486c', pillows: ['#b0283a', '#c9b49a'] }), fam);
   placeK(668, 84, -150, (k) => recliner(k), fam); // navy leather recliner by the fireplace (photos 07, 09, 24)
   // 50" TV on gray lateral files under the loft balcony (photo 08)
   placeK(606, 302.6, 180, (k) => { fileCabinetStand(k); standTV(k, 50, 2.25); }, fam);
@@ -1234,10 +1280,14 @@ export function buildFurniture(bats) {
   place('f1', 326.6, 577.5, 90, (k) => drapes(k, 5.2, 7.7, '#5d4d5a'));
   place('f1', 473.5, 615, -90, (k) => { k.box('glass', -2.0, 2.5, 0, 2.0, 2.56, 1.2); k.box('glass', -1.85, 0.5, 0.15, 1.85, 0.53, 1.05); for (const x of [-1.9, 1.9]) for (const z of [0.12, 1.08]) k.box('col:#7d7a72', x - 0.04, 0, z - 0.04, x + 0.04, 2.5, z + 0.04); k.box('col:#7d7a72', -1.95, 2.35, 0.08, 1.95, 2.5, 0.16); k.solid(-2, 0, 2, 1.2, 0, 2.5); });
   // ---- office / bedroom 4
-  place('f1', 745, 230, 180, (k) => officeDesk(k, 5.0));
-  place('f1', 745, 262, 0, (k) => officeChair(k));
-  place('f1', 704, 335, 90, (k) => bookcase(k, 2.6, 5.5, 5));
-  place('f1', 836.5, 220, -90, (k) => { k.box(wood('#6b4a33'), -1.5, 0, 0, 1.5, 2.4, 1.6); for (let i = 0; i < 3; i++) k.box(wood('#7a5a40'), -1.4, 0.15 + i * 0.75, 1.6, 1.4, 0.8 + i * 0.75, 1.63); k.solid(-1.5, 0, 1.5, 1.6, 0, 2.4); });
+  // photos 17-18: black bow-front desk under the back window, white hutch desk + light maple bookcase in the front corner,
+  // a dark three-drawer file cabinet with the printer beside the French doors
+  place('f1', 752, 232, 0, (k) => bowDesk(k));
+  place('f1', 752, 214, 0, (k) => officeChair(k));
+  place('f1', 703.8, 322, 90, (k) => hutchDesk(k, 4.0));
+  place('f1', 728, 322, -90, (k) => officeChair(k));
+  place('f1', 718, 376.2, 180, (k) => bookcase(k, 2.6, 6.2, 5, '#d4ab74'));
+  place('f1', 703.8, 222, 90, (k) => { k.box(wood('#4e3524'), -1.3, 0, 0, 1.3, 2.4, 1.7); for (let i = 0; i < 3; i++) { k.box(wood('#5c4030'), -1.22, 0.12 + i * 0.75, 1.7, 1.22, 0.8 + i * 0.75, 1.73); k.box('steel', -0.3, 0.6 + i * 0.75, 1.73, 0.3, 0.65 + i * 0.75, 1.78); } k.box('col:#2b2b2b', -0.9, 2.4, 0.2, 0.9, 3.05, 1.45); k.box('col:#d9d9d6', -0.7, 3.05, 0.4, 0.7, 3.1, 1.2); k.solid(-1.3, 0, 1.3, 1.7, 0, 3.1); });
   // ---- foyer: pewter console against the wall under the stair (photo 06)
   place('f1', 561.2, 512, -90, (k) => { k.box('col:#8c8c86', -1.8, 2.45, 0, 1.8, 2.6, 0.95); for (const x of [-1.65, 1.65]) for (const z of [0.12, 0.83]) k.box('col:#8c8c86', x - 0.04, 0, z - 0.04, x + 0.04, 2.45, z + 0.04); k.solid(-1.8, 0, 1.8, 0.95, 0, 2.6); });
   // ---- garage: two cars in the double bay, storage + bikes in the single bay

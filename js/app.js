@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { Look } from './render.js';
 import { buildHouse, roomAtPoint, DOORS } from './build.js';
 import { CONTROLS, PRESETS as STYLE_PRESETS, DEFAULT_PRESET, applyStyle } from './themes.js';
 import { RENO_LABELS, RENO_ROOMS } from './reno.js';
@@ -13,13 +13,10 @@ import { LOT, LATITUDE, toFt } from './data.js';
 
 // ------------------------------------------------------------------ renderer & scene
 const app = document.getElementById('app');
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+// tone mapping, exposure, shadows and the post pipeline are set up by Look (render.js)
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
 app.appendChild(renderer.domElement);
 
 const labelRenderer = new CSS2DRenderer();
@@ -27,9 +24,7 @@ labelRenderer.setSize(innerWidth, innerHeight);
 labelRenderer.domElement.className = 'labels';
 app.appendChild(labelRenderer.domElement);
 
-const scene = new THREE.Scene();
-scene.background = new THREE.Color('#b9d3e8');
-scene.fog = new THREE.Fog('#b9d3e8', 350, 900);
+const scene = new THREE.Scene(); // sky dome, fog and environment maps come from Look
 
 const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.2, 2000);
 const orbit = new OrbitControls(camera, renderer.domElement);
@@ -38,16 +33,10 @@ orbit.maxPolarAngle = Math.PI * 0.495;
 orbit.minDistance = 4;
 orbit.maxDistance = 500;
 
-// soft image-based light so metals (appliances, brass, mirrors) read correctly
-scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
 const hemi = new THREE.HemisphereLight('#dbe9f6', '#b3a68e', 0.55);
 scene.add(hemi);
 const sun = new THREE.DirectionalLight('#fff4e0', 2.4);
-sun.castShadow = true;
-sun.shadow.mapSize.set(4096, 4096);
-Object.assign(sun.shadow.camera, { left: -140, right: 140, top: 140, bottom: -140, near: 1, far: 700 });
-sun.shadow.bias = -0.0004;
-sun.shadow.normalBias = 0.15;
+sun.castShadow = true; // shadow camera bounds, bias and map size: Look.fitShadow / setQuality
 const sunTarget = new THREE.Object3D();
 sunTarget.position.set(25, 0, -5);
 scene.add(sunTarget);
@@ -62,6 +51,10 @@ scene.add(house);
 const site = buildSite();
 scene.add(site);
 const trees = site.getObjectByName('trees');
+// the shadow camera covers the lot (house + yard), not the neighbours
+const lotBox = new THREE.Box3().setFromObject(house);
+lotBox.expandByPoint(V(LOT.xSouth - 12, -12, LOT.zWest - 12)).expandByPoint(V(LOT.xNorth + 12, lotBox.max.y + 4, LOT.zEast + 12));
+const gfx = new Look({ renderer, scene, camera, sun, hemi, fill, house, bounds: lotBox });
 const lotLines = site.getObjectByName('lotLines');
 
 // ------------------------------------------------------------------ state & UI wiring
@@ -104,6 +97,7 @@ function applyView() {
   }
   for (const l of RENO_LABELS) l.visible = showLabels(l.userData.level) && activeTag(l.userData.rs);
   $$('.views button').forEach((b) => b.classList.toggle('on', b.dataset.view === v));
+  gfx.dirty();
 }
 function setView(v, fly = true) {
   state.view = v;
@@ -113,7 +107,7 @@ function setView(v, fly = true) {
 $$('.views button').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
 $('#tgl-furn').addEventListener('change', (e) => { state.furniture = e.target.checked; applyView(); });
 $('#tgl-labels').addEventListener('change', (e) => { state.labels = e.target.checked; applyView(); });
-$('#tgl-trees').addEventListener('change', (e) => { trees.visible = e.target.checked; });
+$('#tgl-trees').addEventListener('change', (e) => { trees.visible = e.target.checked; gfx.dirty(); });
 $('#tgl-lot').addEventListener('change', (e) => { lotLines.visible = e.target.checked; });
 $('#panel-toggle').addEventListener('click', () => document.body.classList.toggle('collapsed'));
 
@@ -184,12 +178,7 @@ function updateSun() {
   const az = Math.atan2(Math.sin(ha), Math.cos(ha) * Math.sin(lat) - Math.tan(dec) * Math.cos(lat)) + Math.PI;
   // local frame: +x north, +z east
   const dir = V(Math.cos(el) * Math.cos(az), Math.sin(el), Math.cos(el) * Math.sin(az));
-  sun.position.copy(sunTarget.position).addScaledVector(dir, 300);
-  const day = THREE.MathUtils.smoothstep(el, -0.02, 0.18);
-  sun.intensity = 2.6 * day;
-  hemi.intensity = 0.2 + 0.35 * day;
-  const sky = new THREE.Color('#1d2a3c').lerp(new THREE.Color('#b9d3e8'), day);
-  scene.background.copy(sky); scene.fog.color.copy(sky);
+  gfx.setSun(dir, el);
   const h12 = ((Math.floor(hour) + 11) % 12) + 1, mm = String(Math.round((hour % 1) * 60)).padStart(2, '0');
   $('#sun-label').textContent = `${MONTHS[month]} 15 · ${h12}:${mm} ${hour < 12 ? 'am' : 'pm'} · sun ${Math.max(0, Math.round(el / d2r))}° up, from the ${compass(az / d2r)}`;
 }
@@ -201,6 +190,14 @@ $('#sun-hour').addEventListener('input', updateSun);
 
 // ------------------------------------------------------------------ walk mode
 const plc = new PointerLockControls(camera, renderer.domElement);
+// request pointer lock directly so a refusal (embedded previews, some browsers) is caught instead of
+// surfacing as an unhandled promise rejection; PointerLockControls still tracks the lock state
+function lockPointer() {
+  try {
+    const p = renderer.domElement.requestPointerLock();
+    if (p && p.catch) p.catch(() => document.body.classList.add('draglook'));
+  } catch { document.body.classList.add('draglook'); }
+}
 const keys = {};
 addEventListener('keydown', (e) => { keys[e.code] = true; onKey(e); });
 addEventListener('keyup', (e) => { keys[e.code] = false; });
@@ -213,6 +210,20 @@ function activeTag(tag) {
   if (tag === 'bA' || tag === 'bB' || tag === 'bC') return state.furniture && tag === 'b' + state.layout;
   if (tag.endsWith('F')) return state.furniture;
   return true;
+}
+// the room the (orbit) camera is standing in, if it is down inside the house: interior lighting applies there too
+let camRoomAt = null, camRoomVal = null;
+function roomAtCam() {
+  const p = camera.position, key = `${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)},${state.view}`;
+  if (key === camRoomAt) return camRoomVal;
+  camRoomAt = key; camRoomVal = null;
+  const f = floorAt(p.x, p.z, p.y);
+  if (f === -Infinity || p.y - f > 8.5) return null;
+  const lvl = f < -4 ? 'b' : f < 5 ? 'f1' : 'f2';
+  if (!groups[lvl].visible) return null;
+  const r = roomAtPoint(lvl, p.x, p.z);
+  if (r && r.pts) camRoomVal = { r, f };
+  return camRoomVal;
 }
 function floorAt(x, z, maxY) {
   let best = -Infinity;
@@ -261,11 +272,12 @@ function enterWalk() {
   orbit.enabled = false;
   walk.paused = false;
   document.body.classList.add('walking');
-  try { const p = plc.lock(); if (p && p.catch) p.catch(() => document.body.classList.add('draglook')); } catch { document.body.classList.add('draglook'); }
+  lockPointer();
 }
 function exitWalk() {
   if (state.mode !== 'walk') return;
   state.mode = 'orbit';
+  walk.room = null;
   if (plc.isLocked) plc.unlock();
   document.body.classList.remove('walking', 'draglook', 'walk-panel');
   orbit.enabled = true;
@@ -279,14 +291,14 @@ function toggleWalkPanel(force) {
   const on = force ?? !document.body.classList.contains('walk-panel');
   document.body.classList.toggle('walk-panel', on);
   if (on && plc.isLocked) plc.unlock();
-  if (!on && state.mode === 'walk' && !document.body.classList.contains('draglook')) { try { plc.lock(); } catch {} }
+  if (!on && state.mode === 'walk' && !document.body.classList.contains('draglook')) lockPointer();
 }
 $('#hud-options').addEventListener('click', () => toggleWalkPanel());
 plc.addEventListener('lock', () => { walk.paused = false; $('#walk-paused').hidden = true; });
 // Pointer lock isn't available everywhere (embedded previews, some browsers): fall back to drag-to-look.
 document.addEventListener('pointerlockerror', () => { walk.paused = false; document.body.classList.add('draglook'); });
 $('#btn-walk').addEventListener('click', enterWalk);
-$('#walk-resume').addEventListener('click', () => { walk.paused = false; $('#walk-paused').hidden = true; plc.lock(); });
+$('#walk-resume').addEventListener('click', () => { walk.paused = false; $('#walk-paused').hidden = true; lockPointer(); });
 $('#walk-exit').addEventListener('click', () => { $('#walk-paused').hidden = true; exitWalk(); });
 $('#hud-exit').addEventListener('click', exitWalk);
 
@@ -334,6 +346,7 @@ function updateWalk(dt) {
   const rr = RENO_ROOMS.find((q) => q.level === lvl && activeTag(q.rs) && pip(q.room.pts, p.x, p.z));
   const r = rr ? rr.room : roomAtPoint(lvl, p.x, p.z);
   const lvlName = { b: 'Basement', f1: '1st floor', f2: '2nd floor' }[lvl];
+  walk.room = r && r.pts ? r : null;
   $('#hud-room').textContent = r ? `${r.name} · ${lvlName}` : walk.feet < 4 && walk.feet > -2 && !r ? 'Outside' : lvlName;
   const di = doorAhead(7);
   $('#hud-door').hidden = di < 0;
@@ -439,6 +452,7 @@ function syncAddition(a) {
   g.children[0].material.color.set(a.color);
 }
 function rebuildAdditionPhysics() {
+  gfx.dirty();
   PHYS.solids = PHYS.solids.filter((s) => s.tag !== 'add');
   PHYS.floors = PHYS.floors.filter((f) => f.tag !== 'add');
   for (const a of additions) {
@@ -578,7 +592,7 @@ function onKey(e) {
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
+  gfx.resize();
   labelRenderer.setSize(innerWidth, innerHeight);
 });
 
@@ -590,6 +604,7 @@ $('#sun-hour').value = 14;
 updateSun();
 applyView();
 
+gfx.mountUI($('#tgl-lot').closest('.toggles'));
 const clock = new THREE.Clock();
 function frame() {
   const dt = Math.min(clock.getDelta(), 0.05);
@@ -604,10 +619,14 @@ function frame() {
     if (d.t === d.target) continue;
     d.t = d.target > d.t ? Math.min(d.target, d.t + dt / 0.7) : Math.max(d.target, d.t - dt / 0.7);
     d.apply();
+    gfx.dirty();
   }
   if (state.mode === 'walk') updateWalk(dt);
   else orbit.update();
-  renderer.render(scene, camera);
+  const cr = state.mode === 'walk' ? (walk.room ? { r: walk.room, f: walk.feet } : null) : roomAtCam();
+  gfx.setContext({ walking: state.mode === 'walk' || !!cr, inside: !!cr, room: cr && cr.r, floorY: cr ? cr.f : 0, view: state.view });
+  gfx.update(dt, pip);
+  gfx.render();
   labelRenderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
@@ -636,5 +655,5 @@ function simWalk(path, start) {
   state.mode = 'orbit';
   return out;
 }
-window.__house = { scene, camera, orbit, PHYS, setView, state, simWalk, floorAt, DOORS, setAllDoors, setLayout, applyReno, applyStyle };
+window.__house = { gfx, renderer, scene, camera, orbit, PHYS, setView, state, simWalk, floorAt, DOORS, setAllDoors, setLayout, applyReno, applyStyle };
 applyReno();

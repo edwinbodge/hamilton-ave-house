@@ -1,7 +1,7 @@
 // Builds the Creekside Ln house (walls, openings, floors, stairs, railings, roofs, trim) from data.js.
 import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-import { LEVELS, STAIRS, toFt, F2, H, RY, ROOFT, PX, vaultTop, vaultUnder } from './data.js';
+import { LEVELS, STAIRS, toFt, F2, H, RY, RR, ROOFT, PX, vaultTop, vaultUnder, trayOct } from './data.js';
 import { Batcher, Kit, V, pip, centroid, addSolid, addFloorPoly, addFloorRect, material as matFor, PHYS, ORIGIN } from './geom.js';
 
 // Operable doors (hinged leaves and sliders). Each has t (0 closed .. 1 open) and apply().
@@ -131,7 +131,7 @@ export function buildWall(L, w, bat) {
     if (type === 'w') { sill = oo.sill ?? L.sill; head = oo.head ?? L.head; }
     else if (type === 'o') head = oo.head ?? 7.0;
     else if (type === 'e') head = 7.0;
-    else if (type === 'g') { sill = -0.6; head = 7.4; }
+    else if (type === 'g') { sill = -0.6; head = 6.65; } // 7 ft sectional doors (photo 44: four 21" sections)
     else if (type === 's' || type === 'f') head = 6.9;
     return { s, e, type, sill: base + sill, head: base + head, oo, loAt, hiAt };
   }).sort((p, q) => p.s - q.s || p.sill - q.sill);
@@ -198,12 +198,12 @@ export function buildWall(L, w, bat) {
     const r = k.room;
     if (!r || r.bare || r.tile || r.void) return;
     const fy = r.y, tk = r.trim || (L.id === 'b' ? 'col:#d9b98a' : 'trim'), ceil = fy + (L.ceiling || 8);
-    if (ya <= fy + 0.01) strip(side, s, e, fy, fy + 0.3, 0.05, tk);
+    if (ya <= fy + 0.01 && yb2 >= fy + 0.3) strip(side, s, e, fy, fy + 0.3, 0.05, tk); // (not on the sliver under a door)
     if (r.chair && ya <= fy + 2.9 && yb2 >= fy + 3.1) strip(side, s, e, fy + 2.85, fy + 3.05, 0.06, r.trim || 'trim');
     if (r.lowerKey && ya <= fy + 0.31 && yb2 >= fy + 2.85) strip(side, s, e, fy + 0.3, fy + 2.85, 0.004, r.lowerKey);
     if (r.crown && ya <= ceil - 0.45 && yb2 >= ceil - 0.01) { strip(side, s, e, ceil - 0.42, ceil, 0.05, tk); strip(side, s, e, ceil - 0.24, ceil, 0.13, tk); strip(side, s, e, ceil - 0.08, ceil, 0.2, tk); }
     // duplex outlets along finished walls, about one per 11 ft of run (cheap realism)
-    if (ya <= fy + 0.01 && e - s > 3.5 && !r.noLabel) {
+    if (ya <= fy + 0.01 && yb2 >= fy + 1.6 && e - s > 3.5 && !r.noLabel) {
       const cnt = Math.floor((e - s) / 11) + 1;
       for (let i = 0; i < cnt; i++) { const sc = s + ((e - s) * (i + 0.5)) / cnt; strip(side, sc - 0.115, sc + 0.115, fy + 1.15, fy + 1.53, 0.02, 'white'); strip(side, sc - 0.05, sc + 0.05, fy + 1.22, fy + 1.3, 0.025, 'col:#e4e2dc'); strip(side, sc - 0.05, sc + 0.05, fy + 1.38, fy + 1.46, 0.025, 'col:#e4e2dc'); }
     }
@@ -284,18 +284,22 @@ export function buildWall(L, w, bat) {
         const keep = [bat, RS, TAG];
         bat = renoBat('off:classic', L.id); RS = TAG = 'off:classic';
         const sl = 1.15;
-        for (const [a0, a1] of [[s + ft, s + ft + sl], [e - ft - sl, e - ft]]) {
-          fbox(a0, a1, sill, sill + 2.2, 'frontDoor', 0.15, true);
-          fbox(a0 + 0.12, a1 - 0.12, sill + 2.4, head - ft - 0.12, 'frosted', 0.05, true);
-          fbox(a0, a1, sill + 2.2, sill + 2.4, 'frontDoor', 0.16);
-          fbox(a0, a1, head - ft - 0.12, head - ft, 'frontDoor', 0.16);
+        for (const [a0, a1] of [[s + ft, s + ft + sl], [e - ft - sl, e - ft]]) { // sidelights: raised panel low, three rain-glass panes (photo 06)
+          const g0 = sill + 3.2, g1 = head - ft - 0.12, pane = (g1 - g0) / 3;
+          fbox(a0, a1, sill, g0, 'frontDoor', 0.15, true);
+          fbox(a0 + 0.17, a1 - 0.17, sill + 1.1, g0 - 0.3, 'frontDoor', 0.18);
+          fbox(a0 + 0.24, a1 - 0.24, sill + 1.17, g0 - 0.37, 'frontDoor', 0.21);
+          fbox(a0 + 0.12, a1 - 0.12, g0, g1, 'frosted', 0.05, true);
+          fbox(a0, a0 + 0.12, g0, g1, 'frontDoor', 0.16); fbox(a1 - 0.12, a1, g0, g1, 'frontDoor', 0.16);
+          for (let i = 1; i < 3; i++) fbox(a0, a1, g0 + pane * i - 0.04, g0 + pane * i + 0.04, 'frontDoor', 0.12);
+          fbox(a0, a1, g1, head - ft, 'frontDoor', 0.16);
         }
         fbox(s + ft + sl, s + ft + sl + 0.2, sill, head); fbox(e - ft - sl - 0.2, e - ft - sl, sill, head);
         hang(s + ft + sl + 0.2, e - ft - sl - 0.2, hingeEnd, swingSide, head - ft - 0.02, 'entry', 'frontDoor', 80, null, false);
         bat = renoBat('on:classic', L.id); RS = TAG = 'on:classic';
         { const pid = L.id + ':classic:' + s.toFixed(1), mid = (s + e) / 2;
           hang(s + ft, mid, 's', swingSide, head - ft - 0.02, 'glassdoor', 'black', 80, pid, false);
-          hang(mid, e - ft, 'e', swingSide, head - ft - 0.02, 'glassdoor', 'black', 80, pid, false); }
+          hang(mid, e - ft, 'e', swingSide, head - ft - 0.02, 'glassdoor', 'black', 0, pid, false); } // stair-side leaf is the fixed (inactive) leaf: it would swing into the flared bottom steps
         [bat, RS, TAG] = keep;
         break;
       }
@@ -438,18 +442,40 @@ export function buildWall(L, w, bat) {
       k.box(key, 0, y0, -th / 2, st, y0 + h, th / 2); k.box(key, w - st, y0, -th / 2, w, y0 + h, th / 2);
       k.box(key, st, y0 + h - st, -th / 2, w - st, y0 + h, th / 2); k.box(key, st, y0, -th / 2, w - st, y0 + 0.6, th / 2); k.box(key, st, y0 + h / 2 - 0.15, -th / 2, w - st, y0 + h / 2 + 0.15, th / 2);
       for (let y = y0 + 0.65; y < y0 + h - st - 0.05; y += 0.13) k.box(key, st, y, -0.05, w - st, y + 0.04, 0.05);
-    } else if (style === 'entry') { // oak slab, raised panels low, two tall arched leaded lites
-      const gw = (w - 0.9) / 2, g0 = y0 + 3.1, g1 = y0 + h - 0.6;
-      k.box(key, 0, y0, -th / 2, w, g0, th / 2); k.box(key, 0, g1, -th / 2, w, y0 + h, th / 2);
-      k.box(key, 0, g0, -th / 2, 0.35, g1, th / 2); k.box(key, w - 0.35, g0, -th / 2, w, g1, th / 2); k.box(key, 0.35 + gw, g0, -th / 2, 0.55 + gw, g1, th / 2);
-      for (const s of [-1, 1]) {
-        k.box('black', 0.35, y0 + 0.5, s * th / 2, w - 0.35, y0 + 2.6, s * (th / 2 + 0.02));
-        k.box(key, 0.42, y0 + 0.57, s * th / 2, w - 0.42, y0 + 2.53, s * (th / 2 + 0.04));
+    } else if (style === 'entry') { // oak slab: two tall round-top leaded lites, two raised panels below (photos 06, 61)
+      const m = 0.17 * w, lw = 0.27 * w, gap = w - 2 * m - 2 * lw, yb = y0 + 2.7, apex = y0 + h - 0.7, ys = apex - lw / 2;
+      const xs = [m, m + lw + gap];
+      k.box(key, 0, y0, -th / 2, w, yb, th / 2); k.box(key, 0, ys, -th / 2, w, y0 + h, th / 2);
+      k.box(key, 0, yb, -th / 2, m, ys, th / 2); k.box(key, m + lw, yb, -th / 2, m + lw + gap, ys, th / 2); k.box(key, w - m, yb, -th / 2, w, ys, th / 2);
+      const seg = (x0, ya, x1, yb2, z, t = 0.011) => { // a lead/brass came on the door face
+        const dx = x1 - x0, dy = yb2 - ya, d = Math.hypot(dx, dy); if (d < 1e-4) return;
+        const nx = (-dy / d) * t, ny = (dx / d) * t;
+        k.bat.box('brass', k.P(x0 - nx, ya - ny, z), V(dx, dy, 0), V(2 * nx, 2 * ny, 0), V(0, 0, Math.sign(z) * 0.01));
+      };
+      for (const x of xs) {
+        const cx = x + lw / 2, r = lw / 2;
+        k.box('frosted', x, yb, -0.02, x + lw, ys, 0.02); // rectangular part of the lite: real glass in the opening
+        for (const sd of [-1, 1]) {
+          const zf = sd * (th / 2 + 0.004), zc = sd * 0.025;
+          // round top: glass laid over the slab face, with its came outline
+          const arc = [...Array(13)].map((_, i) => { const a = (Math.PI * i) / 12; return [cx + Math.cos(a) * r, ys + Math.sin(a) * r]; });
+          k.bat.face('frosted', [k.P(x + lw, ys, zf), ...arc.map(([ax, ay]) => k.P(ax, ay, zf)), k.P(x, ys, zf)], V(0, 0, sd));
+          for (let i = 0; i < arc.length - 1; i++) seg(arc[i][0], arc[i][1], arc[i + 1][0], arc[i + 1][1], zf);
+          // leaded pattern: center came, a chain of bevelled diamonds, a pair of diamonds at the foot, arcs echoing the top
+          seg(cx, yb, cx, ys + r * 0.55, zc); seg(x, yb, x, ys, zc); seg(x + lw, yb, x + lw, ys, zc); seg(x, yb, x + lw, yb, zc);
+          const H2 = ys - yb, dmd = (yc, hw, hh) => { seg(cx, yc - hh, cx + hw, yc, zc); seg(cx + hw, yc, cx, yc + hh, zc); seg(cx, yc + hh, cx - hw, yc, zc); seg(cx - hw, yc, cx, yc - hh, zc); };
+          dmd(yb + H2 * 0.62, r * 0.55, H2 * 0.09); dmd(yb + H2 * 0.38, r * 0.45, H2 * 0.07);
+          for (const qx of [x + lw * 0.27, x + lw * 0.73]) { seg(qx, yb + 0.05, qx + lw * 0.2, yb + H2 * 0.11, zc); seg(qx + lw * 0.2, yb + H2 * 0.11, qx, yb + H2 * 0.22, zc); seg(qx, yb + H2 * 0.22, qx - lw * 0.2, yb + H2 * 0.11, zc); seg(qx - lw * 0.2, yb + H2 * 0.11, qx, yb + 0.05, zc); }
+          seg(x, yb + H2 * 0.62, cx - r * 0.55, yb + H2 * 0.62, zc); seg(cx + r * 0.55, yb + H2 * 0.62, x + lw, yb + H2 * 0.62, zc);
+          seg(x, ys - 0.02, x + lw, ys - 0.02, zc);
+          seg(x, yb + H2 * 0.85, cx, ys - 0.02, zc); seg(x + lw, yb + H2 * 0.85, cx, ys - 0.02, zc);
+        }
       }
-      for (const x of [0.35, 0.55 + gw]) {
-        k.box('frosted', x, y0 + 3.1, -0.02, x + gw, y0 + h - 0.6, 0.02);
-        k.box('brass', x - 0.04, y0 + 3.06, -th / 2 - 0.01, x + gw + 0.04, y0 + 3.1, th / 2 + 0.01);
-        for (let i = 1; i < 4; i++) k.box('brass', x + gw / 2 - 0.01, y0 + 3.1 + (i * (h - 3.7)) / 4, -0.03, x + gw / 2 + 0.01, y0 + 3.1 + (i * (h - 3.7)) / 4 + 0.6, 0.03);
+      // two raised panels below the lites
+      for (const [p0, p1] of [[m * 0.75, w / 2 - gap * 0.3], [w / 2 + gap * 0.3, w - m * 0.75]]) for (const sd of [-1, 1]) {
+        k.box(key, p0, y0 + 0.85, sd * th / 2, p1, y0 + 2.3, sd * (th / 2 + 0.015));
+        k.box(key, p0 + 0.08, y0 + 0.93, sd * th / 2, p1 - 0.08, y0 + 2.22, sd * (th / 2 + 0.035));
+        for (const [q0, q1, r0, r1] of [[p0, p1, y0 + 0.85, y0 + 0.88], [p0, p1, y0 + 2.27, y0 + 2.3], [p0, p0 + 0.03, y0 + 0.85, y0 + 2.3], [p1 - 0.03, p1, y0 + 0.85, y0 + 2.3]]) k.box('col:#3e2812', q0, r0, sd * th / 2, q1, r1, sd * (th / 2 + 0.02));
       }
     } else if (style === 'glassdoor') { // black steel-look frame, full glass with simulated divided lites
       const st = 0.3;
@@ -528,7 +554,8 @@ function buildFloors(L, bats) {
   }
   if (L.id === 'f2') {
     const f = L._foot[0];
-    bat.prism({ top: 'subfloor', bottom: 'ceiling', side: 'white' }, f, H.ceil1, H.f2, L._holes);
+    bat.prism({ top: 'subfloor', bottom: 'ceiling' }, f, H.ceil1, H.f2, [...L._holes, trayOct()]); // (the living room tray is recessed into the floor framing)
+    bat.prism({ side: 'white' }, f, H.ceil1, H.f2, L._holes);
     addFloorPoly(f, L._holes, H.f2, 'f2');
     bats.roof.poly('ceiling', f, H.ceil2, SKYLIGHTS.map((s) => s.hole), true);
   }
@@ -667,39 +694,60 @@ const SKYLIGHTS = [sk(780, 262, 805, 310, 'east'), sk(494, 498, 518, 536, 'front
 
 export const ROOF = {}; // plane height functions (px -> ft), filled by buildRoofs, used by reno + site
 function buildRoofs(bats) {
-  const bat = bats.roof, p = H.pitch, o = PX;
-  const X0 = 323.5, X1 = 840, Y0 = 197.5, Y1 = 563.5, D = (Y1 - Y0) / 2, Yr = Y0 + D, Rx0 = X0 + D, Rx1 = X1 - D;
+  const bat = bats.roof, p = H.pitch, pr = H.rearPitch, o = PX;
+  // Main 2nd-floor block: hip roof. Front and side slopes 9/12 from the 17 ft plate; the rear slope is the family
+  // room's 10/12 catslide carried up, so its eave over the 2nd-floor rear walls sits ~3 ft higher (RR) and the side
+  // slopes run out past it as short rakes at both rear corners (photos 02, 03, 45, 64).
+  const X0 = 323.5, X1 = 840, Y0 = 197.5, Y1 = 563.5;
   const X0o = X0 - o, X1o = X1 + o, Y0o = Y0 - o, Y1o = Y1 + o;
-  // family block (catslide off the rear slope) and the bay/tower projection on the west front
+  const Yr = (RY - RR + (p * Y1 + pr * Y0) / PX) * PX / (p + pr); // ridge: front plane = rear plane
+  const Rx0 = X0 + (Y1 - Yr), Rx1 = X1 - (Y1 - Yr); // ridge ends on the 45 deg front hips
+  const jL = X0 + ((RR - pr - RY) / p) * PX, jR = X1 - ((RR - pr - RY) / p) * PX; // rear eave meets the side slopes
+  // family block (catslide) and the bay/tower projection on the west front
   const FX0 = 474, FX1 = 701.5, FY0o = 57.5 - o, FX0r = FX0 - o, FX1r = FX1 + o;
   const PX0 = 323.5, PX1 = 477, PY1 = 656.5, Pd = (PX1 - PX0) / 2, Pr = PX0 + Pd, PY1o = PY1 + o, PX1o = PX1 + o, PYr = PY1 - Pd;
-  const hipL = (x) => Y0o + (x - X0o), hipR = (x) => Y0o + (X1o - x);
-  const rear = { o: [0, Y0], up: [0, 1], h0: RY, p };
-  ROOF.rear = rplane(bat, [[X0o, Y0o], [FX0r, Y0o], [FX0r, hipL(FX0r)]], { ...rear, eaves: [0] });
-  rplane(bat, [[FX0r, FY0o], [FX1r, FY0o], [FX1r, Y0o], [FX1r, hipR(FX1r)], [Rx1, Yr], [Rx0, Yr], [FX0r, hipL(FX0r)], [FX0r, Y0o]], { ...rear, eaves: [0], rakes: [1, 7], ridges: [4] });
-  rplane(bat, [[FX1r, Y0o], [X1o, Y0o], [FX1r, hipR(FX1r)]], { ...rear, eaves: [0] });
+  const rear = { o: [0, Y0], up: [0, 1], h0: RR, p: pr };
+  ROOF.rear = rplane(bat, [[Rx0, Yr], [jL, Y0o], [FX0r, Y0o], [FX1r, Y0o], [jR, Y0o], [Rx1, Yr]], { ...rear, eaves: [1, 3], ridges: [5] }); // (starts off the eave line: face() takes its normal from the first corner)
+  rplane(bat, [[FX0r, FY0o], [FX1r, FY0o], [FX1r, Y0o], [FX0r, Y0o]], { ...rear, eaves: [0], rakes: [1, 3] });
   // front slope (the tower projection takes over its west end)
   const vx = PX1o, vy = Y1o; // valley start: projection's east eave meets the main front eave
-  const vTop = [Pr, 887 + 0 - Pr]; // on the main west hip line y = (X0o + Y1o) - x
-  vTop[1] = X0o + Y1o - Pr;
+  const vTop = [Pr, X0 + Y1 - Pr]; // valley top, on the main front-west hip
   ROOF.front = rplane(bat, [[vx, vy], [X1o, Y1o], [Rx1, Yr], [Rx0, Yr], vTop], { o: [0, Y1], up: [0, -1], h0: RY, p, eaves: [0] });
-  // west slope + the tower's west slope (same plane)
+  // west slope + the tower's west slope (same plane); its rear end is a rake on the raised rear eave
   const west = { o: [X0, 0], up: [1, 0], h0: RY, p };
-  ROOF.west = rplane(bat, [[X0o, Y0o], [X0o, PY1o], [Pr, PYr + 0], [Pr, vTop[1]]], { ...west, eaves: [0], ridges: [2] });
-  rplane(bat, [[X0o, Y0o], [Pr, vTop[1]], [Rx0, Yr]], west);
-  rplane(bat, [[PX1o, Y1o], [PX1o, PY1o], [Pr, PYr], [Pr, vTop[1]]], { o: [PX1, 0], up: [-1, 0], h0: RY, p, eaves: [0], ridges: [2] });
+  ROOF.west = rplane(bat, [[X0o, Y0o], [vTop[0], vTop[1]], [Pr, PYr], [X0o, PY1o]], { ...west, eaves: [3], ridges: [1] });
+  rplane(bat, [[X0o, Y0o], [jL, Y0o], [Rx0, Yr], vTop], { ...west, rakes: [0] });
+  rplane(bat, [[PX1o, Y1o], [PX1o, PY1o], [Pr, PYr], vTop], { o: [PX1, 0], up: [-1, 0], h0: RY, p, eaves: [0], ridges: [2] });
   // (the tower's front slope is built with the bay roof below)
-  // east slope, with the bedroom bump over the garage
+  // east slope, with the bedroom bump over the garage (flush with the garage's rear wall: photo 44 camera fit)
   const BX1 = 931.9, BY0 = 379.4, BY1 = 520.6, bd = (BY1 - BY0) / 2, Bry = BY0 + bd, BX1o = BX1 + o, BY0o = BY0 - o, BY1o = BY1 + o, Brx = BX1 - bd;
   const vN = [X1o - (Bry - BY0o), Bry]; // valleys meet on the bump ridge line
   const east = { o: [X1, 0], up: [-1, 0], h0: RY, p };
-  ROOF.east = rplane(bat, [[X1o, Y0o], [X1o, BY0o], vN, [Rx1, Yr]], { ...east, eaves: [0] });
+  ROOF.east = rplane(bat, [[jR, Y0o], [X1o, Y0o], [X1o, BY0o], vN, [Rx1, Yr]], { ...east, rakes: [0], eaves: [1] });
   rplane(bat, [vN, [X1o, BY1o], [X1o, Y1o], [Rx1, Yr]], { ...east, eaves: [1] });
   rplane(bat, [[X1o, BY0o], [BX1o, BY0o], [Brx, Bry], vN], { o: [0, BY0], up: [0, 1], h0: RY, p, eaves: [0], ridges: [2] });
   rplane(bat, [vN, [Brx, Bry], [BX1o, BY1o], [X1o, BY1o]], { o: [0, BY1], up: [0, -1], h0: RY, p, eaves: [2], ridges: [0] });
   rplane(bat, [[BX1o, BY0o], [BX1o, BY1o], [Brx, Bry]], { o: [BX1, 0], up: [-1, 0], h0: RY, p, eaves: [0] });
+  // 2nd-floor rear walls carried up to the raised rear eave: siding infill above the 17 ft plate, raked at the corners
+  {
+    const [, zw] = F(0, Y0), hw = 0.25, top = (x) => Math.max(H.wallTop2 + 0.01, Math.min(RR, RY + (p * Math.min(x - X0, X1 - x)) / PX) - ROOFT - 0.02);
+    for (const [a, b] of [[X0, FX0], [FX1, X1]]) {
+      // breakpoints where the side slope reaches the rear plane
+      const kL = X0 + ((RR - RY) / p) * PX, kR = X1 - ((RR - RY) / p) * PX;
+      const pts = [a, ...[kL, kR].filter((q) => q > a + 0.5 && q < b - 0.5), b];
+      for (const side of [-1, 1]) {
+        const poly = [V(F(b, 0)[0], H.wallTop2, zw + side * hw), V(F(a, 0)[0], H.wallTop2, zw + side * hw), ...pts.map((x) => V(F(x, 0)[0], top(x), zw + side * hw))]
+          .filter((q, i, arr) => q.distanceTo(arr[(i + 1) % arr.length]) > 0.02);
+        bats.f2.face(side < 0 ? 'siding' : 'joist', poly, V(0, 0, side));
+      }
+      for (let i = 0; i < pts.length - 1; i++) {
+        const xa = F(pts[i], 0)[0], xb = F(pts[i + 1], 0)[0], ta = top(pts[i]), tb = top(pts[i + 1]);
+        bats.f2.face('cut', [V(xa, ta, zw - hw), V(xb, tb, zw - hw), V(xb, tb, zw + hw), V(xa, ta, zw + hw)], V(0, 1, 0));
+      }
+    }
+  }
   // garage: hip at the front, rake at the back (behind the bump), pitch 7/12
-  const RG = 10 + ROOFT, pg = H.garagePitch;
+  const RG = H.plate1 + ROOFT, pg = H.garagePitch;
   const GX0 = 700, GX1 = 987.5, GY0 = 378.5, GY1 = 722.5, GR = (GX0 + GX1) / 2, GY1o = GY1 + o, GX1o = GX1 + o, GX0o = GX0 - o, Gry = GY1o - (GX1o - GR);
   const gE = { o: [GX1, 0], up: [-1, 0], h0: RG, p: pg };
   ROOF.garageEast = rplane(bat, [[BX1, GY0 - o], [GX1o, GY0 - o], [GX1o, BY1], [BX1, BY1]], { ...gE, eaves: [1], rakes: [0] });
@@ -710,10 +758,10 @@ function buildRoofs(bats) {
   rplane(bat, [[GX0o, GY1o], [GX1o, GY1o], [GR, Gry]], { o: [0, GY1], up: [0, -1], h0: RG, p: pg, eaves: [0] });
   { // gable end of the garage's back rake, above the rear wall
     const [ax, az] = F(BX1, GY0), [bx] = F(GX1, 0);
-    gableTri(bats.f1, [V(ax, 10, az), V(bx, 10, az), V(ax, 10 + (pg * (GX1 - BX1)) / PX, az)]);
+    gableTri(bats.f1, [V(ax, H.plate1, az), V(bx, H.plate1, az), V(ax, H.plate1 + (pg * (GX1 - BX1)) / PX, az)]);
   }
   // kitchen bump: low hip against the dining/kitchen wing
-  const pk = 5 / 12, RK = 10 + ROOFT, kx0 = 292 - o, ky0 = 351.5 - o, ky1 = 494.5 + o, kd = 323.5 - kx0;
+  const pk = 5 / 12, RK = H.plate1 + ROOFT, kx0 = 292 - o, ky0 = 351.5 - o, ky1 = 494.5 + o, kd = 323.5 - kx0;
   rplane(bat, [[kx0, ky0], [kx0, ky1], [323.5, ky1 - kd], [323.5, ky0 + kd]], { o: [292, 0], up: [1, 0], h0: RK, p: pk, eaves: [0] });
   rplane(bat, [[kx0, ky0], [323.5, ky0 + kd], [323.5, ky0]], { o: [0, 351.5], up: [0, 1], h0: RK, p: pk, eaves: [2] });
   rplane(bat, [[kx0, ky1], [323.5, ky1], [323.5, ky1 - kd]], { o: [0, 494.5], up: [0, -1], h0: RK, p: pk, eaves: [0] });
@@ -771,26 +819,28 @@ function buildRoofs(bats) {
     const pc = 4 / 12, cr = renoBat('off:facade', 'roof'), c1 = renoBat('off:facade', 'f1');
     const [cx, cz] = F(553, 586);
     const k = new Kit(c1, 'off:facade').at(cx, cz, 0);
-    k.cbox('brickExt', 0, 0, 1.6, 1.6, -0.9, 9.6); k.cbox('col:#cbbfae', 0, 0, 1.85, 1.85, 9.6, 9.85);
-    addSolid(V(cx - 0.8, 0, cz - 0.8), V(1.6, 0, 0), V(0, 0, 1.6), -1, 9.85, 'off:facade');
+    k.cbox('brickExt', 0, 0, 1.6, 1.6, -0.9, 7.9); k.cbox('col:#cbbfae', 0, 0, 1.85, 1.85, 7.9, 8.15);
+    addSolid(V(cx - 0.8, 0, cz - 0.8), V(1.6, 0, 0), V(0, 0, 1.6), -1, 8.15, 'off:facade');
     // a white post rises from the pier cap to a boxed soffit that carries the eave out over the entry (photos 04, 42, 61)
     const k2 = new Kit(renoBat('off:facade', 'f2'), 'off:facade').at(cx, cz, 0);
-    k2.cbox('extTrim', 0, 0, 0.62, 0.62, 9.85, 17.1);
+    k2.cbox('extTrim', 0, 0, 0.62, 0.62, 8.15, 16.1);
     const [tx] = F(477, 0), [, wz] = F(0, 563.5);
-    new Kit(renoBat('off:facade', 'f2'), 'off:facade').box({ def: 'extTrim', nv: 'soffit', pv: 'shingle' }, tx + 0.58, 17.05, wz + 0.25, cx + 0.42, 17.75, cz + 0.42);
+    new Kit(renoBat('off:facade', 'f2'), 'off:facade').box({ def: 'extTrim', nv: 'soffit', pv: 'shingle' }, tx + 0.58, 16.05, wz + 0.25, cx + 0.42, 16.75, cz + 0.42);
     void cr; void pc;
   }
-  // chimney: tan brick from grade to above the roof, stone cap, flue
+  // chimney: tan brick from grade to ~20 ft (photo 45 camera fit: brick top 19.9 ft, level with the ridge from the
+  // side in photo 02), stone cap, flue
   {
-    const [cx0, cz0] = F(560, 28.5), [cx1, cz1] = F(626, 57.5);
-    bats.f1.aabox({ def: 'brickExt', pv: 'cut' }, cx0, -1.0, cz0, cx1, 10, cz1);
-    bat.aabox({ def: 'brickExt', pv: 'cut' }, cx0, 10, cz0, cx1, 27.6, cz1);
-    bat.aabox('col:#c9c3b6', cx0 - 0.2, 27.6, cz0 - 0.2, cx1 + 0.2, 28.0, cz1 + 0.2);
+    const [cx0, cz0] = F(560, 28.5), [cx1, cz1] = F(626, 57.5), CT = 20.0;
+    bats.f1.aabox({ def: 'brickExt', pv: 'cut' }, cx0, -1.0, cz0, cx1, H.plate1, cz1);
+    bat.aabox({ def: 'brickExt', pv: 'cut' }, cx0, H.plate1, cz0, cx1, CT, cz1);
+    bat.aabox('col:#c9c3b6', cx0 - 0.15, CT, cz0 - 0.15, cx1 + 0.15, CT + 0.3, cz1 + 0.15);
     const k = new Kit(bat, 'roof').at((cx0 + cx1) / 2, (cz0 + cz1) / 2, 0);
-    k.cyl('col:#3a3a3a', 0, 0, 0.35, 0.35, 28.0, 29.0, 10); k.cyl('col:#2b2b2b', 0, 0, 0.55, 0.5, 29.0, 29.4, 10);
-    addSolid(V(cx0, 0, cz0), V(cx1 - cx0, 0, 0), V(0, 0, cz1 - cz0), -1, 28, 'f1');
+    k.cyl('col:#3a3a3a', 0, 0, 0.35, 0.35, CT + 0.3, CT + 1.2, 10); k.cyl('col:#2b2b2b', 0, 0, 0.55, 0.5, CT + 1.2, CT + 1.6, 10);
+    k.cyl('col:#3a3a3a', -1.6, 0, 0.12, 0.12, CT + 0.3, CT + 0.9, 8); k.cyl('col:#2b2b2b', -1.6, 0, 0.2, 0.18, CT + 0.9, CT + 1.05, 8);
+    addSolid(V(cx0, 0, cz0), V(cx1 - cx0, 0, 0), V(0, 0, cz1 - cz0), -1, CT, 'f1');
   }
-  // skylights + their light shafts down to the 18 ft ceiling
+  // skylights + their light shafts down to the 2nd-floor ceiling
   for (const s of SKYLIGHTS) {
     const f = ROOF[s.plane], [x0, y0, x1, y1] = s.px;
     const q = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
@@ -823,9 +873,9 @@ function buildVault(bats) {
   }
   const fz = [V(x0, H.ceil2, z1), V(x1, H.ceil2, z1), V(x1, u(z1), z1), V(x0, u(z1), z1)];
   bat.face(wk, fz, V(0, 0, -1)); bat.face('white', fz, V(0, 0, 1));
-  // the 2nd-floor joist band (9-10 ft) seen from the family room is drywalled
+  // the 2nd-floor joist band (8-9 ft) seen from the family room is drywalled
   bats.f2.face(wk, [V(x0, H.ceil1, z1), V(x1, H.ceil1, z1), V(x1, H.f2 + 0.02, z1), V(x0, H.f2 + 0.02, z1)], V(0, 0, -1));
-  // and the band above the 2nd-floor partitions (18 -> 18 ft wall top) on the 2nd-floor side walls of the void
+  // (the band above the 2nd-floor partitions on the side walls of the void is the vault infill above)
   // ceiling fan + recessed lights are in furnish.js
 }
 
@@ -839,10 +889,10 @@ function buildExterior(bats) {
     const dx = bx - ax, dz = bz - az, l = Math.hypot(dx, dz), ux = dx / l, uz = dz / l;
     const o = V(ax - ux * ext0 + out[0] * hw, y0, az - uz * ext0 + out[1] * hw);
     bat.box(key, o, V(ux * (l + ext0 + ext1), 0, uz * (l + ext0 + ext1)), V(0, y1 - y0, 0), V(out[0] * T, 0, out[1] * T));
-    if (key === 'brickExt' && y1 < 9) bat.box('col:#cbbfae', o.clone().add(V(0, y1 - y0, 0)), V(ux * (l + ext0 + ext1), 0, uz * (l + ext0 + ext1)), V(0, 0.12, 0), V(out[0] * (T + 0.08), 0, out[1] * (T + 0.08)));
+    if (key === 'brickExt' && y1 < 8) bat.box('col:#cbbfae', o.clone().add(V(0, y1 - y0, 0)), V(ux * (l + ext0 + ext1), 0, uz * (l + ext0 + ext1)), V(0, 0.12, 0), V(out[0] * (T + 0.08), 0, out[1] * (T + 0.08)));
   };
   // tower piers: full two stories of brick either side of the bay, wrapping the corners
-  for (const [bat, y0, y1] of [[b1, -0.9, 10], [b2, 10, 18]]) {
+  for (const [bat, y0, y1] of [[b1, -0.9, H.f2], [b2, H.f2, H.wallTop2]]) {
     veneer(bat, [323.5, 656.5], [357, 656.5], [0, 1], y0, y1, 'brickExt', 0.6, 0);
     veneer(bat, [440, 656.5], [477, 656.5], [0, 1], y0, y1, 'brickExt', 0, 0.6);
     veneer(bat, [323.5, 620], [323.5, 656.5], [-1, 0], y0, y1, 'brickExt', 0, 0.6);
@@ -853,20 +903,20 @@ function buildExterior(bats) {
   for (let i = 0; i < 3; i++) {
     const a = bay[i], c = bay[i + 1], dx = c[0] - a[0], dy = c[1] - a[1], l = Math.hypot(dx, dy), out = [-dy / l, dx / l];
     veneer(b1, a, c, out, -0.9, 1.85);
-    veneer(b1, a, c, out, 7.75, 10, 'shake', 0, 0, 0.06); // split at the floor line so the 1st-floor cut view stops at 10 ft
-    veneer(b2, a, c, out, 10, 11.75, 'shake', 0, 0, 0.06);
+    veneer(b1, a, c, out, 7.75, H.f2, 'shake', 0, 0, 0.06); // split at the floor line so the 1st-floor cut view stops at the 2nd floor
+    veneer(b2, a, c, out, H.f2, H.f2 + 1.75, 'shake', 0, 0, 0.06);
   }
   // brick wainscot across the stair/laundry front and around the garage front, with a sloped cap
   veneer(b1, [552, 563.5], [700, 563.5], [0, 1], -0.9, 2.6);
   // white-trimmed vertical strip right of the entry: laundry window, shake panel, 2nd-floor window stacked (front photo)
   veneer(b1, [646, 563.5], [685, 563.5], [0, 1], 2.72, 3.6, 'shake', 0, 0, 0.06);
-  veneer(b1, [646, 563.5], [685, 563.5], [0, 1], 7.0, 10, 'shake', 0, 0, 0.06);
-  veneer(b2, [646, 563.5], [685, 563.5], [0, 1], 10, 12.4, 'shake', 0, 0, 0.06);
-  for (const [bat, y0, y1] of [[b1, 2.72, 10], [b2, 10, 17.3]]) {
+  veneer(b1, [646, 563.5], [685, 563.5], [0, 1], 7.0, H.f2, 'shake', 0, 0, 0.06);
+  veneer(b2, [646, 563.5], [685, 563.5], [0, 1], H.f2, H.f2 + 3.36, 'shake', 0, 0, 0.06); // up to the closet window's sill (photo 55)
+  for (const [bat, y0, y1] of [[b1, 2.72, H.f2], [b2, H.f2, H.f2 + 7.3]]) {
     veneer(bat, [642, 563.5], [646, 563.5], [0, 1], y0, y1, 'winTrim', 0, 0, 0.1);
     veneer(bat, [685, 563.5], [689, 563.5], [0, 1], y0, y1, 'winTrim', 0, 0, 0.1);
   }
-  veneer(b2, [642, 563.5], [689, 563.5], [0, 1], 16.95, 17.3, 'winTrim', 0, 0, 0.1);
+  veneer(b2, [642, 563.5], [689, 563.5], [0, 1], H.f2 + 6.95, H.f2 + 7.3, 'winTrim', 0, 0, 0.1);
   veneer(b1, [700, 563.5], [700, 722.5], [-1, 0], -0.9, 2.6, 'brickExt', 0, 0.6);
   veneer(b1, [700, 722.5], [987.5, 722.5], [0, 1], -0.9, 2.6, 'brickExt', 0.6, 0.6);
   // brick pier at the garage's front corner with a lantern on top (driveway photo)
@@ -892,13 +942,13 @@ function buildExterior(bats) {
         for (const c of [[0.2, 0.2], [-0.2, 0.2], [0.2, -0.2], [-0.2, -0.2]]) if (!pip(poly, q[0] + c[0] * 3, q[1] + c[1] * 3)) d = c;
         const cx = q[0] + d[0], cz = q[1] + d[1];
         const low = L.id === 'f1' && q[1] * PX + 28.5 < 60; // family room rear corners: under the low eave
-        bat.aabox('extTrim', cx - 0.25, y0, cz - 0.25, cx + 0.25, low ? 9.3 : y1, cz + 0.25);
+        bat.aabox('extTrim', cx - 0.25, y0, cz - 0.25, cx + 0.25, low ? vaultUnder(57.5) - 0.1 : y1, cz + 0.25);
       }
     }
   };
   const brickCorner = (q) => { const px = q[0] * PX + 292, py = q[1] * PX + 28.5; return (py > 640 && px < 480) || (py > 560 && Math.abs(px - 477) < 3); };
-  corners(LV.f1, b1, -0.9, 10, brickCorner);
-  corners(LV.f2, b2, 10, 18, brickCorner);
+  corners(LV.f1, b1, -0.9, H.f2, brickCorner);
+  corners(LV.f2, b2, H.f2, H.wallTop2, brickCorner);
   // basement window wells along the west wall and the east room
   for (const [x, y, nx, nz] of [[323.5, 291, -1, 0], [323.5, 572, -1, 0], [771, 222, 0, -1], [840.3, 311, 1, 0]]) {
     const [fx, fz] = F(x, y);

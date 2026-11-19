@@ -31,5 +31,6 @@ Then open http://localhost:8742.
 - `js/themes.js`: interior style presets and controls.
 - `js/site.js`: lawn, driveway, patio, trees, play set, neighbors.
 - `js/app.js`: viewer, walk mode, measuring, sun study, panels.
+- `js/render.js`: sky, sun, shadows, interior lighting, ambient occlusion and the High quality toggle (shared with `creekside/js/render.js`).
 
 Assumptions (ceiling heights, roof pitches, lot placement) are listed in the app under "How this model was made".

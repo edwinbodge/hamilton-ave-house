@@ -9,13 +9,13 @@ export const CONTROLS = [
   { id: 'walls', label: 'Walls', options: [[O, 'As listed (white, gray living room)'], ['#ece8df', 'Warm white'], ['#f3f2ee', 'Soft white'], ['#ddd5c8', 'Greige'], ['#d3d8c9', 'Pale sage'], ['#dfe2e0', 'Light gray']] },
   { id: 'bedWalls', label: 'Bedroom walls', options: [[O, 'As listed'], ['match', 'Same as walls'], ['#e4ddd0', 'Oatmeal'], ['#cdd6da', 'Dusty blue'], ['#c8cfbe', 'Sage'], ['#e6d8cf', 'Blush']] },
   { id: 'bathWalls', label: 'Bath walls', options: [[O, 'As listed (beige half bath)'], ['#f2f2ee', 'White'], ['#d3d8c9', 'Pale sage'], ['#d6dde0', 'Blue-gray']] },
-  { id: 'trim', label: 'Trim & stair rail', options: [['#b9843f', 'Golden oak (as listed)'], ['#f4f2ec', 'Warm white'], ['#c49a62', 'Natural oak'], ['#2a2a2a', 'Black']] },
-  { id: 'doors', label: 'Interior doors', options: [['#b9843f', 'Golden oak (as listed)'], ['#f4f2ec', 'White'], ['#2a2a2a', 'Black'], ['#c49a62', 'Natural oak'], ['trim', 'Match trim']] },
+  { id: 'trim', label: 'Trim & stair rail', options: [['#a8743a', 'Golden oak (as listed)'], ['#f4f2ec', 'Warm white'], ['#c49a62', 'Natural oak'], ['#2a2a2a', 'Black']] },
+  { id: 'doors', label: 'Interior doors', options: [['#a8743a', 'Golden oak (as listed)'], ['#f4f2ec', 'White'], ['#2a2a2a', 'Black'], ['#c49a62', 'Natural oak'], ['trim', 'Match trim']] },
   { id: 'floors', label: 'Hardwood (kitchen, dining)', options: [['oak', 'Natural red oak (as listed)'], ['plank:#c8a57a', 'White oak'], ['plank:#d8c3a0', 'Pale ash'], ['plank:#6e4b33', 'Walnut'], ['plank:#a89f92', 'Gray-washed']] },
   { id: 'foyer', label: 'Foyer & hall', options: [['tileFoyer', 'Beige tile (as listed)'], ['match', 'Hardwood'], ['tile:#d9d5ce', 'Large warm gray tile']] },
   { id: 'carpetMain', label: 'Family room & office', options: [['carpet:#d9d4cb', 'Carpet (as listed)'], ['match', 'Hardwood'], ['carpet:#cfc8bd', 'New carpet, greige']] },
   { id: 'living', label: 'Living room floor', options: [['carpet:#86707a', 'Mauve carpet (as listed)'], ['match', 'Hardwood'], ['carpet:#cfc8bd', 'New carpet, greige']] },
-  { id: 'carpetBed', label: 'Bedrooms & upstairs', options: [['carpet:#d6d0c6', 'Carpet (as listed)'], ['match', 'Hardwood'], ['carpet:#dcd4c5', 'Oatmeal carpet'], ['carpet:#c8c6c1', 'Gray carpet']] },
+  { id: 'carpetBed', label: 'Bedrooms & upstairs', options: [['carpet:#c4bcb1', 'Carpet (as listed)'], ['match', 'Hardwood'], ['carpet:#dcd4c5', 'Oatmeal carpet'], ['carpet:#c8c6c1', 'Gray carpet']] },
   { id: 'bathTile', label: 'Bath & laundry floors', options: [['original', 'As listed (beige tile, vinyl)'], ['tile:#d9d5ce', 'Large warm gray'], ['marbleTile', 'White marble'], ['tile:#5b5d60', 'Charcoal']] },
   { id: 'stair', label: 'Stair treads', options: [['carpet', 'Carpet (as listed)'], ['oak', 'Oak treads']] },
   { id: 'cabinets', label: 'Cabinets & vanities', options: [['#c28a48', 'Golden oak (as listed)'], ['#efece5', 'Painted white'], ['#8a9a87', 'Sage green'], ['#2f3d52', 'Navy'], ['#2b2b2b', 'Black'], ['#c9a879', 'White oak'], ['#b8ae9f', 'Greige']] },
@@ -23,10 +23,10 @@ export const CONTROLS = [
   { id: 'counters', label: 'Counters', options: [['laminate:#8d9093', 'Gray laminate (as listed)'], ['marble', 'White quartz'], ['#3c3f42', 'Soapstone'], ['plank:#b07a45', 'Butcher block']] },
   { id: 'backsplash', label: 'Backsplash', options: [['paint:#f3f2ee', 'Painted wall + 4" splash (as listed)'], ['subway:#f3f1ec', 'White subway'], ['subway:#6f8f7a', 'Green zellige'], ['marble', 'Marble slab']] },
   { id: 'fireplace', label: 'Fireplace surround', options: [['blackMarble', 'Black marble (as listed)'], ['marble', 'White marble'], ['stone', 'Limestone'], ['paintbrick:#2d2d2d', 'Black brick']] },
-  { id: 'mantel', label: 'Mantel', options: [['#b9843f', 'Oak (as listed)'], ['trim', 'Match trim'], ['#c9a06a', 'Natural oak'], ['#2a2a2a', 'Black']] },
+  { id: 'mantel', label: 'Mantel', options: [['#a8743a', 'Oak (as listed)'], ['trim', 'Match trim'], ['#c9a06a', 'Natural oak'], ['#2a2a2a', 'Black']] },
 ];
 
-const LISTED = { walls: O, bedWalls: O, bathWalls: O, trim: '#b9843f', doors: '#b9843f', floors: 'oak', foyer: 'tileFoyer', carpetMain: 'carpet:#d9d4cb', living: 'carpet:#86707a', carpetBed: 'carpet:#d6d0c6', bathTile: 'original', stair: 'carpet', cabinets: '#c28a48', island: '#46555e', counters: 'laminate:#8d9093', backsplash: 'paint:#f3f2ee', fireplace: 'blackMarble', mantel: '#b9843f' };
+const LISTED = { walls: O, bedWalls: O, bathWalls: O, trim: '#a8743a', doors: '#a8743a', floors: 'oak', foyer: 'tileFoyer', carpetMain: 'carpet:#d9d4cb', living: 'carpet:#86707a', carpetBed: 'carpet:#c4bcb1', bathTile: 'original', stair: 'carpet', cabinets: '#c28a48', island: '#46555e', counters: 'laminate:#8d9093', backsplash: 'paint:#f3f2ee', fireplace: 'blackMarble', mantel: '#a8743a' };
 export const PRESETS = {
   original: { label: 'As listed', values: LISTED },
   warm: { label: 'Warm modern', values: { walls: '#ece8df', bedWalls: '#e4ddd0', bathWalls: '#f2f2ee', trim: '#f4f2ec', doors: '#f4f2ec', floors: 'plank:#c8a57a', foyer: 'match', carpetMain: 'match', living: 'match', carpetBed: 'carpet:#dcd4c5', bathTile: 'tile:#d9d5ce', stair: 'oak', cabinets: '#8a9a87', island: '#c9a879', counters: 'marble', backsplash: 'subway:#f3f1ec', fireplace: 'stone', mantel: '#c9a06a' } },

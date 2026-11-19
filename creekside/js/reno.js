@@ -60,7 +60,7 @@ function baseRun(k, x0, x1, o = {}) {
     else { shaker(k, a, b, 2.3, 2.88, d, fr, pn); pull(k, (a + b) / 2, 2.6, d); shaker(k, a, b, 0.4, 2.26, d, fr, pn); pull(k, i % 2 ? a + 0.18 : b - 0.18, 1.95, d, true); }
   }
 }
-function upperRun(k, x0, x1, y0 = 4.6, y1 = 7.9) {
+function upperRun(k, x0, x1, y0 = 4.6, y1 = H.ceil1 - 0.2) { // 40" uppers with a crown to the 8 ft ceiling
   const d = 1.05;
   k.box('rcab', x0, y0, 0, x1, y1, d);
   k.box('rcabDoor', x0 - 0.04, y1, 0, x1 + 0.04, y1 + 0.2, d + 0.1);
@@ -84,7 +84,7 @@ function proRange(k, x0, x1) { // 36" range with a plaster hood to the ceiling
   for (const zz of [0.6, 1.6]) for (let i = 0; i < 3; i++) k.cbox('blackMatte', x0 + 0.5 + i * ((x1 - x0 - 1) / 2), zz, 0.85, 0.85, 3.05, 3.12);
   k.box('black', x0 + 0.25, 0.55, d, x1 - 0.25, 2.2, d + 0.02);
   k.box('chrome', x0 + 0.3, 2.3, d + 0.02, x1 - 0.3, 2.37, d + 0.15);
-  k.prof('plaster', [[0, 5.7], [1.9, 5.7], [1.9, 6.0], [1.0, 8.95], [0, 8.95]], x0 - 0.2, x1 + 0.2);
+  k.prof('plaster', [[0, 5.7], [1.9, 5.7], [1.9, 6.0], [1.0, H.ceil1 - 0.02], [0, H.ceil1 - 0.02]], x0 - 0.2, x1 + 0.2);
   k.box(wood('#b98d5f'), x0 - 0.25, 5.55, 0, x1 + 0.25, 5.75, 2.0);
   k.box('rsplash', x0, 3.05, 0, x1, 5.6, 0.04);
   k.solid(x0, 0, x1, d, 0, 3.05);
@@ -95,10 +95,10 @@ function builtInFridge(k, x0, x1) {
   const xm = (x0 + x1) / 2;
   k.box('black', xm - 0.01, 2.5, d, xm + 0.01, 6.85, d + 0.01); k.box('black', x0, 2.45, d, x1, 2.5, d + 0.01);
   for (const x of [xm - 0.15, xm + 0.15]) k.box('black', x - 0.03, 3.4, d + 0.04, x + 0.03, 5.8, d + 0.16);
-  k.box('rcab', x0, 6.9, 0, x1, 8.4, 2.1); shaker(k, x0 + 0.02, x1 - 0.02, 6.92, 8.38, 2.1);
+  k.box('rcab', x0, 6.9, 0, x1, H.ceil1 - 0.02, 2.1); shaker(k, x0 + 0.02, x1 - 0.02, 6.92, H.ceil1 - 0.04, 2.1);
   k.solid(x0, 0, x1, d, 0, 7);
 }
-function tallPantry(k, x0, x1, top = 8.4) {
+function tallPantry(k, x0, x1, top = H.ceil1 - 0.02) {
   k.box('rcab', x0, 0.35, 0, x1, top, 2.0); k.box('blackMatte', x0, 0, 0, x1, 0.35, 1.75);
   const xm = (x0 + x1) / 2;
   for (const [a, b] of [[x0 + 0.02, xm - 0.01], [xm + 0.01, x1 - 0.02]]) { shaker(k, a, b, 3.6, top - 0.03, 2.0); shaker(k, a, b, 0.4, 3.55, 2.0); }
@@ -148,7 +148,7 @@ function buildKitchen() {
   const rs = 'on:kitchen', bat = renoBat(rs, 'f1'), L = LV.f1;
   const at = (x, y, rot = 0, y0 = 0, b = bat, t = rs) => { const [lx, lz] = F(x, y); return new Kit(b, t).at(lx, lz, y0, rot); };
   // walls: the stub wall and pier go; a beam carries the bedroom wall above. Counter-height window over the new sink.
-  buildWall(L, [474, 197.5, 474, 305, 'i', [[197.5, 305, 'o', { head: 8.4 }]], { top: 10, rs }]);
+  buildWall(L, [474, 197.5, 474, 305, 'i', [[197.5, 305, 'o', { head: 7.6 }]], { top: H.f2, rs }]);
   buildWall(L, [323.5, 197.5, 323.5, 351.5, 'e', [[257, 313, 'w', { g: 'cs2', sill: 3.6 }]], { rs }]);
   // family room floor leveled to the kitchen (no step)
   const famRoom = L._rooms.find((r) => r.vault);
@@ -175,9 +175,9 @@ function buildKitchen() {
     const ik = new Kit(bat, rs).at(ix, iz, 0, -90); // working side faces west (the sink + range), seats face it from the east
     island(ik, 9, 4.2, 1.25);
     for (const dx of [-3.0, -1.0, 1.0, 3.0]) { const p = ik.P(dx, 0, -2.7); stool(new Kit(renoBat('on:kitchen&furn', 'f1'), 'on:kitchen&furn').at(p.x, p.z, 0, -90), '#c9bba6'); }
-    for (const dz of [-3, 0, 3]) pendant(new Kit(bat, rs).at(ix, iz + dz, 0), 9, 2.6);
+    for (const dz of [-3, 0, 3]) pendant(new Kit(bat, rs).at(ix, iz + dz, 0), H.ceil1, 2.4);
   }
-  for (const [x, y] of [[360, 220], [360, 330], [470, 230]]) recessed(at(x, y), 9);
+  for (const [x, y] of [[360, 220], [360, 330], [470, 230]]) recessed(at(x, y), H.ceil1);
   // old kitchen -> dining: banquette in the window bump, table for six, fridge + pantry wall on the hall side
   {
     const { k, len } = runKit(bat, rs, F(294.9, 360), F(294.9, 488), [1, 0]);
@@ -204,7 +204,7 @@ function buildKitchen() {
   fk(520, 120, 70, (k) => armchair(k, { color: '#8c7b68' }));
   fk(656, 120, -70, (k) => armchair(k, { color: '#8c7b68' }));
   // the dining chandelier over the new table (style follows the refresh option)
-  { const [lx, lz] = F(345, 424); bellChandelier(new Kit(renoBat('on:kitchen&off:refresh', 'f1'), 'on:kitchen&off:refresh').at(lx, lz, 0), 9, 3.0, 5); linearPendant(new Kit(renoBat('on:kitchen&on:refresh', 'f1'), 'on:kitchen&on:refresh').at(lx, lz, 0, 90), 9, 3.0, 5); }
+  { const [lx, lz] = F(345, 424); bellChandelier(new Kit(renoBat('on:kitchen&off:refresh', 'f1'), 'on:kitchen&off:refresh').at(lx, lz, 0), H.ceil1, 2.6, 5); linearPendant(new Kit(renoBat('on:kitchen&on:refresh', 'f1'), 'on:kitchen&on:refresh').at(lx, lz, 0, 90), H.ceil1, 2.6, 5); }
   // labels: the swapped rooms
   const rooms = [
     { name: 'Kitchen (remodel)', dims: "open to the family room · 9' island", floor: 'oak', wall: 'paint:#f3f2ee', poly: [[323.5, 197.5], [474, 197.5], [474, 340], [323.5, 340]] },
@@ -217,12 +217,12 @@ function buildKitchen() {
 // ------------------------------------------------------------------ kitchen | living room opening
 function buildOpenLiving() {
   const rs = 'on:openLiving', L = LV.f1;
-  buildWall(L, [323.5, 494.5, 476, 494.5, 'i', [[333, 467, 'o', { head: 8.3, cased: true }]], { rs }]);
+  buildWall(L, [323.5, 494.5, 476, 494.5, 'i', [[333, 467, 'o', { head: 7.4, cased: true }]], { rs }]);
 }
 
 // ------------------------------------------------------------------ cosmetic refresh (fixed elements)
-function fireplaceNew(k) { // limewash plaster breast to the ceiling, floating oak beam mantel, linear firebox, stone ledge hearth
-  k.box('plaster', -3.4, 0, 0, 3.4, 9.2, 0.7);
+function fireplaceNew(k, top = 9.2) { // limewash plaster breast to the ceiling, floating oak beam mantel, linear firebox, stone ledge hearth
+  k.box('plaster', -3.4, 0, 0, 3.4, top, 0.7);
   k.box('black', -2.0, 0.9, 0.7, 2.0, 2.5, 0.72);
   k.box('ember', -1.6, 1.0, 0.6, 1.6, 1.15, 0.71);
   k.box(wood('#a87a4c'), -3.0, 4.2, 0.7, 3.0, 4.7, 1.35);
@@ -235,7 +235,7 @@ function ironSpindles(bat, a, b, h0, h1) {
 }
 function buildRefresh() {
   const rs = 'on:refresh';
-  { const [lx, lz] = F(593, 60.5); for (const [tag, y] of [['on:refresh&off:kitchen', H.family], ['on:refresh&on:kitchen', 0]]) fireplaceNew(new Kit(renoBat(tag, 'f1'), tag).at(lx, lz, y, 0)); }
+  { const [lx, lz] = F(593, 60.5); for (const [tag, y] of [['on:refresh&off:kitchen', H.family], ['on:refresh&on:kitchen', 0]]) fireplaceNew(new Kit(renoBat(tag, 'f1'), tag).at(lx, lz, y, 0), vaultUnder(58) - y - 0.05); }
   // stair + balcony: square black iron spindles in place of the turned oak ones
   const S = stairGeom(), t2 = S.treads[2], b1 = renoBat(rs, 'f1'), b2 = renoBat(rs, 'f2');
   ironSpindles(b1, [S.x0 + 0.05, t2.z1 - 0.1], [S.x0 + 0.05, S.zTop], t2.top, H.f2);
@@ -243,8 +243,8 @@ function buildRefresh() {
   ironSpindles(b2, G2(752.5, 215.5), G2(752.5, 245.5), H.f2, H.f2);
   ironSpindles(b2, G2(783.5, 163), G2(835.5, 163), H.f2, H.f2);
   // light fixtures: big frosted orb in the two-story foyer, linear pendant over the dining table
-  { const [lx, lz] = F(520, 500); orb(new Kit(b1, rs).at(lx, lz, 0), 18, 6.5, 1.3); }
-  { const [lx, lz] = F(398, 250); linearPendant(new Kit(renoBat('on:refresh&off:kitchen', 'f1'), 'on:refresh&off:kitchen').at(lx, lz, 0), 9, 3.0, 5); }
+  { const [lx, lz] = F(520, 500); orb(new Kit(b1, rs).at(lx, lz, 0), H.ceil2, 6.5, 1.3); }
+  { const [lx, lz] = F(398, 250); linearPendant(new Kit(renoBat('on:refresh&off:kitchen', 'f1'), 'on:refresh&off:kitchen').at(lx, lz, 0), H.ceil1, 2.6, 5); }
 }
 
 // ------------------------------------------------------------------ primary bath remodel
@@ -302,7 +302,7 @@ function buildMudroom() {
   // stacked washer + dryer in the old closet, shelf + cabinet above
   { const [x, z] = F(723.4, 414); const k = new Kit(bat, rs).at(x, z, 0, -90);
     for (const [y0, y1, front] of [[0, 3.0, true], [3.05, 6.0, false]]) { k.box('porcelain', -1.25, y0, 0.1, 1.25, y1, 2.45); k.cyl('col:#b9c0c6', 0, 2.46, 0.75, 0.75, y0 + 1.5 - 0.0, y0 + 1.5 + 0.0 + 0.01, 18); k.box('col:#d9dcdf', -1.0, y1 - 0.45, 2.45, 1.0, y1 - 0.15, 2.47); void front; }
-    k.box('rcab', -1.4, 6.2, 0, 1.4, 8.2, 1.4); shaker(k, -1.35, -0.02, 6.25, 8.15, 1.4); shaker(k, 0.02, 1.35, 6.25, 8.15, 1.4); k.solid(-1.25, 0.1, 1.25, 2.45, 0, 6); }
+    k.box('rcab', -1.4, 6.1, 0, 1.4, H.ceil1 - 0.03, 1.4); shaker(k, -1.35, -0.02, 6.15, H.ceil1 - 0.08, 1.4); shaker(k, 0.02, 1.35, 6.15, H.ceil1 - 0.08, 1.4); k.solid(-1.25, 0.1, 1.25, 2.45, 0, 6); }
   // lockers + bench on the stair wall, hooks, boot tray
   { const { k, len } = runKit(bat, rs, F(612.6, 428), F(612.6, 492), [1, 0]); lockers(k, len, 4); }
   { const [x, z] = F(650, 515); new Kit(bat, rs).at(x, z, 0, 0).box('blackMatte', -1.2, 0.03, -0.7, 1.2, 0.12, 0.7); }
@@ -318,19 +318,19 @@ function buildFacade() {
   for (const [y0, y1] of [[403, 594], [613, 711]]) {
     const [x, za] = F(988.5, y0 + 3), [, zb] = F(0, y1 - 3);
     const k = new Kit(bat, rs);
-    k.box('black', x + 0.1, 5.6, za, x + 0.16, 6.6, zb);
+    k.box('black', x + 0.1, 4.7, za, x + 0.16, 5.7, zb);
     const n = Math.round((zb - za) / 2.0);
-    for (let i = 0; i < n; i++) { const a = za + ((zb - za) * i) / n + 0.12, b = za + ((zb - za) * (i + 1)) / n - 0.12; k.box('frosted', x + 0.16, 5.7, a, x + 0.18, 6.5, b); }
-    k.box('black', x + 0.1, -0.6, za - 0.25, x + 0.2, 7.4, za); k.box('black', x + 0.1, -0.6, zb, x + 0.2, 7.4, zb + 0.25); k.box('black', x + 0.1, 7.15, za - 0.25, x + 0.2, 7.4, zb + 0.25);
+    for (let i = 0; i < n; i++) { const a = za + ((zb - za) * i) / n + 0.12, b = za + ((zb - za) * (i + 1)) / n - 0.12; k.box('frosted', x + 0.16, 4.8, a, x + 0.18, 5.6, b); }
+    k.box('black', x + 0.1, -0.6, za - 0.25, x + 0.2, 6.65, za); k.box('black', x + 0.1, -0.6, zb, x + 0.2, 6.65, zb + 0.25); k.box('black', x + 0.1, 6.4, za - 0.25, x + 0.2, 6.65, zb + 0.25);
   }
   // cedar slat accent wall at the entry (between the door and the stacked windows), full height
   { const [x0, z] = F(556, 566.6), [x1] = F(634, 0); const k = new Kit(bat, rs);
-    k.box('col:#2b2c2e', x0, 2.6, z, x1, 18.0, z + 0.05);
-    for (let x = x0 + 0.1; x < x1 - 0.1; x += 0.33) k.box(wood('#a66d3c'), x, 2.6, z + 0.05, x + 0.22, 18.0, z + 0.2); }
+    k.box('col:#2b2c2e', x0, 2.6, z, x1, H.wallTop2, z + 0.05);
+    for (let x = x0 + 0.1; x < x1 - 0.1; x += 0.33) k.box(wood('#a66d3c'), x, 2.6, z + 0.05, x + 0.22, H.wallTop2, z + 0.2); }
   // flat black steel entry canopy with a cedar soffit, no post
   { const [x0, z0] = F(476, 566.6), [x1, z1] = F(566, 616); const k = new Kit(bat, rs);
-    k.box('col:#1f2022', x0, 9.6, z0, x1, 10.1, z1); k.box(wood('#a66d3c'), x0 + 0.15, 9.5, z0, x1 - 0.15, 9.6, z1 - 0.15);
-    for (const x of [x0 + 0.8, x1 - 0.8]) k.box('col:#1f2022', x - 0.03, 10.1, z0, x + 0.03, 13.0, z0 + 0.05); }
+    k.box('col:#1f2022', x0, 8.6, z0, x1, 9.1, z1); k.box(wood('#a66d3c'), x0 + 0.15, 8.5, z0, x1 - 0.15, 8.6, z1 - 0.15);
+    for (const x of [x0 + 0.8, x1 - 0.8]) k.box('col:#1f2022', x - 0.03, 9.1, z0, x + 0.03, 12.0, z0 + 0.05); }
   // modern sconces + house number at the door
   { const [x, z] = F(474.2, 590); const k = new Kit(bat, rs).at(x, z, 0, 90); k.box('col:#1f2022', -0.12, 5.6, 0, 0.12, 7.0, 0.3); k.box('bulb', -0.08, 5.5, 0.1, 0.08, 5.6, 0.25); k.box('bulb', -0.08, 7.0, 0.1, 0.08, 7.1, 0.25); }
   void rb;
@@ -474,7 +474,7 @@ function buildClassic() {
   const rs = 'on:classic', bat = renoBat(rs, 'f1');
   const [lx, lz] = F(477, 575); coachLantern(new Kit(bat, rs).at(lx + 0.58, lz, 0, 90), 6.3);   // on the tower's brick return
   const [rx, rz] = F(553, 596.3); coachLantern(new Kit(bat, rs).at(rx, rz, 0, 0), 6.3);           // on the brick pier
-  const [px, pz] = F(517, 575); const k = new Kit(bat, rs).at(px, pz, 0); k.cyl('black', 0, 0, 0.02, 0.02, 11, 17.9, 4); coachLantern(new Kit(bat, rs).at(px, pz - 0.75, 0, 0), 10.3); // hanging lantern in the 2-story recess
+  const [px, pz] = F(517, 575); const k = new Kit(bat, rs).at(px, pz, 0); k.cyl('black', 0, 0, 0.02, 0.02, 10, 16.9, 4); coachLantern(new Kit(bat, rs).at(px, pz - 0.75, 0, 0), 9.3); // hanging lantern in the 2-story recess
 }
 
 // ------------------------------------------------------------------ basement "Open plan" (layout D)

@@ -82,7 +82,13 @@ function proRange(k, x0, x1) { // 36" range with a chimney hood
   const d = 2.2;
   k.box('steel', x0, 0, 0, x1, 3.0, d);
   k.box('black', x0, 3.0, 0, x1, 3.05, d);
-  for (const zz of [0.6, 1.6]) for (let i = 0; i < 3; i++) k.cbox('blackMatte', x0 + 0.5 + i * ((x1 - x0 - 1) / 2), zz, 0.85, 0.85, 3.05, 3.12);
+  const gw = (x1 - x0 - 0.1) / 3; // three continuous cast-iron grates over six sealed burners
+  for (let i = 0; i < 3; i++) {
+    const a = x0 + 0.05 + i * gw + 0.02, b = a + gw - 0.04;
+    for (const z of [0.25, 1.1, 1.95]) k.box('col:#151516', a, 3.1, z - 0.03, b, 3.16, z + 0.03);
+    for (const x of [a, (a + b) / 2 - 0.03, b - 0.06]) k.box('col:#151516', x, 3.1, 0.22, x + 0.06, 3.16, 1.98);
+    for (const zz of [0.68, 1.53]) { k.cyl('col:#2c2c2e', (a + b) / 2, zz, 0.17, 0.17, 3.05, 3.1, 14); k.cyl('brass', (a + b) / 2, zz, 0.09, 0.09, 3.1, 3.12, 12); }
+  }
   k.box('black', x0 + 0.25, 0.55, d, x1 - 0.25, 2.2, d + 0.02);
   k.box('chrome', x0 + 0.3, 2.3, d + 0.02, x1 - 0.3, 2.37, d + 0.15);
   for (let i = 0; i < 6; i++) k.cyl('chrome', x0 + 0.35 + i * ((x1 - x0 - 0.7) / 5), d + 0.06, 0.09, 0.09, 2.6, 2.75, 10);
@@ -118,7 +124,7 @@ function island(k, w = 9, d = 4) { // centered; working side faces +z, seating o
     shaker(k, a, b, 2.3, 2.88, d / 2, 'island', 'island'); pull(k, (a + b) / 2, 2.6, d / 2);
     shaker(k, a, b, 0.4, 2.26, d / 2, 'island', 'island'); pull(k, (a + b) / 2, 2.0, d / 2);
   }
-  k.box('counter', -w / 2, 2.92, -d / 2, w / 2, 3.1, d / 2 + 0.08);
+  k.soft('counter', -w / 2, 2.92, -d / 2, w / 2, 3.1, d / 2 + 0.08, 0.03);          // eased edges
   k.box('counter', -w / 2, 0, -d / 2, -w / 2 + 0.18, 2.92, d / 2 + 0.08); // waterfall ends
   k.box('counter', w / 2 - 0.18, 0, -d / 2, w / 2, 2.92, d / 2 + 0.08);
   k.solid(-w / 2, -d / 2 + 0.6, w / 2, d / 2, 0, 3.1);
@@ -456,9 +462,15 @@ function buildDetachedGarage() {
   golf(-8.5, -0.8, 180, (k) => armchair(k, { color: '#6d5d4e' }));
   golf(-16.5, -0.8, 180, (k) => armchair(k, { color: '#6d5d4e' }));
   const pottery = use('pottery');
-  for (const [x, z] of [[-17.5, -17.5], [-12.5, -17.5]]) pottery(x, z, 0, (k) => {
-    k.box('col:#8b9196', -1.0, 0, -1.3, 1.0, 1.4, 1.3); k.cyl('col:#b9bec2', 0, 0, 0.75, 0.75, 1.4, 1.55, 18); k.cyl('col:#a0603c', 0, 0, 0.35, 0.3, 1.55, 2.2, 14);
-    k.cyl('col:#7a6a5a', 0, 2.1, 0.55, 0.55, 1.5, 1.7, 12); k.cyl('black', 0, 2.1, 0.08, 0.08, 0, 1.5, 6); k.solid(-1, -1.3, 1, 2.6, 0, 1.6);
+  for (const [x, z] of [[-17.5, -17.5], [-12.5, -17.5]]) pottery(x, z, 0, (k) => { // potter's wheel (wheel head 14"), splash pan, pedal, stool
+    k.soft('col:#9aa0a5', -0.75, 0.25, -0.9, 0.75, 1.25, 0.9, 0.18);                                   // motor body
+    for (const [lx, lz] of [[-0.6, -0.75], [0.6, -0.75], [-0.6, 0.75], [0.6, 0.75]]) k.cyl('col:#6d7276', lx, lz, 0.05, 0.06, 0, 0.3, 8);
+    k.cyl('col:#e6e8e9', 0, 0, 0.95, 1.05, 1.25, 1.58, 24, 1, false); k.cyl('col:#c9cdd0', 0, 0, 0.95, 0.95, 1.26, 1.28, 24); // splash pan
+    k.cyl('col:#8b9196', 0, 0, 0.1, 0.1, 1.28, 1.45, 10); k.cyl('steel', 0, 0, 0.58, 0.58, 1.45, 1.52, 24);  // wheel head
+    k.cyl('col:#a0603c', 0, 0, 0.32, 0.36, 1.52, 1.75, 16); k.cyl('col:#a0603c', 0, 0, 0.36, 0.26, 1.75, 2.15, 16); // pot being thrown
+    k.box('col:#5a5f63', 0.75, 0.0, -0.2, 1.25, 0.18, 0.5);                                              // foot pedal
+    k.cyl('col:#7a5a3e', 0, 1.9, 0.5, 0.5, 1.55, 1.68, 16); for (const a of [0, 2.1, 4.2]) k.cyl('black', Math.cos(a) * 0.35, 1.9 + Math.sin(a) * 0.35, 0.04, 0.04, 0, 1.55, 6); // stool
+    k.solid(-1.05, -1.05, 1.05, 2.4, 0, 1.6);
   });
   pottery(-6.5, -18.5, 0, (k) => { k.cyl('steel', 0, 0, 1.3, 1.3, 0, 3.0, 8); k.cyl('col:#9a9fa3', 0, 0, 1.3, 1.25, 3.0, 3.2, 8); k.box('col:#40464b', -0.3, 1.2, 1.2, 0.3, 2.0, 1.35); k.solid(-1.3, -1.3, 1.3, 1.3, 0, 3.2); });
   pottery(-12.5, -7.5, 0, (k) => { k.box('col:#d8cdb8', -3, 2.8, -1.5, 3, 3.0, 1.5); for (const [x, z] of [[-2.8, -1.3], [2.8, -1.3], [-2.8, 1.3], [2.8, 1.3]]) k.cbox('col:#8a6b4e', x, z, 0.2, 0.2, 0, 2.8); k.solid(-3, -1.5, 3, 1.5, 0, 3); for (let i = 0; i < 5; i++) k.cyl('col:#a0603c', -2 + i, 0, 0.25 + (i % 2) * 0.1, 0.2, 3.0, 3.6 + (i % 3) * 0.2, 10); });
