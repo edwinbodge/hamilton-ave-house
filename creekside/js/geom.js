@@ -300,11 +300,11 @@ export class Batcher {
 // piece has its back at z = 0 (beds, sofas, dressers) instead of being centered, dx/dz/dy/turn: offsets.
 export const ITEMS = [];
 const firstCall = (fn) => { if (fn.name) return fn.name; const m = /^\s*\(?\w*\)?\s*=>\s*\{?\s*(?:const [^;]*;\s*)?(\w+)\(/.exec(fn.toString()); return m ? m[1] : null; };
-export function item(k, fn, model = null, label = null) {
+export function item(k, fn, model = null, label = null, ctx = null) {
   const first = firstCall(fn);
   if (!model && first === 'swap') return fn(k); // the swap makes the item
   const hb = new Batcher();
-  const it = { id: ITEMS.length, parentBat: k.bat, hb, x: k.ox, y: k.oy, z: k.oz, rot: k.rot, tag: k.tag, model: model && { ...model }, label: label || first || 'piece' };
+  const it = { id: ITEMS.length, parentBat: k.bat, hb, x: k.ox, y: k.oy, z: k.oz, rot: k.rot, tag: k.tag, model: model && { ...model }, label: label || first || 'piece', ctx };
   ITEMS.push(it);
   const n0 = PHYS.solids.length;
   const out = fn(new Kit(hb, k.tag).at(k.ox, k.oz, k.oy, k.rot));

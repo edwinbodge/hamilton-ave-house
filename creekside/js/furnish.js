@@ -478,6 +478,66 @@ function acuraMDX(k, color = '#c9ccce') {
     },
   });
 }
+// More cars for the "Change" picker, true size (L x W x H, wheelbase), same lofted body as above.
+const simpleFace = (k, c, o) => { // headlights, grille, tails and bumpers from a few numbers
+  for (const s of [-1, 1]) {
+    noseLamp(k, o.lamp || 'col:#f4f3ec', c, s > 0 ? c.HW - o.lw - 0.25 : -c.HW + 0.25, s > 0 ? c.HW - 0.25 : -c.HW + o.lw + 0.25, o.ly, o.ly + o.lh);
+    noseLamp(k, 'col:#a8121a', c, s > 0 ? c.HW - (o.tw || 1.3) - 0.2 : -c.HW + 0.2, s > 0 ? c.HW - 0.2 : -c.HW + (o.tw || 1.3) + 0.2, o.ty, o.ty + (o.th || 0.25), -1);
+  }
+  if (o.grille) noseLamp(k, 'col:#202224', c, -o.grille[0], o.grille[0], o.grille[1], o.grille[2]);
+  noseLamp(k, TRIMBLK, c, -c.HW + 0.4, c.HW - 0.4, o.base, o.base + 0.4);
+  noseLamp(k, TRIMBLK, c, -c.HW + 0.4, c.HW - 0.4, o.base, o.base + 0.35, -1);
+};
+// Tesla Model Y: 187" x 75.6" x 63.9", 113.8" wb. Smooth nose, no grille, fastback glass roof.
+function teslaModelY(k, color = '#e9e9e6') {
+  const L = 15.6, W = 6.3, H = 5.33, h = L / 2;
+  vehicle(k, { L, W, H, color, wb: 9.48, fo: 2.95, r: 1.32, rc: 0.95, base: 0.85, mirrorZ: h - 4.6, spokes: 5, spokeW: 0.22, rim: 'col:#3a3c3f', roofKey: CARGLASS,
+    belt: [[-h, 3.0], [-h + 0.3, 3.4], [h - 4.3, 3.32], [h - 2.2, 3.05], [h - 0.6, 2.75], [h, 2.3]],
+    roof: [[h - 4.3, 3.32], [h - 6.7, 5.2], [h - 7.3, 5.32], [-h + 3.6, 5.25], [-h + 1.2, 4.35], [-h + 0.4, 3.45]],
+    ws: [h - 6.8, h - 4.3], rg: [-h + 0.4, -h + 3.4], pillars: [[-0.45, -0.1]], pillarKey: TRIMBLK, handles: [0.6, -1.9],
+    details(k, c) { simpleFace(k, c, { lw: 1.0, ly: 2.35, lh: 0.14, ty: 3.0, tw: 1.6, th: 0.18, base: 0.85 }); } });
+}
+// Honda Odyssey: 205.2" x 78.5" x 69.6", 118.1" wb. Tall minivan, short hood, sliding-door track.
+function hondaOdyssey(k, color = '#5b6670') {
+  const L = 17.1, W = 6.54, H = 5.8, h = L / 2;
+  vehicle(k, { L, W, H, color, wb: 9.84, fo: 3.4, r: 1.25, rc: 1.0, base: 0.8, mirrorZ: h - 4.7, spokes: 10, spokeW: 0.1, rim: 'col:#a3a6a9',
+    belt: [[-h, 3.15], [-h + 0.3, 3.6], [h - 4.6, 3.45], [h - 2.3, 3.15], [h - 0.7, 2.85], [h, 2.35]],
+    roof: [[h - 4.6, 3.45], [h - 6.9, 5.62], [h - 7.3, 5.78], [-h + 1.0, 5.72], [-h + 0.4, 5.3], [-h + 0.25, 3.62]],
+    ws: [h - 6.95, h - 4.6], rg: [-h + 0.2, -h + 0.6], pillars: [[0.6, 0.95], [-2.6, -2.25], [-h + 0.6, -h + 1.4]], pillarKey: TRIMBLK, handles: [1.2, -0.6],
+    details(k, c) { simpleFace(k, c, { lw: 1.15, ly: 2.2, lh: 0.3, ty: 3.4, tw: 1.0, th: 0.5, base: 0.8, grille: [1.4, 1.35, 2.15] });
+      for (const s of [-1, 1]) k.box('chrome', s > 0 ? c.HW - 0.02 : -c.HW - 0.02, 3.3, -h + 1.3, s > 0 ? c.HW + 0.02 : -c.HW + 0.02, 3.36, -2.4); } });
+}
+// Ford F-150 SuperCrew, 5.5 ft bed: 231.7" x 79.9" x 77.2", 145.4" wb. Tall boxy cab, bed under a tonneau cover.
+function fordF150(k, color = '#2f3a48') {
+  const L = 19.3, W = 6.66, H = 6.4, h = L / 2;
+  vehicle(k, { L, W, H, color, wb: 12.1, fo: 3.1, r: 1.6, rc: 0.5, base: 1.35, mirrorZ: h - 5.3, spokes: 6, spokeW: 0.18, rim: 'col:#9a9da0',
+    belt: [[-h, 4.3], [h - 5.1, 4.3], [h - 1.6, 4.2], [h - 0.3, 4.05], [h, 3.5]],
+    roof: [[h - 5.1, 4.3], [h - 7.1, 6.25], [h - 7.5, 6.4], [-h + 6.1, 6.4], [-h + 5.75, 6.25], [-h + 5.6, 4.32]],
+    ws: [h - 7.15, h - 5.1], rg: [-h + 5.55, -h + 5.8], pillars: [[h - 10.9, h - 10.55]], pillarKey: TRIMBLK, handles: [h - 7.8, h - 11.2],
+    details(k, c) { simpleFace(k, c, { lw: 0.95, ly: 3.2, lh: 0.55, ty: 3.4, tw: 0.35, th: 0.8, base: 1.35, grille: [1.9, 2.0, 3.75] });
+      k.box('col:#1c1d1f', -c.HW + 0.1, 4.3, -h + 0.05, c.HW - 0.1, 4.36, -h + 5.55); } }); // tonneau cover
+}
+// Toyota Camry: 193.5" x 72.4" x 56.9", 111.2" wb. Low sedan with a trunk.
+function toyotaCamry(k, color = '#8a1f24') {
+  const L = 16.1, W = 6.03, H = 4.74, h = L / 2;
+  vehicle(k, { L, W, H, color, wb: 9.27, fo: 3.25, r: 1.15, rc: 1.1, base: 0.6, mirrorZ: h - 5.2, spokes: 5, spokeW: 0.25, rim: 'col:#4b4e52',
+    belt: [[-h, 2.95], [-h + 0.4, 3.18], [h - 5.1, 3.05], [h - 2.3, 2.75], [h - 0.6, 2.42], [h, 2.05]],
+    roof: [[h - 5.1, 3.05], [h - 7.7, 4.6], [h - 8.4, 4.74], [-h + 5.0, 4.65], [-h + 2.7, 3.28], [-h + 2.4, 3.18]],
+    ws: [h - 7.75, h - 5.1], rg: [-h + 2.7, -h + 5.0], pillars: [[-1.0, -0.7]], pillarKey: TRIMBLK, handles: [0.2, -2.6],
+    details(k, c) { simpleFace(k, c, { lw: 1.3, ly: 2.05, lh: 0.22, ty: 2.85, tw: 1.4, th: 0.22, base: 0.6, grille: [1.7, 0.7, 1.5] }); } });
+}
+// Porsche 911 (992): 177.9" x 72.9" x 51.2", 96.5" wb. Low sloped nose, fastback rear, round headlights.
+function porsche911(k, color = '#c8c3b4') {
+  const L = 14.83, W = 6.07, H = 4.27, h = L / 2;
+  vehicle(k, { L, W, H, color, wb: 8.04, fo: 2.75, r: 1.18, rc: 1.2, base: 0.45, mirrorZ: h - 5.0, spokes: 10, spokeW: 0.1, rim: 'col:#2e3033',
+    belt: [[-h, 2.8], [-h + 1.6, 2.95], [h - 4.7, 2.8], [h - 2.0, 2.4], [h - 0.6, 1.95], [h, 1.55]],
+    roof: [[h - 4.7, 2.8], [h - 6.6, 4.1], [h - 7.2, 4.27], [-h + 5.5, 4.1], [-h + 2.0, 3.05], [-h + 1.6, 2.95]],
+    ws: [h - 6.65, h - 4.7], rg: [-h + 2.0, -h + 5.3], pillars: [], pillarKey: TRIMBLK, handles: [-0.3],
+    details(k, c) {
+      for (const s of [-1, 1]) { const x = s * (c.HW - 1.05), z = c.noseZ(x) - 0.55; k.soft('col:#f4f3ea', x - 0.42, 2.0, z - 0.2, x + 0.42, 2.42, z + 0.08, 0.2, 12, 6); }
+      noseLamp(k, 'col:#a8121a', c, -c.HW + 0.3, c.HW - 0.3, 2.55, 2.68, -1); noseLamp(k, TRIMBLK, c, -c.HW + 0.4, c.HW - 0.4, 0.45, 0.85); noseLamp(k, TRIMBLK, c, -c.HW + 0.4, c.HW - 0.4, 0.45, 0.85, -1);
+    } });
+}
 // ---- garage sport storage
 function golfBag(k, color = '#20324d') { // standing cart bag, about 36" tall with clubs, back at z = 0
   k.cyl('col:' + color, 0, 0.45, 0.42, 0.45, 0, 2.9, 16);
@@ -888,6 +948,7 @@ function lantern(k, ceilY, hang) { // foyer: tall hexagonal glass lantern
   k.cyl('brass', 0, 0, 0.2, 0.55, y, y + 0.4, 6);
   for (let i = 0; i < 4; i++) k.cyl('bulb', Math.cos(i * 1.57) * 0.25, Math.sin(i * 1.57) * 0.25, 0.03, 0.03, y + 0.6, y + 1.0, 5);
 }
+function crystalFlush(k, c) { k.cyl('chrome', 0, 0, 0.5, 0.5, c - 0.08, c, 12); for (let i = 0; i < 3; i++) k.cyl('frosted', 0, 0, 0.75 - i * 0.18, 0.6 - i * 0.18, c - 0.6 + i * 0.18, c - 0.4 + i * 0.18, 12); }
 function recessed(k, ceilY) { k.cyl('recessed', 0, 0, 0.28, 0.28, ceilY - 0.02, ceilY - 0.005, 14); k.cyl('white', 0, 0, 0.36, 0.36, ceilY - 0.012, ceilY - 0.002, 14, 1, false); }
 function flushDome(k, ceilY) { k.cyl('brass', 0, 0, 0.55, 0.55, ceilY - 0.08, ceilY, 14); k.cyl('shade', 0, 0, 0.25, 0.5, ceilY - 0.4, ceilY - 0.08, 14); }
 function sconce(k, y) { // wall-mounted, back at z = 0
@@ -1345,7 +1406,7 @@ export function buildFixtures(bats) {
     const { k: kr, len: lr } = runKit(bats.f1, 'f1', F(612.6, 525), F(612.6, 537.6), [1, 0]);
     ped(kr, 0, lr); kr.box('counter', 0, 2.45, 0, lr, 2.58, 1.95); kr.solid(0, 0, lr, 1.95, 0, 2.58);
   }
-  flushDome(f1(655, 470), H.ceil1);
+  item(f1(655, 470), (k) => flushDome(k, H.ceil1), null, null, { ceil: H.ceil1 });
   // ---- closets
   { const { k, len } = runKit(bats.f1, 'f1', F(564, 309), F(564, 374), [1, 0]); wicRun(k, len); hangingClothes(k, len, 67, 0, { coats: true }); }
   { const { k, len } = runKit(bats.f1, 'f1', F(783, 376.4), F(837, 376.4), [0, -1]); wicRun(k, len); hangingClothes(k, len, 23, 0.2); }
@@ -1353,13 +1414,13 @@ export function buildFixtures(bats) {
   { const { k, len } = runKit(bats.f1, 'f1', F(723.4, 455), F(723.4, 491), [-1, 0]); linenShelves(k, len, 37); }
   // ---- lights, 1st floor (8 ft ceilings)
   for (const [x, y] of [[335, 372], [335, 452], [372, 470], [440, 455], [440, 390], [372, 330], [440, 335]]) recessed(f1(x, y), H.ceil1);
-  { const [lx, lz] = F(398, 250); bellChandelier(new Kit(renoBat('off:refresh&off:kitchen', 'f1'), 'off:refresh&off:kitchen').at(lx, lz, 0), H.ceil1, 3.0, 5); }
+  { const [lx, lz] = F(398, 250); item(new Kit(renoBat('off:refresh&off:kitchen', 'f1'), 'off:refresh&off:kitchen').at(lx, lz, 0), (k) => bellChandelier(k, H.ceil1, 3.0, 5), null, null, { ceil: H.ceil1, hang: 3.0 }); }
   for (const [x, y] of [[520, 330], [520, 400], [600, 400]]) recessed(f1(x, y), H.ceil1);
   for (const [x, y] of [[740, 250], [800, 250], [740, 330], [800, 310]]) recessed(f1(x, y), H.ceil1);
   for (const [x, y] of [[530, 90], [645, 90], [530, 200], [645, 200], [588, 270]]) recessed(f1(x, y), vaultUnder(y));
-  { const k = f1(400, 575); k.cyl('chrome', 0, 0, 0.5, 0.5, 8.62, 8.7, 12); for (let i = 0; i < 3; i++) k.cyl('frosted', 0, 0, 0.75 - i * 0.18, 0.6 - i * 0.18, 8.1 + i * 0.18, 8.3 + i * 0.18, 12); } // crystal flush mount in the tray
-  { const [lx, lz] = F(520, 500); const k = new Kit(renoBat('off:refresh', 'f1'), 'off:refresh').at(lx, lz, 0); chandelier(k, H.ceil2, 5.5, 8); for (let i = 0; i < 3; i++) k.cyl('frosted', 0, 0, 0.9 - i * 0.25, 0.75 - i * 0.25, 11.5 + i * 0.5, 11.9 + i * 0.5, 10, 1, false); } // 2-story foyer crystal chandelier
-  flushDome(f1(640, 340), H.ceil1); flushDome(f1(640, 400), H.ceil1); flushDome(f1(845, 550), 8.4); flushDome(f1(845, 650), 8.4);
+  item(f1(400, 575), (k) => crystalFlush(k, 8.7), null, null, { ceil: 8.7 }); // crystal flush mount in the tray
+  { const [lx, lz] = F(520, 500); item(new Kit(renoBat('off:refresh', 'f1'), 'off:refresh').at(lx, lz, 0), (k) => { chandelier(k, H.ceil2, 5.5, 8); for (let i = 0; i < 3; i++) k.cyl('frosted', 0, 0, 0.9 - i * 0.25, 0.75 - i * 0.25, 11.5 + i * 0.5, 11.9 + i * 0.5, 10, 1, false); }, null, 'chandelier', { ceil: H.ceil2, hang: 5.5 }); } // 2-story foyer crystal chandelier
+  for (const [x, y, c] of [[640, 340, H.ceil1], [640, 400, H.ceil1], [845, 550, 8.4], [845, 650, 8.4]]) item(f1(x, y), (k) => flushDome(k, c), null, 'flushDome', { ceil: c });
   // living room tray ceiling: octagonal raised panel with crown, 8 ft 8 in at the center
   {
     const r = LV.f1._rooms.find((q) => q.name === 'Living Room');
@@ -1397,8 +1458,8 @@ export function buildFixtures(bats) {
   { const { k, len } = runKit(bats.f2, 'f2', G2(862, 220), G2(862, 288), [-1, 0], H.f2); wicRun(k, len); hangingClothes(k, len, 29, 0.6); }
   { const { k, len } = runKit(bats.f2, 'f2', G2(862, 163), G2(862, 184), [-1, 0], H.f2); linenShelves(k, len, 19); }
   // lights, 2nd floor (8 ft)
-  ceilingFan(f2(897, 236), 8, { body: 'steel', blade: 'col:#ebe9e4', drop: 0.75 }); // 52" brushed-nickel fan, white blades, bowl light (photos 25-28)
-  flushDome(f2(714, 150), 8); flushDome(f2(714, 295), 8); flushDome(f2(742, 218), 8); flushDome(f2(840, 250), 8);
+  item(f2(897, 236), (k) => ceilingFan(k, 8, { body: 'steel', blade: 'col:#ebe9e4', drop: 0.75 }), null, null, { ceil: 8 }); // 52" brushed-nickel fan, white blades, bowl light (photos 25-28)
+  for (const [x, y] of [[714, 150], [714, 295], [742, 218], [840, 250]]) item(f2(x, y), (k) => flushDome(k, 8), null, 'flushDome', { ceil: 8 });
   for (const [x, y] of [[790, 178], [815, 200], [770, 200]]) recessed(f2(x, y), 8);
   wallGrille(f2(864.6, 226, 90), 6.4, 1.3, 0.6); // primary bedroom return over the dresser (photo 27)
   for (const [x, y, r] of [[972.5, 222, 90], [713, 340, 0], [714, 114, 0], [680, 290, 90]]) floorRegister(f2(x, y, r).at(...G2(x, y), H.f2 + 0.013, r));
@@ -1493,7 +1554,7 @@ export function buildFurniture(bats) {
     placeL(cx, cy, 0, (k) => rug(k, 9, 9, '#d6cdbd', '#6f5e4d'), DF);
     placeL(cx, cy, 0, (k) => swap(k, { glb: 'Table23', w: 5, d: 5, h: 2.5 }, (h) => roundTable(h, 2.5, { color: '#6b4a33', base: '#5a3a26' })), DF);
     for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2 + Math.PI / 6; swap(new Kit(renoBat(DF, 'f1'), DF).at(tx + Math.sin(a) * R, tz + Math.cos(a) * R, 0, (a * 180) / Math.PI + 180), { glb: 'Chair08' }, (h) => chair(h, '#cfc6b6', '#5a3a26')); }
-    chandelier(new Kit(renoBat('on:frontDining', 'f1'), 'on:frontDining').at(tx, tz, 0), H.ceil1 + 0.7, 2.6, 6);
+    item(new Kit(renoBat('on:frontDining', 'f1'), 'on:frontDining').at(tx, tz, 0), (k) => chandelier(k, H.ceil1 + 0.7, 2.6, 6), null, null, { ceil: H.ceil1 + 0.7, hang: 2.6 });
     placeL(473.5, 610, -90, (k) => swap(k, { glb: 'Drawer31', w: 5, d: 1.6, h: 2.9, back: true }, (h) => buffet(h, 5)), DF);
     placeL(326.8, 630, 90, (k) => plant(k, 0.8, 0.8, 5), DF); }
   // ---- office / bedroom 4
@@ -1577,4 +1638,5 @@ export {
   bodyPumpArea, treadmill, rubberFloor, shelving, runKit, disc, bar, officeChair, officeDesk, bookcase, IRON, RUBBER, shadeHex, taperLeg,
   wallTV, mediaConsole, projectionScreen, towerSpeaker, desk, baseCab, upperCab, counter, range, fridge, tub, recliner, goldShower, whirlpool,
   sectional, bellChandelier, wallGrille, floorRegister, standTV, leatherSofa, tallChest, armoire, rockingChair,
+  lantern, sconce, crystalFlush, vehicle, noseLamp, rivianR2, acuraMDX, teslaModelY, hondaOdyssey, fordF150, toyotaCamry, porsche911, TRIMBLK,
 };

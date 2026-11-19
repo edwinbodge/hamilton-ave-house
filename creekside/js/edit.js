@@ -1,16 +1,17 @@
-// Point-and-click editing: click a piece of furniture, a wall or the floor (in walk mode, whatever is under
-// the crosshair) and a small menu opens next to it: recolor / resize / remove / move / turn a piece, repaint a
-// room's walls, add a TV, a plant or other furniture, or type what you want ("make these chairs white").
-// Edits are kept in this browser (localStorage) and can be undone or reset.
+// Point-and-click editing. Click a piece, a wall, the floor or the ceiling (in the walk-through: walk up to it
+// and press F or click) and a small menu opens beside it. What it offers comes from the catalog (catalog.js):
+// every piece belongs to a family (sofas, cars, ceiling lights, lamps, art, TVs, rugs...), "Change" swaps it
+// for another option of that family, and "Add" places a new option of a family that goes on that surface.
+// Edits are kept in this browser (localStorage) and can be undone (Ctrl+Z) or reset.
 import * as THREE from 'three';
-import { ITEMS, Kit, Batcher, loadGLB, placeModel, applyFinish, MODEL_BASE, modelsShown } from './geom.js';
-import { plant, floorLamp, rug, bookcase, wallTV, standTV, mediaConsole } from './furnish.js';
+import { ITEMS, Kit, Batcher, loadGLB, placeModel, applyFinish, modelsShown, PHYS } from './geom.js';
+import { FAMILIES, LABEL_FAMILY, optionOf, familyOfGlb, thumbURL } from './catalog.js';
 
-const KEY = 'creekside-edits';
+const KEY = 'creekside-edits', POSKEY = 'creekside-edit-pos';
 const R = Math.PI / 180;
 const COLORS = {
   white: '#f2f0ea', 'off-white': '#ece6da', cream: '#e9dfc9', ivory: '#eee8d6', beige: '#d9cbb2', tan: '#c2a57f', greige: '#cfc6b8',
-  gray: '#9a9a96', grey: '#9a9a96', 'light gray': '#c9c9c4', charcoal: '#3d3f42', black: '#1d1d1f',
+  gray: '#9a9a96', grey: '#9a9a96', silver: '#c9ccce', 'light gray': '#c9c9c4', charcoal: '#3d3f42', black: '#1d1d1f',
   navy: '#22324f', blue: '#3f6a9a', 'light blue': '#a9c1d6', 'dusty blue': '#8fa5b5', teal: '#2f6f73', green: '#3f6b48',
   sage: '#a3b19a', olive: '#6b6b3f', emerald: '#1f6a4f', red: '#9e2f2f', burgundy: '#6b1f2a', pink: '#e2b3b5', blush: '#e6cfc6',
   orange: '#d07a35', rust: '#a4502a', yellow: '#e2c25a', mustard: '#c99a2e', purple: '#5d4a78', lavender: '#b9aed0',
@@ -18,84 +19,23 @@ const COLORS = {
 };
 const SWATCHES = ['white', 'cream', 'beige', 'greige', 'gray', 'charcoal', 'black', 'navy', 'dusty blue', 'sage', 'green', 'emerald', 'blush', 'rust', 'mustard', 'walnut', 'oak'];
 const PAINTS = { 'Warm white': '#ece8df', 'Soft white': '#f3f2ee', Greige: '#ddd5c8', 'Pale sage': '#d3d8c9', 'Light gray': '#dfe2e0', Oatmeal: '#e4ddd0', 'Dusty blue': '#cdd6da', Sage: '#c8cfbe', Blush: '#e6d8cf', Navy: '#2f3d52', 'Forest green': '#3e5446', Charcoal: '#4a4b4d' };
-
-// framed art, back at z = 0 on a wall, centered about 5'3" up
-const ARTS = {
-  abstract: { label: 'Abstract', w: 2.6, h: 3.3, frame: '#1d1d1f', bg: '#efe8dc', marks: [['#c46a4a', 0.15, 0.55, 0.55, 0.3], ['#2f4a5e', 0.42, 0.2, 0.45, 0.42], ['#d9b26a', 0.1, 0.12, 0.3, 0.25]] },
-  landscape: { label: 'Landscape', w: 4, h: 2.7, frame: '#b88a55', bg: '#bcd0db', bands: [['#9db3a0', 0.28, 0.45], ['#6f8a6a', 0, 0.3], ['#e9e3d3', 0.45, 0.55]] },
-  botanical: { label: 'Botanical', w: 1.8, h: 2.4, frame: '#c9a75a', bg: '#f3efe5', marks: [['#5f7d55', 0.47, 0.15, 0.06, 0.62], ['#7f9b6d', 0.25, 0.45, 0.22, 0.1], ['#7f9b6d', 0.53, 0.55, 0.22, 0.1], ['#7f9b6d', 0.27, 0.68, 0.2, 0.09]] },
-  bw: { label: 'Black & white photo', w: 3, h: 2.2, frame: '#1d1d1f', bg: '#d8d8d6', bands: [['#4a4a4a', 0, 0.35], ['#8a8a88', 0.35, 0.55], ['#bdbdbb', 0.55, 1]] },
-  canvas: { label: 'Large canvas', w: 5, h: 3.4, frame: null, bg: '#e7ddd0', marks: [['#a9b8c4', 0.05, 0.08, 0.9, 0.35], ['#c9a48a', 0.05, 0.5, 0.6, 0.4], ['#f4efe6', 0.55, 0.55, 0.38, 0.36]] },
-  mirror: { label: 'Round mirror', w: 2.8, h: 2.8, mirror: true },
-};
-function art(k, v = 'abstract') {
-  const a = ARTS[v] || ARTS.abstract, { w, h } = a, y0 = 5.3 - h / 2;
-  if (a.mirror) { // round brass mirror: a stack of thin squares approximating a disc
-    for (let i = 0; i < 12; i++) { const t = (i / 12) * Math.PI; const hw = Math.sin(t + Math.PI / 24) * w / 2; k.box('brass', -hw, y0 + h / 2 - Math.cos(t) * h / 2 - 0.12, 0, hw, y0 + h / 2 - Math.cos(t + Math.PI / 12) * h / 2 + 0.12, 0.06); }
-    for (let i = 0; i < 12; i++) { const t = (i / 12) * Math.PI; const hw = Math.sin(t + Math.PI / 24) * (w / 2 - 0.12); k.box('mirror', -hw, y0 + h / 2 - Math.cos(t) * (h / 2 - 0.12), 0.06, hw, y0 + h / 2 - Math.cos(t + Math.PI / 12) * (h / 2 - 0.12), 0.08); }
-    return;
-  }
-  const f = a.frame ? 0.1 : 0, m = a.frame ? 0.22 : 0;
-  if (a.frame) k.box('col:' + a.frame, -w / 2, y0, 0, w / 2, y0 + h, 0.12);
-  if (a.frame) k.box('col:#f5f2ea', -w / 2 + f, y0 + f, 0.12, w / 2 - f, y0 + h - f, 0.125);
-  const x0 = -w / 2 + f + m, x1 = w / 2 - f - m, b0 = y0 + f + m, b1 = y0 + h - f - m, z = a.frame ? 0.13 : 0.16;
-  k.box('col:' + a.bg, x0, b0, a.frame ? 0.125 : 0, x1, b1, z);
-  const W = x1 - x0, H = b1 - b0;
-  for (const [c, lo, hi] of a.bands || []) k.box('col:' + c, x0, b0 + lo * H, z, x1, b0 + hi * H, z + 0.005);
-  for (const [c, px, py, pw, ph] of a.marks || []) k.box('col:' + c, x0 + px * W, b0 + py * H, z, x0 + (px + pw) * W, b0 + (py + ph) * H, z + 0.005);
-}
-// things you can add: a hand-built piece (fn on a Kit) or an asset-pack model; wall: hangs on a wall
-const ADDS = {
-  tv: { label: 'TV', wall: (k) => wallTV(k, 65), floor: (k) => { mediaConsole(k, 5.5); standTV(k, 55, 1.8); }, back: true },
-  art: { label: 'Art', wall: (k, a) => art(k, a.v), floor: null, back: true, wallOnly: true },
-  sofa: { label: 'Sofa', glb: 'Sofa08', spec: { w: 7.5, back: true }, back: true },
-  armchair: { label: 'Armchair', glb: 'Chair12' },
-  chair: { label: 'Dining chair', glb: 'Chair03' },
-  'coffee table': { label: 'Coffee table', glb: 'Table39', spec: { w: 4, d: 2 } },
-  'dining table': { label: 'Dining table', glb: 'Table17', spec: { w: 6, d: 3.4, h: 2.5 } },
-  'side table': { label: 'Side table', glb: 'Table37', spec: { h: 1.9 } },
-  desk: { label: 'Desk', glb: 'Table49', spec: { w: 5, d: 2.4, h: 2.5, back: true }, back: true },
-  'office chair': { label: 'Office chair', glb: 'Chair31' },
-  bed: { label: 'Queen bed', glb: 'Bed15', spec: { w: 5.35, d: 7.2, back: true }, back: true },
-  dresser: { label: 'Dresser', glb: 'Drawer38', spec: { w: 5, back: true }, back: true },
-  bookcase: { label: 'Bookcase', fn: (k) => bookcase(k, 2.8, 6.5, 7), back: true },
-  plant: { label: 'Plant', fn: (k) => plant(k, 0, 0, 5) },
-  lamp: { label: 'Floor lamp', fn: (k) => floorLamp(k, 0, 0) },
-  rug: { label: 'Rug', fn: (k) => rug(k, 8, 10, '#d8cfc0', '#7d6a55') },
-};
+const SINGULAR = { sofa: 'sofa', armchair: 'armchair', chair: 'chair', stool: 'stool', office: 'office chair', outdoor: 'chair', bed: 'bed', nightstand: 'nightstand', dresser: 'dresser',
+  console: 'console', dining: 'table', coffee: 'coffee table', side: 'side table', desk: 'desk', toilet: 'toilet', car: 'car', ceiling: 'light', lamp: 'lamp', sconce: 'wall light',
+  tv: 'TV', art: 'art', rug: 'rug', plant: 'plant', bookcase: 'bookcase' };
+const NAMED = new Set(['car', 'ceiling', 'lamp', 'sconce', 'tv', 'art']); // families whose option name is the piece's name ("Rivian R2")
+// words in a typed request -> family to add
 const ADD_WORDS = [['tv', /\b(tv|television)\b/], ['sofa', /\b(sofa|couch|sectional|loveseat)\b/], ['armchair', /\barm ?chair|accent chair|recliner\b/],
-  ['office chair', /\b(office|desk) chair\b/], ['chair', /\bchairs?\b/], ['coffee table', /\bcoffee table\b/], ['dining table', /\b(dining|kitchen) table\b/],
-  ['side table', /\b(side|end|accent) table\b/], ['desk', /\bdesk\b/], ['bed', /\bbed\b/], ['dresser', /\b(dresser|chest|drawers)\b/],
-  ['bookcase', /\b(book ?case|book ?shelf|shelves|shelving)\b/], ['plant', /\b(plant|tree|ficus)\b/], ['lamp', /\blamp\b/], ['rug', /\b(rug|carpet)\b/], ['dining table', /\btable\b/]];
-const NICE = { swap: 'piece', piece: 'piece', leatherSofa: 'leather sofa', spindleChair: 'chair', officeChair: 'office chair', officeDesk: 'desk', bowDesk: 'desk',
-  hutchDesk: 'desk', dropLeafDesk: 'desk', diningTable: 'dining table', roundTable: 'round table', coffeeTable: 'coffee table', tallChest: 'tall chest', patioChair: 'patio chair',
-  mediaConsole: 'media console', wallTV: 'TV', standTV: 'TV', fileCabinetStand: 'TV stand', floorLamp: 'floor lamp', projectionScreen: 'projection screen', towerSpeaker: 'speaker',
-  rockingChair: 'rocking chair', firePit: 'fire pit', golfBag: 'golf bag', racketRack: 'racket rack', acuraMDX: 'Acura MDX', rivianR2: 'Rivian R2', rubberFloor: 'gym floor',
-  powerRack: 'power rack', liftBench: 'weight bench', dumbbellRack: 'dumbbell rack', pelotonBike: 'Peloton' };
-const nice = (l) => NICE[l] || (/^[A-Z]{2}/.test(l) ? l : l.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase());
+  ['office', /\b(office|desk) chair\b/], ['chair', /\bchairs?\b/], ['coffee', /\bcoffee table\b/], ['dining', /\b(dining|kitchen) table\b/],
+  ['side', /\b(side|end|accent) table\b/], ['desk', /\bdesk\b/], ['bed', /\bbed\b/], ['dresser', /\b(dresser|chest|drawers)\b/],
+  ['bookcase', /\b(book ?case|book ?shelf|shelves|shelving)\b/], ['plant', /\b(plant|tree|ficus)\b/], ['ceiling', /\b(chandelier|pendant|ceiling light|fan)\b/],
+  ['sconce', /\b(sconce|wall light)\b/], ['lamp', /\blamp\b/], ['rug', /\b(rug|carpet)\b/], ['art', /\b(art|painting|print|picture|photo|mirror|poster)\b/], ['car', /\bcar\b/], ['dining', /\btable\b/]];
+// older saved additions used "kind"
+const LEGACY = { tv: ['tv', 'tv65'], sofa: ['sofa', 'Sofa08'], armchair: ['armchair', 'Chair12'], chair: ['chair', 'Chair03'], 'coffee table': ['coffee', 'Table39'], 'dining table': ['dining', 'Table17'],
+  'side table': ['side', 'Table37'], desk: ['desk', 'Table49'], 'office chair': ['office', 'Chair31'], bed: ['bed', 'Bed15'], dresser: ['dresser', 'Drawer38'], bookcase: ['bookcase', 'bcWalnut'],
+  plant: ['plant', 'plant45'], lamp: ['lamp', 'floorLamp'], rug: ['rug', 'rugCream'] };
+const STOP = new Set(['gray', 'black', 'white', 'brass', 'small', 'tall', 'round', 'dark', 'light', 'green', 'navy', 'blue', 'brown', 'olive', 'charcoal', 'long', 'metal', 'wood', 'walnut', 'oak', 'pine', 'red', 'fan,', 'glass', 'opal', 'large', 'pair', 'medium']);
+const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
-const CATS = {
-  sofa: ['Sofa08', 'Sofa01', 'Sofa03', 'Sofa11', 'Sofa16', 'Sofa17', 'Sofa18', 'Sofa31', 'Sofa33', 'Sofa35', 'Sofa36'],
-  armchair: ['Chair11', 'Chair12', 'Chair13', 'Chair14', 'Chair15', 'Chair16', 'Chair20', 'Chair45', 'Sofa37'],
-  chair: ['Chair01', 'Chair03', 'Chair04', 'Chair05', 'Chair06', 'Chair07', 'Chair08', 'Chair17', 'Chair29'],
-  stool: ['Chair22', 'Chair24'], office: ['Chair31', 'Chair32', 'Chair33'], outdoor: ['Chair44', 'Chair39', 'Chair04', 'Chair29', 'Chair07'],
-  bed: ['Bed02', 'Bed04', 'Bed09', 'Bed10', 'Bed12', 'Bed15', 'Bed16', 'Bed18', 'Bed20'],
-  nightstand: ['Drawer01', 'Drawer02', 'Drawer04', 'Drawer14'],
-  dresser: ['Drawer12', 'Drawer13', 'Drawer34', 'Drawer37', 'Drawer35', 'Drawer36', 'Drawer38', 'Drawer39', 'Drawer40'],
-  console: ['Drawer31', 'Drawer32', 'Drawer36', 'Drawer39', 'Drawer40', 'Drawer38'],
-  dining: ['Table03', 'Table04', 'Table06', 'Table07', 'Table11', 'Table17', 'Table19', 'Table22', 'Table23', 'Table24', 'Table29'],
-  coffee: ['Table34', 'Table36', 'Table38', 'Table39', 'Table40'], side: ['Table37', 'Table36', 'Drawer02', 'Drawer04'],
-  desk: ['Table43', 'Table44', 'Table49'], toilet: ['Toilet01', 'Toilet03'],
-};
-const LABEL_CAT = { sofa: 'sofa', leatherSofa: 'sofa', sectional: 'sofa', armchair: 'armchair', recliner: 'armchair', tuxedoChair: 'armchair', rockingChair: 'armchair',
-  loungeChair: 'armchair', spindleChair: 'chair', chair: 'chair', tulipChair: 'chair', patioChair: 'outdoor', adirondack: 'outdoor', officeChair: 'office', stool: 'stool',
-  bed: 'bed', nightstand: 'nightstand', dresser: 'dresser', tallChest: 'dresser', armoire: 'dresser', diningTable: 'dining', roundTable: 'dining', coffeeTable: 'coffee',
-  sideTable: 'side', desk: 'desk', officeDesk: 'desk', bowDesk: 'desk', dropLeafDesk: 'desk', hutchDesk: 'desk', toilet: 'toilet', buffet: 'console', mediaConsole: 'console',
-  sofa_: 'sofa', armchair_: 'armchair', 'dining chair': 'chair', 'coffee table': 'coffee', 'dining table': 'dining', 'side table': 'side', 'office chair': 'office', 'queen bed': 'bed' };
-const catOf = (it) => LABEL_CAT[it.label] || (() => { const g = it.model?.glb; return g && Object.keys(CATS).find((c) => CATS[c].includes(g)); })() || null;
-const WALL_LABELS = new Set(['wallTV', 'TV', 'art', 'projectionScreen', 'racketRack']);
-const GLB_NAMES = { Sofa: 'sofa', Chair: 'chair', Table: 'table', Bed: 'bed', Drawer: 'dresser', Toilet: 'toilet' };
-const nameOf = (it) => (it.label && it.label !== 'piece' ? nice(it.label) : it.model ? GLB_NAMES[it.model.glb.replace(/\d+$/, '')] || 'piece' : 'piece');
 export function initEditor(env) {
   const { scene, camera, renderer, house, site, gfx, isVisible, roomName, reapplyStyle, onOpen, onClose } = env;
   let E = { items: {}, paint: {}, added: [] };
@@ -107,6 +47,20 @@ export function initEditor(env) {
   const snapshot = () => { undo.push(JSON.stringify(E)); if (undo.length > 60) undo.shift(); };
   const itemById = (id) => (typeof id === 'string' && id[0] === 'a' ? ADDED.get(id) : ITEMS[id]);
   const st = (id) => (E.items[id] = E.items[id] || {});
+
+  // ---------------------------------------------------------------- what a piece is
+  const famOf = (it) => it.fam || (LABEL_FAMILY[it.label] || [])[0] || (it.model && familyOfGlb(it.model.glb)) || null;
+  const baseOpt = (it) => it.opt || (LABEL_FAMILY[it.label] || [])[1] || it.model?.glb || null;
+  const curOpt = (it) => { const s = E.items[it.id] || {}; return s.opt || s.glb || baseOpt(it); };
+  const isWallItem = (it) => !!it && (it.wall || FAMILIES[famOf(it)]?.place === 'wall' || ['racketRack', 'projectionScreen'].includes(it.label));
+  const isCeilingItem = (it) => !!it && FAMILIES[famOf(it)]?.place === 'ceiling';
+  function nameOf(it) {
+    const f = famOf(it), o = f && optionOf(f, curOpt(it));
+    if (f && NAMED.has(f) && o) return o.name.replace(/^(\d+)"$/, '$1" TV');
+    if (f) return SINGULAR[f];
+    return it.label && it.label !== 'piece' ? it.label.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase() : 'piece';
+  }
+  const plural = (n) => (/(s|art)$/.test(n) ? n : n.replace(/y$/, 'ie') + 's');
 
   // ---------------------------------------------------------------- applying edits to the scene
   const recolorCache = new Map();
@@ -132,80 +86,96 @@ export function initEditor(env) {
     g.scale.set(s.sx || 1, s.sy || 1, s.sz || 1);
     g.position.set(it.x + (s.dx || 0), it.y + (s.dl || 0) + (s.dy || 0), it.z + (s.dz || 0));
     g.rotation.y = (it.rot + (s.spin || 0)) * R;
-    // "Change item": a different model in the same spot
-    if (s.glb && it.altGlb !== s.glb) setItemGlb(it, s.glb);
-    const alt = !!s.glb && it.altGlb === s.glb;
+    // a different option of the family in the same spot ("Change"), or a repainted car
+    const fam = FAMILIES[famOf(it)], paintable = !!fam?.paintable;
+    const want = s.opt || s.glb || (paintable && s.color ? baseOpt(it) : null);
+    const key = want ? want + '|' + (paintable ? s.color || '' : '') : null;
+    if (key && it.altKey !== key) setItemOption(it, want, key);
+    const alt = !!key && it.altKey === key && it.altReady;
     if (it.altGroup) it.altGroup.visible = alt;
     if (it.modelGroup) it.modelGroup.visible = !alt && (it.added || modelsShown());
     if (it.hand) it.hand.visible = !alt && !(it.modelGroup && it.modelGroup.visible);
-    recolor(g, s.color);
+    recolor(g, paintable ? null : s.color);
     // collision boxes follow the piece
     const r0 = it.rot * R, r1 = (it.rot + (s.spin || 0)) * R, c0 = Math.cos(r0), s0 = Math.sin(r0), c1 = Math.cos(r1), s1 = Math.sin(r1);
-    const sx = s.sx || 1, sy = s.sy || 1, sz = s.sz || 1;
+    const sx = s.sx || 1, sy = s.sy || 1, sz = s.sz || 1, yo = (s.dl || 0) + (s.dy || 0);
     for (const { s: so, o } of it.solids || []) {
       if (s.removed) { so.y0 = so.y1 = -1e6; continue; }
       const vx = o.cx - it.x, vz = o.cz - it.z, lx = (vx * c0 - vz * s0) * sx, lz = (vx * s0 + vz * c0) * sz;
       so.cx = it.x + (s.dx || 0) + lx * c1 + lz * s1; so.cz = it.z + (s.dz || 0) - lx * s1 + lz * c1;
-      const ux = o.ux * c0 - o.uz * s0, uz = o.ux * s0 + o.uz * c0; // axis in the item frame
+      const ux = o.ux * c0 - o.uz * s0, uz = o.ux * s0 + o.uz * c0;
       so.ux = ux * c1 + uz * s1; so.uz = -ux * s1 + uz * c1;
       so.hl = o.hl * Math.hypot(ux * sx, uz * sz); so.ht = o.ht * Math.hypot(uz * sx, ux * sz);
-      so.y0 = it.y + (o.y0 - it.y) * sy; so.y1 = it.y + (o.y1 - it.y) * sy;
+      so.y0 = it.y + yo + (o.y0 - it.y) * sy; so.y1 = it.y + yo + (o.y1 - it.y) * sy;
     }
   }
-  // the footprint of a hand-built piece in its own frame: what a replacement model is sized to
+  // the original piece's box in its own frame (what a replacement is sized and placed to)
   function footprint(it) {
-    if (it.model) return it.model;
-    const inv = new THREE.Matrix4().makeRotationY(-it.rot * R).multiply(new THREE.Matrix4().makeTranslation(-it.x, -it.y, -it.z));
-    const box = new THREE.Box3();
-    (it.hand || it.group).traverse((m) => { if (m.isMesh && m.geometry) { m.geometry.computeBoundingBox(); box.union(m.geometry.boundingBox.clone().applyMatrix4(inv)); } });
+    if (it.fp) return it.fp;
+    const g = it.group; g.updateMatrixWorld(true);
+    const inv = g.matrixWorld.clone().invert(), box = new THREE.Box3();
+    const src = it.modelGroup && it.modelGroup.children.length ? it.modelGroup : it.hand || g;
+    src.traverse((m) => { if (m.isMesh && m.geometry) { if (!m.geometry.boundingBox) m.geometry.computeBoundingBox(); box.union(m.geometry.boundingBox.clone().applyMatrix4(inv.clone().multiply(m.matrixWorld))); } });
     if (box.isEmpty()) return {};
     const back = Math.abs(box.min.z) < 0.4;
-    return { w: box.max.x - box.min.x, d: back ? box.max.z : box.max.z - box.min.z, back, dx: (box.min.x + box.max.x) / 2, dz: back ? 0 : (box.min.z + box.max.z) / 2 };
+    const fp = { w: box.max.x - box.min.x, d: back ? box.max.z : box.max.z - box.min.z, h: box.max.y - box.min.y, back, dx: (box.min.x + box.max.x) / 2, dz: back ? 0 : (box.min.z + box.max.z) / 2 };
+    if (it.modelGroup && !it.modelGroup.children.length) return fp; // models not loaded yet: don't cache
+    return (it.fp = fp);
   }
-  async function setItemGlb(it, glb) {
-    it.altGlb = glb;
-    if (!it.altGroup) { it.altGroup = new THREE.Group(); it.altGroup.name = 'chosen model'; (it.inner || it.group).add(it.altGroup); }
-    const fp = it.fp || (it.fp = footprint(it));
-    const spec = { w: fp.w, d: fp.d, back: fp.back, dx: fp.dx, dz: fp.dz };
-    const src = await loadGLB(glb);
-    if (it.altGlb !== glb) return;
-    it.altGroup.clear();
-    it.altGroup.add(placeModel(src, spec, it.x, it.y, it.z, it.rot));
+  const ctxOf = (it, s = E.items[it.id] || {}) => {
+    const fam = FAMILIES[famOf(it)], fp = fam?.size ? footprint(it) : {};
+    return { ...(it.ctx || {}), w: fp.w, d: fp.d, h: fp.h, color: s.color, where: isWallItem(it) ? 'wall' : 'floor' };
+  };
+  async function setItemOption(it, optId, key) {
+    it.altKey = key; it.altReady = false;
+    const famId = famOf(it), opt = optionOf(famId, optId) || { glb: optId };
+    if (!it.altGroup) { it.altGroup = new THREE.Group(); it.altGroup.name = 'chosen'; (it.inner || it.group).add(it.altGroup); }
+    let content;
+    if (opt.glb) {
+      const fp = footprint(it), src = await loadGLB(opt.glb);
+      if (it.altKey !== key) return;
+      content = placeModel(src, { w: fp.w, d: fp.d, back: fp.back, dx: fp.dx, dz: fp.dz }, it.x, it.y, it.z, it.rot);
+    } else {
+      const b = new Batcher(), n0 = PHYS.solids.length;
+      opt.build(new Kit(b, 'edit').at(it.x, it.z, it.y, it.rot), ctxOf(it));
+      PHYS.solids.length = n0; // the original piece keeps its collision box
+      content = new THREE.Group(); b.build(content);
+    }
+    it.altGroup.clear(); it.altGroup.add(content);
+    it.altReady = true;
     applyItem(it); gfx.dirty();
-    if (cur && cur.item === it) highlight(targets());
+    if (cur && targets().includes(it)) highlight(targets());
   }
   function buildCopy(a) {
     const src = itemById(a.src);
     if (!src || !src.group) return;
-    const it = { id: a.id, x: src.x, y: src.y, z: src.z, rot: src.rot, label: src.label, model: src.model, added: true, kind: 'copy', src: a.src, solids: [] };
+    const it = { id: a.id, x: src.x, y: src.y, z: src.z, rot: src.rot, label: src.label, model: src.model, fam: famOf(src), opt: curOpt(src), ctx: src.ctx, added: true, kind: 'copy', src: a.src, wall: src.wall, solids: [] };
     const g = new THREE.Group(); g.name = 'item'; g.userData.item = it; it.group = g;
-    const inner = src.inner || src.group.children[0];
-    const c = inner.clone(true); c.traverse((m) => { if (m.isMesh && m.userData.origMat) { m.material = m.userData.origMat; delete m.userData.origMat; } }); g.add(c);
-    c.traverse((o) => { if (o.name === 'hand-built' || o.name === 'models') o.visible = src.modelGroup ? (o.name === 'models') === src.modelGroup.visible : true; });
-    addedGroup.add(g); ADDED.set(a.id, it); applyItem(it); gfx.dirty();
+    const c = (src.inner || src.group.children[0]).clone(true);
+    c.traverse((m) => { if (m.isMesh && m.userData.origMat) { m.material = m.userData.origMat; delete m.userData.origMat; } });
+    c.traverse((o) => { if (o.name === 'chosen') o.visible = !!(src.altGroup && src.altGroup.visible); else if (o.name === 'models') o.visible = !!(src.modelGroup && src.modelGroup.visible); else if (o.name === 'hand-built') o.visible = !!(src.hand && src.hand.visible); });
+    g.add(c); addedGroup.add(g); ADDED.set(a.id, it); applyItem(it); gfx.dirty();
     return it;
   }
   async function buildAdded(a) {
     if (a.kind === 'copy') return buildCopy(a);
-    const def = ADDS[a.kind];
-    if (!def) return;
-    const it = { id: a.id, x: a.x, y: a.y, z: a.z, rot: a.rot, label: def.label === 'TV' ? 'TV' : def.label.toLowerCase(), added: true, kind: a.kind, wall: a.where === 'wall', solids: [] };
+    let [famId, optId] = a.fam ? [a.fam, a.opt] : a.kind === 'art' ? ['art', a.v || 'abstract'] : LEGACY[a.kind] || [];
+    const fam = FAMILIES[famId], opt = optionOf(famId, optId);
+    if (!fam || !opt) return;
+    const it = { id: a.id, x: a.x, y: a.y, z: a.z, rot: a.rot, label: famId, fam: famId, opt: optId, ctx: a.ctx || null, added: true, wall: a.where === 'wall' && fam.place !== 'floor' ? true : fam.place === 'wall', solids: [] };
     const g = new THREE.Group(); g.name = 'item'; g.userData.item = it; it.group = g;
     g.position.set(a.x, a.y, a.z); g.rotation.y = a.rot * R; g.updateMatrix();
-    const inner = new THREE.Group(); inner.applyMatrix4(g.matrix.clone().invert()); g.add(inner);
-    const { PHYS } = await import('./geom.js');
+    const inner = new THREE.Group(); inner.applyMatrix4(g.matrix.clone().invert()); g.add(inner); it.inner = inner;
     const n0 = PHYS.solids.length;
-    it.inner = inner;
-    if (def.glb) {
-      const src = await loadGLB(def.glb), o = placeModel(src, def.spec || {}, a.x, a.y, a.z, a.rot);
-      it.model = { glb: def.glb, ...(def.spec || {}) };
+    if (opt.glb) {
+      const spec = { back: !!fam.back }, src = await loadGLB(opt.glb), o = placeModel(src, spec, a.x, a.y, a.z, a.rot);
+      it.model = { glb: opt.glb, ...spec };
       it.modelGroup = new THREE.Group(); it.modelGroup.name = 'models'; it.modelGroup.add(o); inner.add(it.modelGroup);
-      const sz = new THREE.Vector3(); new THREE.Box3().setFromObject(o).getSize(sz);
-      const rr = a.rot * R, w = Math.abs(sz.x * Math.cos(rr)) + Math.abs(sz.z * Math.sin(rr)), d = Math.abs(sz.z * Math.cos(rr)) + Math.abs(sz.x * Math.sin(rr));
-      if (sz.y > 1.2 && a.kind !== 'rug') { const k = new Kit(null, 'edit').at(a.x, a.z, a.y, a.rot); const z0 = def.spec && def.spec.back ? 0 : -d / 2; k.solid(-w / 2, z0, w / 2, z0 + d, 0, sz.y); }
+      const sz = new THREE.Vector3(); new THREE.Box3().setFromObject(src).getSize(sz).multiplyScalar(3.28084);
+      if (sz.y > 1.2) new Kit(null, 'edit').at(a.x, a.z, a.y, a.rot).solid(-sz.x / 2, spec.back ? 0 : -sz.z / 2, sz.x / 2, spec.back ? sz.z : sz.z / 2, 0, sz.y);
     } else {
-      const b = new Batcher(), k = new Kit(b, 'edit').at(a.x, a.z, a.y, a.rot);
-      (a.where === 'wall' && def.wall ? def.wall : def.floor || def.fn)(k, a);
+      const b = new Batcher();
+      opt.build(new Kit(b, 'edit').at(a.x, a.z, a.y, a.rot), { ...(a.ctx || {}), where: a.where });
       it.hand = new THREE.Group(); it.hand.name = 'hand-built'; b.build(it.hand); inner.add(it.hand);
     }
     it.solids = PHYS.solids.slice(n0).map((s) => ({ s, o: { ...s } }));
@@ -249,29 +219,38 @@ export function initEditor(env) {
     const n = h.face ? h.face.normal.clone().transformDirection(h.object.matrixWorld) : new THREE.Vector3(0, 1, 0);
     if (n.dot(ray.ray.direction) > 0) n.negate();
     const key = h.object.name || '';
-    const kind = it ? 'item' : key.startsWith('W:') ? 'wall' : n.y > 0.7 ? 'floor' : Math.abs(n.y) < 0.3 ? 'wall' : 'other';
+    const kind = it ? 'item' : key.startsWith('W:') ? 'wall' : n.y > 0.7 ? 'floor' : n.y < -0.7 ? 'ceiling' : Math.abs(n.y) < 0.3 ? 'wall' : 'other';
     return { hit: h, point: h.point.clone(), normal: n, item: it, kind, key: key.startsWith('W:') ? key : null };
   }
-  const matching = (it) => [...ITEMS, ...ADDED.values()].filter((o) => o.group && isVisible(o.group) && o.label === it.label && (o.model?.glb || '') === (it.model?.glb || ''));
+  const matching = (it) => { const f = famOf(it), o = curOpt(it); return [...ITEMS, ...ADDED.values()].filter((x) => x.group && isVisible(x.group) && (f ? famOf(x) === f && curOpt(x) === o : x.label === it.label)); };
 
   // ---------------------------------------------------------------- the popup
   const pop = document.createElement('div'); pop.id = 'edit-pop'; pop.hidden = true; document.body.appendChild(pop);
   const hint = document.createElement('div'); hint.id = 'edit-hint'; hint.hidden = true; document.body.appendChild(hint);
   const boxes = new THREE.Group(); scene.add(boxes);
-  let cur = null, all = false, pending = null;
+  let cur = null, all = false, pending = null, view = 'main';
+  let dragPos = null; try { dragPos = JSON.parse(localStorage.getItem(POSKEY) || 'null'); } catch {}
   function highlight(list) {
     boxes.clear();
     for (const it of list || []) { const b = new THREE.BoxHelper(it.group, 0xffb020); b.material.depthTest = false; b.renderOrder = 20; boxes.add(b); }
     gfx.dirty();
   }
   const targets = () => (cur && cur.item ? (all ? matching(cur.item) : [cur.item]) : []);
-  function open(target, sx, sy) {
-    cur = target; all = false;
-    render('main');
-    pop.hidden = false;
+  // where the menu goes: where you last dragged it; otherwise off to the side so the piece stays in view
+  function position(sx, sy, centered) {
     const w = pop.offsetWidth, h = pop.offsetHeight;
-    pop.style.left = Math.max(8, Math.min(innerWidth - w - 8, sx + 18)) + 'px';
-    pop.style.top = Math.max(8, Math.min(innerHeight - h - 8, sy - h / 2)) + 'px';
+    let x, y;
+    if (dragPos) { x = dragPos[0] * innerWidth; y = dragPos[1] * innerHeight; }
+    else if (centered) { x = innerWidth - w - Math.max(24, innerWidth * 0.04); y = (innerHeight - h) / 2; }
+    else { x = sx + 80 + w < innerWidth - 8 ? sx + 80 : sx - w - 80; y = sy - h / 2; }
+    pop.style.left = Math.max(8, Math.min(innerWidth - w - 8, x)) + 'px';
+    pop.style.top = Math.max(8, Math.min(innerHeight - h - 8, y)) + 'px';
+  }
+  function open(target, sx, sy, centered = false) {
+    cur = target; all = false; view = 'main';
+    render();
+    pop.hidden = false;
+    position(sx, sy, centered);
     highlight(targets());
     onOpen && onOpen();
     if (matchMedia('(pointer: fine)').matches) setTimeout(() => pop.querySelector('input.cmd')?.focus({ preventScroll: true }), 30);
@@ -279,98 +258,117 @@ export function initEditor(env) {
   function close(relock = true) {
     if (pop.hidden) return;
     pop.hidden = true; cur = null; highlight([]);
+    if (document.activeElement && pop.contains(document.activeElement)) document.activeElement.blur();
     onClose && onClose(relock);
   }
   function title() {
     if (!cur) return '';
     const room = roomName(cur.point, cur.normal);
-    if (cur.item) { const n = matching(cur.item).length; return `${cap(nameOf(cur.item))}${room ? ' · ' + room : ''}` + (n > 1 ? `<small>${n} like this in view</small>` : ''); }
-    if (cur.kind === 'wall') return `Wall${room ? ' · ' + room : ''}`;
-    if (cur.kind === 'floor') return `Floor${room ? ' · ' + room : ''}`;
-    return room || 'Here';
+    if (cur.item) {
+      const it = cur.item, f = famOf(it), o = f && optionOf(f, curOpt(it)), n = matching(it).length;
+      const sub = [o && !NAMED.has(f) ? o.name : null, n > 1 ? `${n} like this in view` : null].filter(Boolean).join(' · ');
+      return `${cap(nameOf(it))}${room ? ' · ' + room : ''}` + (sub ? `<small>${sub}</small>` : '');
+    }
+    return `${cap(cur.kind === 'other' ? 'here' : cur.kind)}${room ? ' · ' + room : ''}`;
   }
-  const cap = (s) => s[0].toUpperCase() + s.slice(1);
   function btn(label, icon, fn, cls = '') { const b = document.createElement('button'); b.className = cls; b.innerHTML = `<span class="ic">${icon}</span>${label}`; b.addEventListener('click', (e) => { e.stopPropagation(); fn(); }); return b; }
-  function render(view) {
+  const go = (v) => { view = v; render(); };
+  function optionGrid(famId, onPick, currentId) {
+    const g = document.createElement('div'); g.className = 'ep-thumbs';
+    for (const o of FAMILIES[famId].options) {
+      const b = document.createElement('button'); b.title = o.name; if (o.id === currentId) b.className = 'on';
+      const img = document.createElement('img'); img.alt = ''; b.appendChild(img);
+      const cap_ = document.createElement('span'); cap_.textContent = o.name; b.appendChild(cap_);
+      thumbURL(famId, o).then((u) => { img.src = u; });
+      b.addEventListener('click', (e) => { e.stopPropagation(); onPick(o.id); });
+      g.appendChild(b);
+    }
+    return g;
+  }
+  function render() {
     pop.innerHTML = '';
-    const head = document.createElement('div'); head.className = 'ep-head';
-    head.innerHTML = `<b>${title()}</b>`;
+    const head = document.createElement('div'); head.className = 'ep-head'; head.title = 'Drag to move this menu';
+    head.innerHTML = `<span class="ep-grip">⠿</span><b>${title()}</b>`;
     const x = document.createElement('button'); x.className = 'ep-x'; x.textContent = '×'; x.title = 'Close (Esc)'; x.addEventListener('click', () => close()); head.appendChild(x);
     pop.appendChild(head);
     const row = document.createElement('div'); row.className = 'ep-row';
     const sub = document.createElement('div'); sub.className = 'ep-sub';
-    if (cur.item) {
-      const n = matching(cur.item).length;
+    const it = cur.item;
+    if (it) {
+      const famId = famOf(it), fam = FAMILIES[famId];
+      const n = matching(it).length;
       if (n > 1) {
         const l = document.createElement('label'); l.className = 'ep-all';
-        l.innerHTML = `<input type="checkbox" ${all ? 'checked' : ''}> Apply to all ${n} ${nameOf(cur.item)}${/s$/.test(nameOf(cur.item)) ? '' : 's'}`;
+        l.innerHTML = `<input type="checkbox" ${all ? 'checked' : ''}> Apply to all ${n} ${plural(nameOf(it))}`;
         l.querySelector('input').addEventListener('change', (e) => { all = e.target.checked; highlight(targets()); });
         pop.appendChild(l);
       }
-      const cat = catOf(cur.item);
-      row.classList.toggle('four', !!cat);
-      row.append(btn('Recolor', '◐', () => render('color'), view === 'color' ? 'on' : ''));
-      if (cat) row.append(btn('Change', '⇄', () => render('change'), view === 'change' ? 'on' : ''));
-      row.append(btn('Resize', '⤢', () => render('size'), view === 'size' ? 'on' : ''), btn('Remove', '✕', () => act('remove')));
+      row.append(btn(fam?.paintable ? 'Paint' : 'Recolor', '◐', () => go('color'), view === 'color' ? 'on' : ''));
+      if (fam) row.append(btn('Change', '⇄', () => go('change'), view === 'change' ? 'on' : ''));
+      row.append(btn('Resize', '⤢', () => go('size'), view === 'size' ? 'on' : ''), btn('Remove', '✕', () => act('remove')));
       if (view === 'main') {
         const more = document.createElement('div'); more.className = 'ep-more';
-        more.append(btn('Move', '✥', () => startMove()), btn('Turn', '↻', () => act('spin', 90)), btn('Copy', '⧉', () => copyHere()), btn('Reset', '⟲', () => act('reset')));
+        more.append(btn('Move', '✥', () => startMove()), btn('Turn', '↻', () => act('spin', 90)), btn('Copy', '⧉', () => startMove(true)), btn('Reset', '⟲', () => act('reset')));
         sub.appendChild(more);
-        const wallish = isWallItem(cur.item);
+        const wallish = isWallItem(it);
         const nudge = document.createElement('div'); nudge.className = 'ep-nudge';
         nudge.append(Object.assign(document.createElement('span'), { className: 'muted', textContent: 'Nudge 6"' }));
-        for (const [l, d] of wallish ? [['←', 'left'], ['→', 'right'], ['↑', 'up'], ['↓', 'down']] : [['←', 'left'], ['→', 'right'], ['↑', 'away'], ['↓', 'closer']]) nudge.appendChild(btn(l, '', () => act('nudge', d)));
+        for (const [l, d, t] of wallish ? [['←', 'left', 'Left'], ['→', 'right', 'Right'], ['↑', 'up', 'Up'], ['↓', 'down', 'Down']] : [['←', 'left', 'Left'], ['→', 'right', 'Right'], ['↑', 'away', 'Away from you'], ['↓', 'closer', 'Toward you']]) { const b = btn(l, '', () => act('nudge', d)); b.title = t; nudge.appendChild(b); }
         sub.appendChild(nudge);
       }
       if (view === 'change') {
-        const g = document.createElement('div'); g.className = 'ep-thumbs';
-        const curGlb = (E.items[cur.item.id] || {}).glb || cur.item.model?.glb;
-        for (const name of CATS[cat]) {
-          const b = document.createElement('button'); b.title = name; if (name === curGlb) b.className = 'on';
-          b.innerHTML = `<img src="${MODEL_BASE}thumbs/${name}.png" alt="" loading="lazy">`;
-          b.addEventListener('click', (e) => { e.stopPropagation(); act('glb', name); });
-          g.appendChild(b);
-        }
-        if ((E.items[cur.item.id] || {}).glb) g.appendChild(btn('Original', '', () => act('glb', null)));
-        sub.appendChild(g);
+        sub.appendChild(optionGrid(famId, (id) => act('opt', id), curOpt(it)));
+        if ((E.items[it.id] || {}).opt || (E.items[it.id] || {}).glb) sub.appendChild(btn('Back to the original', '', () => act('opt', null), 'ep-link'));
       }
-      if (view === 'color') sub.appendChild(swatches((hex) => act('color', hex), true));
+      if (view === 'color') sub.appendChild(fam?.paintable ? swatches((hex) => act('color', hex), true, Object.fromEntries(fam.colors.map((c) => [c, c]))) : swatches((hex) => act('color', hex), true));
       if (view === 'size') {
         const g = document.createElement('div'); g.className = 'ep-grid';
         for (const [l, a] of [['Taller', ['sy', 1.15]], ['Shorter', ['sy', 1 / 1.15]], ['Wider', ['sx', 1.15]], ['Narrower', ['sx', 1 / 1.15]], ['Bigger', ['all', 1.12]], ['Smaller', ['all', 1 / 1.12]]]) g.appendChild(btn(l, '', () => act('scale', a)));
         sub.appendChild(g);
       }
-    } else if (cur.kind === 'wall') {
-      row.append(btn('Repaint', '◐', () => render('paint'), view === 'paint' ? 'on' : ''), btn('Hang a TV', '▭', () => addHere('tv')), btn('Hang art', '▣', () => render('art'), view === 'art' ? 'on' : ''));
-      if (view === 'main') { const more = document.createElement('div'); more.className = 'ep-more'; more.append(btn('Add furniture here', '+', () => render('add'))); sub.appendChild(more); }
-      if (view === 'art') {
+    } else {
+      const surf = cur.kind === 'wall' ? 'wall' : cur.kind === 'ceiling' ? 'ceiling' : 'floor';
+      if (surf === 'wall') row.append(btn('Repaint', '◐', () => go('paint'), view === 'paint' ? 'on' : ''), btn('TV', '▭', () => go('add:tv'), view === 'add:tv' ? 'on' : ''), btn('Art', '▣', () => go('add:art'), view === 'add:art' ? 'on' : ''));
+      else if (surf === 'ceiling') row.append(btn('Add a light', '✺', () => go('add:ceiling'), view === 'add:ceiling' ? 'on' : ''));
+      else row.append(btn('Furniture', '+', () => go('add'), view === 'add' ? 'on' : ''), btn('Lamp', '✺', () => go('add:lamp'), view === 'add:lamp' ? 'on' : ''), btn('Plant', '✿', () => go('add:plant'), view === 'add:plant' ? 'on' : ''), btn('Rug', '▦', () => go('add:rug'), view === 'add:rug' ? 'on' : ''));
+      row.classList.add('n' + row.children.length);
+      if (view === 'main' && surf === 'wall') { const more = document.createElement('div'); more.className = 'ep-more'; more.append(btn('Wall light', '✺', () => go('add:sconce')), btn('Furniture against this wall', '+', () => go('add'))); sub.appendChild(more); }
+      if (view === 'paint') { if (!cur.key) sub.innerHTML = '<p class="muted">This surface isn\'t a painted room wall.</p>'; else sub.appendChild(swatches((hex) => paint(hex), false, PAINTS)); }
+      if (view === 'add') {
         const g = document.createElement('div'); g.className = 'ep-grid';
-        for (const [k, a] of Object.entries(ARTS)) g.appendChild(btn(a.label, '', () => addHere('art', null, { v: k })));
+        for (const [id, f] of Object.entries(FAMILIES)) if (f.add && f.place === 'floor' && !['lamp', 'plant', 'rug'].includes(id) && (surf === 'floor' || f.back)) g.appendChild(btn(f.add, '', () => go('add:' + id)));
         sub.appendChild(g);
       }
-      if (view === 'paint') {
-        if (!cur.key) sub.innerHTML = '<p class="muted">This surface isn\'t a painted room wall.</p>';
-        else { sub.appendChild(swatches((hex) => paint(hex), false, PAINTS)); }
-      }
-    } else {
-      row.append(btn('Add item', '+', () => render('add'), view === 'add' ? 'on' : ''), btn('Add a TV', '▭', () => addHere('tv')), btn('Add a plant', '✿', () => addHere('plant')));
+      if (view.startsWith('add:')) { const famId = view.slice(4); sub.appendChild(Object.assign(document.createElement('p'), { className: 'muted ep-cap', textContent: `${FAMILIES[famId].name}: pick one to place it here` })); sub.appendChild(optionGrid(famId, (id) => addHere(famId, id))); }
     }
-    if (view === 'add') {
-      const g = document.createElement('div'); g.className = 'ep-grid';
-      for (const [k, d] of Object.entries(ADDS)) if (!d.wallOnly) g.appendChild(btn(d.label, '', () => addHere(k)));
-      sub.appendChild(g);
-    }
+    if (!row.classList.contains('n1') && !row.classList.contains('n2') && !row.classList.contains('n3') && row.children.length === 4) row.classList.add('four');
     pop.append(row, sub);
     const f = document.createElement('form'); f.className = 'ep-cmd';
-    f.innerHTML = `<input class="cmd" type="text" placeholder="${cur.item ? 'e.g. make these chairs white, taller, remove' : cur.kind === 'wall' ? 'e.g. paint this sage, add a TV' : 'e.g. add a sofa, put a plant here'}" autocomplete="off">`;
+    f.innerHTML = `<input class="cmd" type="text" placeholder="${it ? 'e.g. make these white, taller, a Tesla, remove' : cur.kind === 'wall' ? 'e.g. paint this sage, add a TV, hang a mirror' : cur.kind === 'ceiling' ? 'e.g. add a chandelier' : 'e.g. add a sofa, put a plant here'}" autocomplete="off">`;
     f.addEventListener('submit', (e) => { e.preventDefault(); command(f.querySelector('input').value); });
     pop.appendChild(f);
     const msg = document.createElement('div'); msg.className = 'ep-msg'; pop.appendChild(msg);
     const foot = document.createElement('div'); foot.className = 'ep-foot';
     const u = document.createElement('button'); u.textContent = 'Undo'; u.disabled = !undo.length; u.addEventListener('click', () => doUndo());
     foot.append(u, Object.assign(document.createElement('span'), { className: 'muted', textContent: countText() }));
+    if (dragPos) { const r = document.createElement('button'); r.textContent = 'Re-dock menu'; r.title = 'Put the menu back in its default spot'; r.addEventListener('click', () => { dragPos = null; try { localStorage.removeItem(POSKEY); } catch {} position(innerWidth / 2, innerHeight / 2, true); render(); }); foot.appendChild(r); }
     pop.appendChild(foot);
+    head.addEventListener('pointerdown', startDrag);
     if (!pop.hidden) requestAnimationFrame(clamp);
+  }
+  // drag the menu by its header; it stays where you leave it (also next time it opens)
+  function startDrag(e) {
+    if (e.target.closest('button')) return;
+    e.preventDefault();
+    const r = pop.getBoundingClientRect(), ox = e.clientX - r.left, oy = e.clientY - r.top;
+    const move = (ev) => { pop.style.left = Math.max(0, Math.min(innerWidth - 60, ev.clientX - ox)) + 'px'; pop.style.top = Math.max(0, Math.min(innerHeight - 40, ev.clientY - oy)) + 'px'; };
+    const up = () => {
+      removeEventListener('pointermove', move); removeEventListener('pointerup', up);
+      const rr = pop.getBoundingClientRect(); dragPos = [rr.left / innerWidth, rr.top / innerHeight];
+      try { localStorage.setItem(POSKEY, JSON.stringify(dragPos)); } catch {}
+      render();
+    };
+    addEventListener('pointermove', move); addEventListener('pointerup', up);
   }
   function clamp() { // keep the menu on screen as it grows
     const r = pop.getBoundingClientRect();
@@ -391,6 +389,8 @@ export function initEditor(env) {
     const el = document.querySelector('#edit-count'); if (el) el.textContent = countText() || 'No edits yet.';
     const f = pop.querySelector('.ep-foot'); if (f) { f.querySelector('span').textContent = countText(); f.querySelector('button').disabled = !undo.length; }
   }
+  let toastT = null;
+  function toast(t, ms = 3500) { hint.hidden = false; hint.textContent = t; clearTimeout(toastT); toastT = setTimeout(() => { if (!pending) hint.hidden = true; }, ms); }
 
   // ---------------------------------------------------------------- actions
   let quiet = false; // inside a typed command: one undo step for the whole command
@@ -404,85 +404,86 @@ export function initEditor(env) {
       if (op === 'remove') { if (it.added) { E.added = E.added.filter((a) => a.id !== it.id); delete E.items[it.id]; } else s.removed = true; }
       if (op === 'color') { if (arg) s.color = arg; else delete s.color; }
       if (op === 'spin') s.spin = ((s.spin || 0) + arg) % 360;
-      if (op === 'glb') { if (arg) s.glb = arg; else delete s.glb; }
+      if (op === 'opt') { delete s.glb; if (arg && arg !== baseOpt(it)) s.opt = arg; else delete s.opt; }
+      if (op === 'scale') { const [ax, f] = arg; for (const k of ax === 'all' ? ['sx', 'sy', 'sz'] : [ax]) s[k] = Math.max(0.3, Math.min(3, (s[k] || 1) * f)); }
       if (op === 'nudge') {
         const r = (it.rot + (s.spin || 0)) * R, tx = Math.cos(r), tz = -Math.sin(r), step = 0.5;
-        const cr = new THREE.Vector3(); camera.getWorldDirection(cr); const fx = cr.x, fz = cr.z, fl = Math.hypot(fx, fz) || 1;
-        const rx = -fz / fl, rz = fx / fl; // camera right on the floor
-        if (isWallItem(it) && (arg === 'left' || arg === 'right')) { const sg = Math.sign(tx * rx + tz * rz) || 1, k = (arg === 'right' ? 1 : -1) * sg * step; s.dx = (s.dx || 0) + tx * k; s.dz = (s.dz || 0) + tz * k; }
+        const cr = new THREE.Vector3(); camera.getWorldDirection(cr); const fl = Math.hypot(cr.x, cr.z) || 1, fx = cr.x / fl, fz = cr.z / fl, rx = -fz, rz = fx;
+        if (isWallItem(it) && (arg === 'left' || arg === 'right')) { const k = (arg === 'right' ? 1 : -1) * (Math.sign(tx * rx + tz * rz) || 1) * step; s.dx = (s.dx || 0) + tx * k; s.dz = (s.dz || 0) + tz * k; }
         else if (arg === 'left' || arg === 'right') { const k = arg === 'right' ? step : -step; s.dx = (s.dx || 0) + rx * k; s.dz = (s.dz || 0) + rz * k; }
         else if (arg === 'up' || arg === 'down') s.dy = (s.dy || 0) + (arg === 'up' ? step : -step);
-        else { const k = arg === 'away' ? step : -step; s.dx = (s.dx || 0) + (fx / fl) * k; s.dz = (s.dz || 0) + (fz / fl) * k; }
+        else { const k = arg === 'away' ? step : -step; s.dx = (s.dx || 0) + fx * k; s.dz = (s.dz || 0) + fz * k; }
       }
-      if (op === 'scale') { const [ax, f] = arg; for (const k of ax === 'all' ? ['sx', 'sy', 'sz'] : [ax]) s[k] = Math.max(0.3, Math.min(3, (s[k] || 1) * f)); }
+      if (!Object.keys(s).length) delete E.items[it.id];
       applyItem(it);
     }
     syncAdded(); save(); gfx.dirty();
-    const n = list.length > 1 ? `${list.length} pieces` : nameOf(list[0]);
-    if (op === 'remove') { close(true); toast(`Removed ${n}. Press Ctrl+Z (or Undo in the panel) to bring it back.`); return; }
+    const n = list.length > 1 ? `${list.length} ${plural(nameOf(list[0]))}` : `the ${nameOf(list[0])}`;
+    if (op === 'remove') { close(true); toast(`Removed ${n}. Ctrl+Z (or Undo in the panel) brings it back.`); return; }
     highlight(list);
-    say({ color: `Recolored ${n}.`, spin: `Turned ${n}.`, scale: `Resized ${n}.`, reset: `Put ${n} back as it was.`, glb: arg ? `Changed ${n}.` : `Back to the original ${n}.`, nudge: `Nudged ${n}.` }[op] || 'Done.');
-    const v = { color: 'color', scale: 'size', glb: 'change' }[op] || 'main'; const m = pop.querySelector('.ep-msg').textContent; render(v); say(m);
+    const msg = { color: `Recolored ${n}.`, spin: `Turned ${n}.`, scale: `Resized ${n}.`, reset: `Put ${n} back as it was.`, opt: arg ? `Changed to ${optionOf(famOf(list[0]), arg)?.name || 'that one'}.` : `Back to the original.`, nudge: `Nudged ${n}.` }[op] || 'Done.';
+    view = { color: 'color', scale: 'size', opt: 'change' }[op] || 'main'; render(); say(msg);
   }
   function paint(hex) {
     if (!cur || !cur.key) return say('Click a painted wall to repaint a room.');
     snapshot(); E.paint[cur.key] = hex; applyFinish(cur.key, 'paint:' + hex); save(); gfx.dirty();
     say(`Repainted the ${roomName(cur.point, cur.normal) || 'room'} walls.`);
   }
-  let nextId = () => 'a' + Date.now().toString(36) + Math.floor(Math.random() * 99);
-  async function addHere(kind, at, extra = {}) {
-    const def = ADDS[kind], t = at || cur;
-    if (!def || !t) return;
-    if (def.wallOnly && t.kind !== 'wall') return say('Art hangs on a wall: click a wall first.');
+  const nextId = () => 'a' + Date.now().toString(36) + Math.floor(Math.random() * 99);
+  async function addHere(famId, optId) {
+    const fam = FAMILIES[famId], t = cur;
+    if (!fam || !t) return;
+    optId = optId || fam.options[0].id;
+    if (fam.place === 'wall' && t.kind !== 'wall') return say(`${fam.name} go on a wall: click a wall first.`);
+    if (fam.place === 'ceiling' && t.kind !== 'ceiling') return say('Lights go on the ceiling: look up and click the ceiling.');
     const p = t.point.clone(), toCam = new THREE.Vector3().subVectors(camera.position, p);
-    let rot, where = 'floor', y = p.y;
-    if (t.kind === 'wall') { // back against the wall, facing into the room, on that room's floor
-      where = 'wall'; rot = Math.atan2(t.normal.x, t.normal.z) / R;
-      p.addScaledVector(t.normal, def.back || where === 'wall' && def.wall ? 0.02 : 1.6);
+    let rot, where = 'floor', y = p.y, ctx = null;
+    if (fam.place === 'ceiling') { rot = 0; where = 'ceiling'; ctx = { ceil: 0, hang: Math.min(2.6, Math.max(1.2, (p.y - env.floorAt(p.x, p.z, p.y - 0.5)) - 6.2)) }; }
+    else if (t.kind === 'wall') { // back against the wall, facing into the room, on that room's floor
+      const n = t.normal.clone().setY(0).normalize();
+      where = fam.place === 'wall' ? 'wall' : 'floor'; rot = Math.atan2(n.x, n.z) / R;
+      p.addScaledVector(n, fam.back || fam.place === 'wall' ? 0.02 : 1.6);
       y = env.floorAt(p.x, p.z, p.y + 0.5); if (y === -Infinity) y = p.y - 4;
     } else rot = Math.round((Math.atan2(toCam.x, toCam.z) / R) / 15) * 15;
     snapshot();
-    const a = { id: nextId(), kind, x: p.x, y, z: p.z, rot, where, ...extra };
+    const a = { id: nextId(), fam: famId, opt: optId, x: p.x, y, z: p.z, rot, where, ctx };
     E.added.push(a); save();
     const it = await buildAdded(a);
-    cur = { ...t, item: it, kind: 'item' }; all = false; render('main'); highlight([it]);
-    say(`Added ${kind === 'art' ? (ARTS[extra.v]?.label || 'art').toLowerCase() : 'a ' + (def.label === 'TV' ? 'TV' : def.label.toLowerCase())}. Move it, or nudge it with the arrows.`);
-  }
-  async function copyHere() {
-    const it = cur && cur.item; if (!it) return;
-    startMove(true);
+    if (!it) return;
+    cur = { ...t, item: it, kind: 'item' }; all = false; view = 'main'; render(); highlight([it]);
+    say(`Added ${NAMED.has(famId) ? optionOf(famId, optId).name : 'a ' + SINGULAR[famId]}. Move it, or nudge it with the arrows.`);
   }
   function startMove(copy = false) {
     pending = { items: targets(), copy };
-    const n = pending.items.length;
+    const n = pending.items.length, it = pending.items[0];
     close(true);
-    const wall = isWallItem(pending.items[0]);
-    hint.hidden = false; hint.textContent = `${copy ? 'Copy' : 'Move'} ${n > 1 ? n + ' pieces' : nameOf(pending.items[0])}: click ${wall ? 'a spot on a wall' : 'the floor (or a wall to back it against)'} where it should go · Esc cancels`;
+    const where = isWallItem(it) ? 'a spot on a wall' : isCeilingItem(it) ? 'a spot on the ceiling' : 'the floor (or a wall to back it against)';
+    hint.hidden = false; hint.textContent = `${copy ? 'Copy' : 'Move'} ${n > 1 ? n + ' pieces' : 'the ' + nameOf(it)}: click ${where} · Esc cancels`;
   }
-  function isWallItem(it) { return !!it && (it.wall || WALL_LABELS.has(it.label)); }
-  let toastT = null;
-  function toast(t, ms = 3500) { hint.hidden = false; hint.textContent = t; clearTimeout(toastT); toastT = setTimeout(() => { if (!pending) hint.hidden = true; }, ms); }
   async function finishMove(t) {
-    const { items, copy } = pending;
-    const first0 = items[0];
-    if (t && (t.kind === 'wall' || (t.kind === 'item' && Math.abs(t.normal.y) < 0.3 && isWallItem(first0))) && !copy) { pending = null; hint.hidden = true; return moveToWall(items, t); }
-    if (isWallItem(first0)) { toast('Click a spot on a wall to hang it there · Esc cancels', 4000); return false; }
+    const { items, copy } = pending, first = items[0];
+    const wallTarget = t && (t.kind === 'wall' || (t.kind === 'item' && Math.abs(t.normal.y) < 0.3 && isWallItem(first)));
+    if (isCeilingItem(first)) {
+      if (!t || t.kind !== 'ceiling') { toast('Click a spot on the ceiling · Esc cancels', 4000); return false; }
+    } else if (isWallItem(first) && !wallTarget) { toast('Click a spot on a wall to hang it there · Esc cancels', 4000); return false; }
     pending = null; hint.hidden = true;
-    if (!t || t.kind !== 'floor') return false;
-    const first = items[0], s0 = E.items[first.id] || {};
-    const bx = first.x + (s0.dx || 0), bz = first.z + (s0.dz || 0), ddx = t.point.x - bx, ddz = t.point.z - bz;
+    if (!t) return false;
+    if (wallTarget && !copy) return moveToWall(items, t);
+    if (!copy && t.kind !== 'floor' && t.kind !== 'ceiling') return false;
+    const s0 = E.items[first.id] || {};
+    const ddx = t.point.x - (first.x + (s0.dx || 0)), ddz = t.point.z - (first.z + (s0.dz || 0));
+    const dl = isCeilingItem(first) ? t.point.y - (first.y + (first.ctx?.ceil || 0)) : 0;
     snapshot();
     if (copy) {
       for (const it of items) {
         const s = E.items[it.id] || {}, id = nextId();
-        if (it.added && it.kind !== 'copy') E.added.push({ id, kind: it.kind, x: it.x, y: it.y, z: it.z, rot: it.rot, where: 'floor' });
-        else E.added.push({ id, kind: 'copy', src: it.kind === 'copy' ? it.src : it.id });
-        E.items[id] = { ...s, removed: false, dx: (s.dx || 0) + ddx, dz: (s.dz || 0) + ddz };
+        E.added.push({ id, kind: 'copy', src: it.kind === 'copy' ? it.src : it.id });
+        E.items[id] = { ...s, removed: false, dx: (s.dx || 0) + ddx, dz: (s.dz || 0) + ddz, dl: (s.dl || 0) + dl };
       }
       await syncAdded(); save();
       return true;
     }
-    for (const it of items) { const s = st(it.id); s.dx = (s.dx || 0) + ddx; s.dz = (s.dz || 0) + ddz; applyItem(it); }
+    for (const it of items) { const s = st(it.id); s.dx = (s.dx || 0) + ddx; s.dz = (s.dz || 0) + ddz; if (dl) s.dl = (s.dl || 0) + dl; applyItem(it); }
     save(); gfx.dirty();
     return true;
   }
@@ -490,18 +491,14 @@ export function initEditor(env) {
   function moveToWall(items, t) {
     const n = t.normal.clone().setY(0).normalize(), rot = Math.atan2(n.x, n.z) / R;
     snapshot();
-    for (const it of items.slice(0, 1)) {
-      const s = st(it.id), wall = isWallItem(it), fp = wall ? { back: true } : (it.fp || (it.fp = footprint(it)));
-      const off = fp.back ? 0.02 : (fp.d || 2) / 2 + 0.05;
-      const px = t.point.x + n.x * off, pz = t.point.z + n.z * off;
-      const f = env.floorAt(px, pz, t.point.y + 0.5);
-      s.dx = px - it.x; s.dz = pz - it.z; s.spin = rot - it.rot; s.dl = f === -Infinity ? 0 : f - it.y;
-      applyItem(it);
-    }
-    save(); gfx.dirty();
+    const it = items[0], s = st(it.id), fp = isWallItem(it) ? { back: true } : footprint(it);
+    const off = fp.back ? 0.02 : (fp.d || 2) / 2 + 0.05;
+    const px = t.point.x + n.x * off, pz = t.point.z + n.z * off, f = env.floorAt(px, pz, t.point.y + 0.5);
+    s.dx = px - it.x; s.dz = pz - it.z; s.spin = rot - it.rot; s.dl = f === -Infinity ? 0 : f - it.y;
+    applyItem(it); save(); gfx.dirty();
     return true;
   }
-  async function doUndo() { if (!undo.length) return; await restore(undo.pop()); if (cur) { render('main'); say('Undone.'); highlight(targets()); } }
+  async function doUndo() { if (!undo.length) return; await restore(undo.pop()); if (cur) { render(); say('Undone.'); highlight(targets()); } }
   async function resetAll() { snapshot(); await restore(JSON.stringify({ items: {}, paint: {}, added: [] })); }
 
   // ---------------------------------------------------------------- typed commands (a small rule-based parser)
@@ -512,59 +509,69 @@ export function initEditor(env) {
     if (cur?.item && !/\b(add|put|place|hang|move)\b/.test(t)) { snapshot(); quiet = true; try { return runCommand(t); } finally { quiet = false; } }
     return runCommand(t);
   }
+  function optionInText(famId, t) {
+    if (!famId) return null;
+    for (const o of FAMILIES[famId].options) { const nm = o.name.toLowerCase(); if (t.includes(nm)) return o.id; }
+    for (const o of FAMILIES[famId].options) { const w = o.name.toLowerCase().split(/[\s,+]+/).find((x) => x.length >= 4 && !STOP.has(x)); if (w && new RegExp(`\\b${w}\\b`).test(t)) return o.id; }
+    return null;
+  }
   function runCommand(t) {
     if (/\b(these|those|all|every|both)\b/.test(t) && cur?.item) { all = true; highlight(targets()); }
     const color = Object.keys(COLORS).sort((a, b) => b.length - a.length).find((c) => new RegExp(`\\b${c}\\b`).test(t));
     const addM = /\b(add|put|place|hang|get me|i want|give me)\b/.test(t) && ADD_WORDS.find(([, re]) => re.test(t));
-    if (addM) return addHere(addM[0]);
-    if (cur?.kind === 'wall' && (/\b(paint|repaint|color|colour)\b/.test(t) || color) && color) { if (cur.key) return paint(COLORS[color]); return say('That surface isn\'t a painted room wall.'); }
-    if (!cur?.item) return say('Try: "add a sofa", "add a TV", "put a plant here"' + (cur?.kind === 'wall' ? ', or "paint this sage".' : '.'));
+    if (addM) { const fam = addM[0]; return addHere(fam, optionInText(fam, t)); }
+    if (cur?.kind === 'wall' && color && /\b(paint|repaint|color|colour|make)\b|^\s*\w+\s*$/.test(t)) { if (cur.key) return paint(COLORS[color]); return say('That surface isn\'t a painted room wall.'); }
+    if (!cur?.item) return say('Try: "add a sofa", "add a TV", "put a plant here"' + (cur?.kind === 'wall' ? ', "hang a mirror", or "paint this sage".' : cur?.kind === 'ceiling' ? ', or "add a chandelier".' : '.'));
     if (/\b(remove|delete|get rid|take (it|this|them) (away|out)|throw|toss|lose)\b/.test(t)) return act('remove');
     if (/\b(reset|original|put (it|them) back|as it was)\b/.test(t)) return act('reset');
     let did = false;
+    const opt = optionInText(famOf(cur.item), t);
+    if (opt) { act('opt', opt); did = true; }
     const amt = /\b(much|a lot|way)\b/.test(t) ? 1.35 : /\b(slightly|a bit|a little|bit)\b/.test(t) ? 1.07 : 1.15;
     for (const [re, a] of [[/\b(taller|higher|raise)\b/, ['sy', amt]], [/\b(shorter|lower)\b/, ['sy', 1 / amt]], [/\b(wider|longer)\b/, ['sx', amt]], [/\b(narrower|thinner|skinnier)\b/, ['sx', 1 / amt]],
       [/\b(deeper)\b/, ['sz', amt]], [/\b(bigger|larger|scale up)\b/, ['all', amt]], [/\b(smaller|scale down|tiny|little smaller)\b/, ['all', 1 / amt]]]) if (re.test(t)) { act('scale', a); did = true; }
     if (/\b(turn|rotate|spin|flip|face)\b/.test(t)) { act('spin', /\b(around|180|flip|other way)\b/.test(t) ? 180 : /\bleft\b/.test(t) ? 90 : /\b45\b/.test(t) ? 45 : -90); did = true; }
-    if (color) { act('color', COLORS[color]); did = true; }
+    if (color && !(opt && optionOf(famOf(cur.item), opt)?.name.toLowerCase().includes(color))) { act('color', COLORS[color]); did = true; }
     if (/\b(move|put it|over there|somewhere else)\b/.test(t) && !did) return startMove();
-    if (!did) say('I can recolor (e.g. "white", "navy"), resize ("taller", "smaller"), turn, move or remove it, or add things ("add a lamp").');
+    if (!did) say(`I can recolor it ("white", "navy"), change it to another ${nameOf(cur.item)} (try a name from Change), resize, turn, move or remove it.`);
   }
 
   // ---------------------------------------------------------------- entry points used by app.js
   const ndc = (x, y) => { const r = renderer.domElement.getBoundingClientRect(); return new THREE.Vector2(((x - r.left) / r.width) * 2 - 1, -((y - r.top) / r.height) * 2 + 1); };
-  async function clickAt(x, y, center = false) {
+  async function clickAt(x, y) {
     if (!pop.hidden) { close(true); return true; }
-    const t = pickAt(center ? new THREE.Vector2(0, 0) : ndc(x, y));
+    const t = pickAt(ndc(x, y));
     if (pending) { await finishMove(t); return true; }
     if (!t) return false;
-    open(t, center ? innerWidth / 2 : x, center ? innerHeight / 2 : y);
+    open(t, x, y);
     return true;
   }
-  addEventListener('keydown', (e) => {
-    if (e.code === 'Escape') { if (pending) { pending = null; hint.hidden = true; } if (!pop.hidden) close(false); }
-    if (e.code === 'KeyZ' && (e.ctrlKey || e.metaKey) && !(e.target.matches && e.target.matches('input, textarea'))) { e.preventDefault(); doUndo(); toast('Undone.', 1500); }
-  });
   // walk mode: what the crosshair is on, if it is close enough to edit
   const REACH = 12;
   function aim() {
     const t = pickAt(new THREE.Vector2(0, 0));
     if (!t || t.hit.distance > REACH) return null;
-    t.label = t.item ? `edit ${nameOf(t.item)}` : t.kind === 'wall' ? (t.key ? 'paint wall · hang a TV or art' : 'hang a TV or art') : t.kind === 'floor' ? 'add something here' : null;
+    t.label = t.item ? `edit ${nameOf(t.item)}` : t.kind === 'wall' ? (t.key ? 'paint wall · TV · art' : 'TV · art · wall light') : t.kind === 'floor' ? 'add something here' : t.kind === 'ceiling' ? 'add a light' : null;
     return t.label ? t : null;
   }
   function openAhead() {
     if (!pop.hidden) { close(true); return true; }
-    const t = aim();
     if (pending) { finishMove(pickAt(new THREE.Vector2(0, 0))); return true; }
+    const t = aim();
     if (!t) return false;
-    open(t, innerWidth / 2, innerHeight / 2);
+    open(t, innerWidth / 2, innerHeight / 2, true);
     return true;
   }
+  addEventListener('keydown', (e) => {
+    if (e.code === 'Escape' && (pending || !pop.hidden)) { e.preventDefault(); e.stopPropagation(); if (pending) { pending = null; hint.hidden = true; } if (!pop.hidden) close(false); }
+    if (e.code === 'KeyZ' && (e.ctrlKey || e.metaKey) && !(e.target.matches && e.target.matches('input, textarea'))) { e.preventDefault(); doUndo(); toast('Undone.', 1500); }
+  }, true);
   pop.addEventListener('pointerdown', (e) => e.stopPropagation());
+  pop.addEventListener('mousedown', (e) => e.stopPropagation());
   document.querySelector('#edit-undo')?.addEventListener('click', () => doUndo());
   document.querySelector('#edit-reset')?.addEventListener('click', () => { if (confirm('Remove all your point-and-click edits to this house?')) resetAll(); });
+  addEventListener('resize', () => { if (!pop.hidden) clamp(); });
   // start: rebuild what was saved
   (async () => { await syncAdded(); applyAll(); updateCount(); })();
-  return { clickAt, aim, openAhead, isOpen: () => !pop.hidden, isPending: () => !!pending, close, refresh: () => { rebuildCopies(); applyAll(); }, reapplyPaint, command: (s) => command(s), open, pickAt, E: () => E };
+  return { clickAt, aim, openAhead, isOpen: () => !pop.hidden, isPending: () => !!pending, close, refresh: () => { rebuildCopies(); applyAll(); }, reapplyPaint, command: (s) => command(s), open, pickAt, E: () => E, toast };
 }

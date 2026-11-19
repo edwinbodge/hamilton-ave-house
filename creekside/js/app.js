@@ -260,7 +260,7 @@ const plc = new PointerLockControls(camera, renderer.domElement);
 // instead of switching the whole walk-through to drag-to-look.
 let relockTry = false;
 function lockFailed() {
-  if (relockTry) { relockTry = false; if (state.mode === 'walk') { walk.paused = true; $('#walk-paused').hidden = false; } return; }
+  if (relockTry) { relockTry = false; if (state.mode === 'walk') { walk.resumeOnClick = true; editor && editor.toast('Click anywhere to look around again', 2500); } return; }
   document.body.classList.add('draglook');
 }
 function lockPointer(relock = false) {
@@ -369,7 +369,7 @@ function toggleWalkPanel(force) {
   if (!on && state.mode === 'walk' && !document.body.classList.contains('draglook')) lockPointer();
 }
 $('#hud-options').addEventListener('click', () => toggleWalkPanel());
-plc.addEventListener('lock', () => { relockTry = false; walk.paused = false; $('#walk-paused').hidden = true; document.body.classList.remove('draglook'); });
+plc.addEventListener('lock', () => { relockTry = false; walk.resumeOnClick = false; walk.paused = false; $('#walk-paused').hidden = true; document.body.classList.remove('draglook'); });
 // Pointer lock isn't available everywhere (embedded previews, some browsers): fall back to drag-to-look.
 document.addEventListener('pointerlockerror', () => { if (relockTry) return lockFailed(); walk.paused = false; document.body.classList.add('draglook'); });
 $('#btn-walk').addEventListener('click', enterWalk);
@@ -384,6 +384,8 @@ renderer.domElement.addEventListener('mousedown', () => {
 });
 renderer.domElement.addEventListener('pointerdown', (e) => {
   if (state.mode !== 'walk' || plc.isLocked) return;
+  // mouse-look was released (edit menu closed with Esc): this click just takes the mouse back
+  if (walk.resumeOnClick && !document.body.classList.contains('draglook') && !editor.isOpen()) { walk.resumeOnClick = false; walk.swallowUp = true; lockPointer(true); return; }
   dragLook = [e.clientX, e.clientY];
   renderer.domElement.setPointerCapture(e.pointerId);
 });
@@ -641,12 +643,13 @@ $('#doors-open').addEventListener('click', () => setAllDoors(1));
 $('#doors-close').addEventListener('click', () => setAllDoors(0));
 
 // ------------------------------------------------------------------ pointer handling
-let downAt = null;
-renderer.domElement.addEventListener('pointerdown', (e) => { downAt = [e.clientX, e.clientY]; });
+let downAt = null, downLocked = false;
+renderer.domElement.addEventListener('pointerdown', (e) => { downAt = [e.clientX, e.clientY]; downLocked = plc.isLocked; });
 renderer.domElement.addEventListener('pointerup', (e) => {
   if (!downAt || tc.dragging) return;
   if (Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5) return; // it was a drag
-  if (state.mode === 'walk') { if (!plc.isLocked) editor.clickAt(e.clientX, e.clientY); return; } // tap to edit (drag-to-look walk)
+  // walk: the press that opened the menu (mouse captured) must not close it again on release
+  if (state.mode === 'walk') { if (walk.swallowUp) { walk.swallowUp = false; return; } if (!plc.isLocked && !downLocked) editor.clickAt(e.clientX, e.clientY); return; }
   if (state.mode !== 'orbit') return;
   if (measuring) return measureClick(e);
   const hit = pick(e, [additionsGroup])[0];
@@ -711,7 +714,7 @@ editor = initEditor({
     if (state.mode !== 'walk') return;
     walk.paused = false;
     if (document.body.classList.contains('draglook')) return;
-    if (relock) lockPointer(true); else { walk.paused = true; $('#walk-paused').hidden = false; }
+    if (relock) lockPointer(true); else { walk.resumeOnClick = true; editor.toast('Click anywhere to look around again', 2500); }
   },
 });
 gfx.mountUI($('#tgl-lot').closest('.toggles'));

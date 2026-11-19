@@ -175,7 +175,7 @@ function buildKitchen() {
     const ik = new Kit(bat, rs).at(ix, iz, 0, -90); // working side faces west (the sink + range), seats face it from the east
     island(ik, 9, 4.2, 1.25);
     for (const dx of [-3.0, -1.0, 1.0, 3.0]) { const p = ik.P(dx, 0, -2.7); swap(new Kit(renoBat('on:kitchen&furn', 'f1'), 'on:kitchen&furn').at(p.x, p.z, 0, -90), { glb: 'Chair24' }, (h) => stool(h, '#c9bba6')); }
-    for (const dz of [-3, 0, 3]) pendant(new Kit(bat, rs).at(ix, iz + dz, 0), H.ceil1, 2.4);
+    for (const dz of [-3, 0, 3]) item(new Kit(bat, rs).at(ix, iz + dz, 0), (k) => pendant(k, H.ceil1, 2.4), null, null, { ceil: H.ceil1, hang: 2.4 });
   }
   for (const [x, y] of [[360, 220], [360, 330], [470, 230]]) recessed(at(x, y), H.ceil1);
   // old kitchen -> dining: banquette in the window bump, table for six, fridge + pantry wall on the hall side
@@ -204,7 +204,7 @@ function buildKitchen() {
   fk(520, 120, 70, (k) => swap(k, { glb: 'Chair12' }, (h) => armchair(h, { color: '#8c7b68' })));
   fk(656, 120, -70, (k) => swap(k, { glb: 'Chair12' }, (h) => armchair(h, { color: '#8c7b68' })));
   // the dining chandelier over the new table (style follows the refresh option)
-  { const [lx, lz] = F(345, 424); bellChandelier(new Kit(renoBat('on:kitchen&off:refresh', 'f1'), 'on:kitchen&off:refresh').at(lx, lz, 0), H.ceil1, 2.6, 5); linearPendant(new Kit(renoBat('on:kitchen&on:refresh', 'f1'), 'on:kitchen&on:refresh').at(lx, lz, 0, 90), H.ceil1, 2.6, 5); }
+  { const [lx, lz] = F(345, 424); item(new Kit(renoBat('on:kitchen&off:refresh', 'f1'), 'on:kitchen&off:refresh').at(lx, lz, 0), (k) => bellChandelier(k, H.ceil1, 2.6, 5), null, null, { ceil: H.ceil1, hang: 2.6 }); item(new Kit(renoBat('on:kitchen&on:refresh', 'f1'), 'on:kitchen&on:refresh').at(lx, lz, 0, 90), (k) => linearPendant(k, H.ceil1, 2.6, 5), null, null, { ceil: H.ceil1, hang: 2.6 }); }
   // labels: the swapped rooms
   const rooms = [
     { name: 'Kitchen (remodel)', dims: "open to the family room · 9' island", floor: 'oak', wall: 'paint:#f3f2ee', poly: [[323.5, 197.5], [474, 197.5], [474, 340], [323.5, 340]] },
@@ -530,4 +530,4 @@ export function buildRenovations() {
   buildClassic();
   buildOpenBasement();
 }
-export { shaker };
+export { shaker, pendant, orb, linearPendant };
