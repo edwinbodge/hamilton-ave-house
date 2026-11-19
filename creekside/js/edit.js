@@ -407,7 +407,46 @@ export function initEditor(env) {
   const countText = () => { const n = Object.keys(E.items).length + Object.keys(E.paint).length + E.added.length; return n ? `${n} edit${n > 1 ? 's' : ''} saved in this browser` : ''; };
   function updateCount() {
     const el = document.querySelector('#edit-count'); if (el) el.textContent = countText() || 'No edits yet.';
+    renderList();
     const f = pop.querySelector('.ep-foot'); if (f) { f.querySelector('span').textContent = countText(); f.querySelector('button').disabled = !undo.length; }
+  }
+  // ---------------------------------------------------------------- your changes, listed in the panel
+  // one line per changed piece / painted room / added piece: click to go look at it, × to undo just that one
+  const listEl = document.querySelector('#edit-list');
+  function describe(it, s) {
+    const f = famOf(it), parts = [];
+    if (s.removed) return 'Removed';
+    if (s.opt || s.glb) { const o = f && optionOf(f, s.opt || s.glb); parts.push(`swapped${o ? ' for ' + o.name : ''}`); }
+    if (s.color) parts.push(f && FAMILIES[f]?.paintable ? 'repainted' : 'recolored');
+    if (s.sx || s.sy || s.sz) parts.push('resized');
+    if (s.dx || s.dz || s.dy || s.dl) parts.push('moved');
+    if (s.spin) parts.push('turned');
+    return cap(parts.join(', ') || 'changed');
+  }
+  const posOf = (it) => { const s = E.items[it.id] || {}; return new THREE.Vector3(it.x + (s.dx || 0), it.y + (s.dl || 0) + 1, it.z + (s.dz || 0)); };
+  function renderList() {
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    const rows = [];
+    for (const [id, s] of Object.entries(E.items)) {
+      const it = itemById(isNaN(+id) ? id : +id); if (!it) continue;
+      if (it.added) continue;
+      rows.push({ label: `${cap(nameOf(it))}: ${describe(it, s).toLowerCase()}`, where: roomName(posOf(it), new THREE.Vector3(0, 1, 0)), at: () => posOf(it), undo: () => { delete E.items[it.id]; applyItem(it); } });
+    }
+    for (const a of E.added) {
+      const it = ADDED.get(a.id); if (!it) continue;
+      rows.push({ label: `Added ${a.kind === 'copy' ? 'a copy of the ' + nameOf(it) : NAMED.has(it.fam) ? nameOf(it) : 'a ' + nameOf(it)}`, where: roomName(posOf(it), new THREE.Vector3(0, 1, 0)), at: () => posOf(it), undo: () => { E.added = E.added.filter((x) => x.id !== a.id); delete E.items[a.id]; syncAdded(); } });
+    }
+    for (const k of Object.keys(E.paint)) rows.push({ label: 'Painted the walls', where: env.wallRoom ? env.wallRoom(k) : '', swatch: E.paint[k], at: null, undo: () => { delete E.paint[k]; reapplyStyle(); reapplyPaint(); } });
+    for (const r of rows) {
+      const li = document.createElement('div'); li.className = 'edit-row';
+      const b = document.createElement('button'); b.className = 'edit-go';
+      b.innerHTML = `${r.swatch ? `<i style="background:${r.swatch}"></i>` : ''}<span>${r.label}</span>${r.where ? `<small>${r.where}</small>` : ''}`;
+      if (r.at) b.addEventListener('click', () => env.focus && env.focus(r.at())); else b.disabled = true;
+      const x = document.createElement('button'); x.className = 'edit-x'; x.textContent = '×'; x.title = 'Undo this change';
+      x.addEventListener('click', () => { snapshot(); r.undo(); save(); gfx.dirty(); });
+      li.append(b, x); listEl.appendChild(li);
+    }
   }
   let toastT = null;
   function toast(t, ms = 3500) { hint.hidden = false; hint.textContent = t; clearTimeout(toastT); toastT = setTimeout(() => { if (!pending) hint.hidden = true; }, ms); }

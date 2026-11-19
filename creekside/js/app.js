@@ -10,7 +10,7 @@ import { EXT_CONTROLS, EXT_PRESETS, applyExterior } from './exterior.js';
 import { RENO_LABELS, RENO_ROOMS } from './reno.js';
 import { buildSite } from './site.js';
 import { PHYS, pip, V, addSolid, addFloorPoly, applyFinish, ORIGIN, setModels } from './geom.js';
-import { LOT, LATITUDE, X_AZ, toFt } from './data.js';
+import { LOT, LATITUDE, X_AZ, toFt, LEVELS } from './data.js';
 import { initEditor } from './edit.js';
 
 // ------------------------------------------------------------------ renderer & scene
@@ -730,6 +730,9 @@ function roomName(point, normal) {
 }
 editor = initEditor({
   scene, camera, renderer, house, site, gfx, isVisible, roomName, floorAt, orbit, walking: () => state.mode === 'walk',
+  // fly the overhead camera to a piece (on its floor)
+  focus: (p) => { if (state.mode === 'walk') return; const lvl = p.y < -4.5 ? 'b' : p.y < 6.5 ? 'f1' : 'f2'; if (state.view !== 'ext' || lvl !== 'f1') setView(lvl, false); flyTo({ pos: [p.x + 12, p.y + 18, p.z + 12], tgt: [p.x, p.y, p.z] }); },
+  wallRoom: (key) => { const m = /^W:.*?(b|f1|f2)-(\d+)$/.exec(key); if (!m) return ''; const L = LEVELS.find((l) => l.id === m[1]); const r = L && (L._rooms || L.rooms)[+m[2]]; return r && r.name ? r.name : ''; },
   levelShown: (lvl) => groups[lvl].visible && state.furniture,
   ceilingShown: (lvl) => (lvl === 'b' ? groups.f1.visible : lvl === 'f1' ? groups.f2.visible : groups.roof.visible),
   reapplyStyle: () => applyStyle(state.style),
