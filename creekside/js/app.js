@@ -145,12 +145,12 @@ document.querySelectorAll('[data-reno]').forEach((el) => el.addEventListener('ch
   if (el.checked && el.dataset.reno === 'classic') state.reno.facade = false;
   applyReno();
 }));
-// one switch for the whole suggested plan (basement: layout A)
-const SUGGESTED = ['kitchen', 'openLiving', 'refresh', 'pbath', 'mud', 'facade', 'patio', 'play'];
-const isSuggested = () => Object.keys(state.reno).every((k) => !!state.reno[k] === SUGGESTED.includes(k)) && state.layout === 'A';
+// one switch for the whole suggested plan (basement: open plan, layout D)
+const SUGGESTED = ['kitchen', 'openLiving', 'refresh', 'pbath', 'mud', 'classic', 'patio', 'play'];
+const isSuggested = () => Object.keys(state.reno).every((k) => !!state.reno[k] === SUGGESTED.includes(k)) && state.layout === 'D';
 $('#suggested').addEventListener('change', (e) => {
   for (const k of Object.keys(state.reno)) state.reno[k] = e.target.checked && SUGGESTED.includes(k);
-  state.layout = e.target.checked ? 'A' : '0';
+  state.layout = e.target.checked ? 'D' : '0';
   applyReno();
 });
 
