@@ -358,19 +358,19 @@ export function tex(name) {
           let x = -Math.random() * 20;
           while (x < w) {
             const tw = 12 + Math.random() * 18;
-            g.fillStyle = shade(arg, (Math.random() - 0.5) * 0.1);
+            g.fillStyle = shade(arg, (Math.random() - 0.5) * 0.05);
             g.fillRect(x + 1, r * 32 + 1, tw - 2, 30);
             x += tw;
           }
-          g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(0, r * 32 + 30, w, 2);
+          g.fillStyle = 'rgba(0,0,0,0.22)'; g.fillRect(0, r * 32 + 30, w, 2);
         }
       }, [2.2, 2.2]);
       break;
     case 'brickTan': // tan/brown modular face brick with light mortar
       t = canvasTex(128, 128, (g, w, h) => {
-        g.fillStyle = '#b9ab95'; g.fillRect(0, 0, w, h);
+        g.fillStyle = '#b8ad9c'; g.fillRect(0, 0, w, h);
         for (let r = 0; r < 8; r++) for (let c = -1; c < 3; c++) {
-          g.fillStyle = `hsl(${24 + Math.random() * 10},${18 + Math.random() * 12}%,${42 + Math.random() * 14}%)`;
+          g.fillStyle = `hsl(${27 + Math.random() * 9},${15 + Math.random() * 9}%,${40 + Math.random() * 13}%)`;
           g.fillRect(c * 64 + (r % 2) * 32 + 2, r * 16 + 2, 60, 13);
         }
         noise(g, w, h, 1200, 0.08);

@@ -699,15 +699,10 @@ function buildRoofs(bats) {
   // entry canopy: shallow shed roof on a white post with a brick base (as in the front photos); the modern facade replaces it
   {
     const pc = 4 / 12, cr = renoBat('off:facade', 'roof'), c1 = renoBat('off:facade', 'f1');
-    rplane(cr, [[478, 563.5 + 4], [560, 563.5 + 4], [560, 592], [478, 592]], { o: [0, 592], up: [0, -1], h0: 9.7, p: pc, eaves: [2], rakes: [1, 3] });
     const [cx, cz] = F(553, 586);
     const k = new Kit(c1, 'off:facade').at(cx, cz, 0);
-    k.cbox('brickExt', 0, 0, 1.5, 1.5, -0.9, 3.0); k.cbox('extTrim', 0, 0, 1.7, 1.7, 3.0, 3.2);
-    k.cbox('extTrim', 0, 0, 0.6, 0.6, 3.2, 9.3); k.cbox('extTrim', 0, 0, 0.8, 0.8, 9.0, 9.3);
-    addSolid(V(cx - 0.75, 0, cz - 0.75), V(1.5, 0, 0), V(0, 0, 1.5), -1, 9.3, 'off:facade');
-    const [bx0, bz] = F(478, 589), [bx1] = F(560, 0);
-    c1.aabox('extTrim', bx0, 9.0, bz - 0.25, bx1, 9.6, bz + 0.15);
-    c1.poly('soffit', ftPoly([[478, 567.5], [560, 567.5], [560, 592], [478, 592]]), 9.0, [], true);
+    k.cbox('brickExt', 0, 0, 1.6, 1.6, -0.9, 9.6); k.cbox('col:#cbbfae', 0, 0, 1.85, 1.85, 9.6, 9.85);
+    addSolid(V(cx - 0.8, 0, cz - 0.8), V(1.6, 0, 0), V(0, 0, 1.6), -1, 9.85, 'off:facade');
   }
   // chimney: tan brick from grade to above the roof, stone cap, flue
   {
@@ -781,11 +776,20 @@ function buildExterior(bats) {
   const bay = [[357, 656.5], [372, 677], [425, 677], [440, 656.5]];
   for (let i = 0; i < 3; i++) {
     const a = bay[i], c = bay[i + 1], dx = c[0] - a[0], dy = c[1] - a[1], l = Math.hypot(dx, dy), out = [-dy / l, dx / l];
-    veneer(b1, a, c, out, -0.9, 1.45);
+    veneer(b1, a, c, out, -0.9, 1.85);
     veneer(b1, a, c, out, 7.75, 11.75, 'shake', 0, 0, 0.06);
   }
   // brick wainscot across the stair/laundry front and around the garage front, with a sloped cap
   veneer(b1, [552, 563.5], [700, 563.5], [0, 1], -0.9, 2.6);
+  // white-trimmed vertical strip right of the entry: laundry window, shake panel, 2nd-floor window stacked (front photo)
+  veneer(b1, [646, 563.5], [685, 563.5], [0, 1], 2.72, 3.6, 'shake', 0, 0, 0.06);
+  veneer(b1, [646, 563.5], [685, 563.5], [0, 1], 7.0, 10, 'shake', 0, 0, 0.06);
+  veneer(b2, [646, 563.5], [685, 563.5], [0, 1], 10, 12.4, 'shake', 0, 0, 0.06);
+  for (const [bat, y0, y1] of [[b1, 2.72, 10], [b2, 10, 17.3]]) {
+    veneer(bat, [642, 563.5], [646, 563.5], [0, 1], y0, y1, 'extTrim', 0, 0, 0.1);
+    veneer(bat, [685, 563.5], [689, 563.5], [0, 1], y0, y1, 'extTrim', 0, 0, 0.1);
+  }
+  veneer(b2, [642, 563.5], [689, 563.5], [0, 1], 16.95, 17.3, 'extTrim', 0, 0, 0.1);
   veneer(b1, [700, 563.5], [700, 722.5], [-1, 0], -0.9, 2.6, 'brickExt', 0, 0.6);
   veneer(b1, [700, 722.5], [987.5, 722.5], [0, 1], -0.9, 2.6, 'brickExt', 0.6, 0.6);
   // brick pier at the garage's front corner with a lantern on top (driveway photo)

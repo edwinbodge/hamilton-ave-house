@@ -15,8 +15,8 @@ export const ORIGIN = {
   cabPanel: '#d29c58', counter: 'laminate:#8d9093', vanityTop: '#e5e1da', backsplash: 'paint:#f3f2ee', splashTrim: 'laminate:#8d9093',
   fpBrick: 'blackMarble', mantel: '#b9843f', mantelPanel: '#c4904c', stairCarpet: '#c9c3ba', island: '#46555e',
   // exterior (the modern-facade option re-finishes these)
-  siding: 'lap:#7a6c5f', brickExt: 'brickTan', extTrim: '#ebe5d6', winExt: '#e6dfcf', shingle: 'shingle', garageDoor: '#7b6e60',
-  frontDoor: '#b9843f', shake: 'shake:#5d4636', gutter: '#ebe5d6',
+  siding: 'lap:#6a5f56', brickExt: 'brickTan', extTrim: '#ebe5d6', winExt: '#e6dfcf', shingle: 'shingle', garageDoor: '#7b6e60',
+  frontDoor: '#8c5e30', shake: 'shake:#544941', gutter: '#ebe5d6',
   // remodel finishes (kitchen / bath / mudroom remodels keep these unless a style overrides them)
   rcab: '#ece9e2', rcabDoor: '#f0ede6', rcabPanel: '#e6e2da', rcounter: 'marble', rsplash: 'subway:#f3f1ec',
 };
