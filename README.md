@@ -1,4 +1,8 @@
-# Harrison Ave house: 3D model
+# House models: Harrison Ave and Creekside Ln
+
+Two walkable 3D house models; pick between them from the dropdown in the panel header. Harrison Ave is at `/`, Creekside Ln at `/creekside/` (its own copy of the engine in `creekside/js`).
+
+## Harrison Ave
 
 A walkable 3D model of the house, built from the listing's CubiCasa floor plans and photos with three.js.
 

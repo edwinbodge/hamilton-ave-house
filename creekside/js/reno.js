@@ -1,0 +1,461 @@
+// Renovation options for the Creekside Ln house. Each adds geometry to an 'on:<name>' set; the as-built
+// parts it replaces are tagged 'off:<name>' (data.js walls, furnish.js fixtures, build.js canopy, site.js).
+// Tags may combine: 'a&b' = both active, 'a|b' = either ('furn' = furniture shown, 'lay:A' = basement layout A).
+//
+//   kitchen     Kitchen opened to the family room. The kitchen and dining area swap: the new kitchen goes into
+//               the dining area, right on the family-room opening, with a 9 ft island facing the family room;
+//               the stub wall and the pier at the family-room corner come out (a beam stays for the bedroom
+//               wall above) and the sunken family room is leveled, so there is no step. The old kitchen becomes
+//               the dining area with a built-in banquette in the window bump; the fridge/pantry wall stays on
+//               the hall side, which also keeps the kitchen out of sight of the front door. The sink moves ~7 ft
+//               north (easy with the open basement below); the dining windows become counter-height.
+//   openLiving  Kitchen | living room wall: the 3 ft doorway becomes an 11 ft cased opening on a flush beam.
+//   refresh     Cosmetic refresh of the fixed, dated parts: limewash fireplace breast with a floating oak mantel
+//               (replaces black marble + oak mantel), black iron balusters (turned oak spindles go), modern light
+//               fixtures in the foyer and dining. Paint, floors, cabinets: pick a style preset.
+//   pbath       Primary bath: whirlpool + small gold-framed shower out; 5'4" x 5'6" walk-in shower in the
+//               corner, freestanding tub under the window, 6 ft floating double vanity + linen tower. Same room.
+//   mud         Laundry becomes a laundry/mudroom: washer + dryer stack into the existing closet niche, lockers
+//               and a bench on the stair wall, slate-look tile. No garage space lost.
+//   facade      Modern facade: charcoal board-and-batten, limewashed brick, black windows/trim/gutters,
+//               cedar garage doors with a glass band, cedar accent wall at the entry, black steel canopy, darker roof.
+//   patio       ~900 sq ft paver patio off the dining slider and behind the family room: wide steps, dining
+//               under a cedar pergola, lounge around a fire pit, grill counter.
+//   play        Playground in the back yard: cedar play fort with slide and swings, on a bordered mulch bed.
+//   basement    (layout choice, below) finishes the lower level: LVP floors, finished bath, furniture.
+import * as THREE from 'three';
+import { toFt, F2, H, PX, vaultUnder } from './data.js';
+import { Kit, V, addFloorPoly, addSolid } from './geom.js';
+import { LV, P, F, CTX, renoBat, renoGroup, roleRoom, buildWall, buildLabels, rplane, railing, stairGeom, ROOF } from './build.js';
+import {
+  toilet, vanity, lightBar, diningTable, chair, sofa, armchair, coffeeTable, floorLamp, plant, rug, runKit, recessed, flushDome,
+  bed, nightstand, dresser, wallTV, mediaConsole, projectionScreen, towerSpeaker, officeDesk, officeChair, bookcase, desk,
+  powerRack, liftBench, dumbbellRack, pelotonBike, rubberFloor, treadmill, shelving, firePit, adirondack, patioChair, exteriorLantern,
+  taperLeg, knob, raisedPanel, sideTable, tableLamp, chandelier,
+} from './furnish.js';
+
+const fab = (c) => 'fab:' + c;
+const wood = (c) => 'wood:' + c;
+export const RENO_LABELS = [];
+export const RENO_ROOMS = []; // { rs, level, room } for the walk-mode room readout
+const G2 = (x, y) => toFt(F2(x, y));
+const ftPoly = (pts) => pts.map(([x, y]) => toFt([x, y]));
+
+// ------------------------------------------------------------------ shaker cabinetry (remodel finishes: rcab*, rcounter, rsplash)
+function shaker(k, x0, x1, y0, y1, z, frame = 'rcabDoor', panel = 'rcabPanel') {
+  const m = Math.min(0.22, (x1 - x0) * 0.2, (y1 - y0) * 0.2);
+  k.box(frame, x0, y0, z, x0 + m, y1, z + 0.07); k.box(frame, x1 - m, y0, z, x1, y1, z + 0.07);
+  k.box(frame, x0 + m, y0, z, x1 - m, y0 + m, z + 0.07); k.box(frame, x0 + m, y1 - m, z, x1 - m, y1, z + 0.07);
+  k.box(panel, x0 + m, y0 + m, z, x1 - m, y1 - m, z + 0.035);
+}
+const pull = (k, x, y, z, vertical = false) => (vertical ? k.box('black', x - 0.025, y - 0.35, z + 0.07, x + 0.025, y + 0.35, z + 0.13) : k.box('black', x - 0.3, y - 0.025, z + 0.07, x + 0.3, y + 0.025, z + 0.13));
+function baseRun(k, x0, x1, o = {}) {
+  const d = 1.95, cab = o.cab || 'rcab', fr = o.frame || 'rcabDoor', pn = o.panel || 'rcabPanel';
+  k.box(cab, x0, 0.35, 0, x1, 2.92, d);
+  k.box('blackMatte', x0, 0, 0, x1, 0.35, d - 0.25);
+  const w = x1 - x0, n = Math.max(1, Math.round(w / 1.6)), cw = w / n;
+  for (let i = 0; i < n; i++) {
+    const a = x0 + i * cw + 0.02, b = x0 + (i + 1) * cw - 0.02;
+    if (o.drawers) { for (const [ya, yb] of [[2.2, 2.88], [1.3, 2.16], [0.4, 1.26]]) { shaker(k, a, b, ya, yb, d, fr, pn); pull(k, (a + b) / 2, yb - 0.18, d); } }
+    else { shaker(k, a, b, 2.3, 2.88, d, fr, pn); pull(k, (a + b) / 2, 2.6, d); shaker(k, a, b, 0.4, 2.26, d, fr, pn); pull(k, i % 2 ? a + 0.18 : b - 0.18, 1.95, d, true); }
+  }
+}
+function upperRun(k, x0, x1, y0 = 4.6, y1 = 7.9) {
+  const d = 1.05;
+  k.box('rcab', x0, y0, 0, x1, y1, d);
+  k.box('rcabDoor', x0 - 0.04, y1, 0, x1 + 0.04, y1 + 0.2, d + 0.1);
+  const w = x1 - x0, n = Math.max(1, Math.round(w / 1.4)), cw = w / n;
+  for (let i = 0; i < n; i++) { const a = x0 + i * cw + 0.02, b = x0 + (i + 1) * cw - 0.02; shaker(k, a, b, y0 + 0.05, y1 - 0.05, d); pull(k, i % 2 ? a + 0.18 : b - 0.18, y0 + 0.45, d, true); }
+}
+function shelf(k, x0, x1, y) { k.box(wood('#b98d5f'), x0, y, 0, x1, y + 0.15, 0.9); }
+function counterTop(k, x0, x1, d = 2.1, splashTop = 4.6) {
+  k.box('rcounter', x0, 2.92, 0, x1, 3.08, d);
+  if (splashTop) k.box('rsplash', x0, 3.08, 0, x1, splashTop, 0.04);
+}
+function farmSink(k, xc) {
+  k.box('porcelain', xc - 1.5, 1.95, 1.7, xc + 1.5, 3.0, 2.02);
+  k.box('col:#e3e1dc', xc - 1.35, 3.081, 0.35, xc + 1.35, 3.086, 1.75);
+  k.cyl('black', xc, 0.25, 0.06, 0.05, 3.08, 4.2, 8); k.box('black', xc - 0.04, 4.1, 0.25, xc + 0.04, 4.18, 0.95);
+}
+function proRange(k, x0, x1) { // 36" range with a plaster hood to the ceiling
+  const d = 2.2;
+  k.box('steel', x0, 0, 0, x1, 3.0, d);
+  k.box('black', x0, 3.0, 0, x1, 3.05, d);
+  for (const zz of [0.6, 1.6]) for (let i = 0; i < 3; i++) k.cbox('blackMatte', x0 + 0.5 + i * ((x1 - x0 - 1) / 2), zz, 0.85, 0.85, 3.05, 3.12);
+  k.box('black', x0 + 0.25, 0.55, d, x1 - 0.25, 2.2, d + 0.02);
+  k.box('chrome', x0 + 0.3, 2.3, d + 0.02, x1 - 0.3, 2.37, d + 0.15);
+  k.prof('plaster', [[0, 5.7], [1.9, 5.7], [1.9, 6.0], [1.0, 8.95], [0, 8.95]], x0 - 0.2, x1 + 0.2);
+  k.box(wood('#b98d5f'), x0 - 0.25, 5.55, 0, x1 + 0.25, 5.75, 2.0);
+  k.box('rsplash', x0, 3.05, 0, x1, 5.6, 0.04);
+  k.solid(x0, 0, x1, d, 0, 3.05);
+}
+function builtInFridge(k, x0, x1) {
+  const d = 2.1;
+  k.box('steel', x0, 0, 0, x1, 6.9, d);
+  const xm = (x0 + x1) / 2;
+  k.box('black', xm - 0.01, 2.5, d, xm + 0.01, 6.85, d + 0.01); k.box('black', x0, 2.45, d, x1, 2.5, d + 0.01);
+  for (const x of [xm - 0.15, xm + 0.15]) k.box('black', x - 0.03, 3.4, d + 0.04, x + 0.03, 5.8, d + 0.16);
+  k.box('rcab', x0, 6.9, 0, x1, 8.4, 2.1); shaker(k, x0 + 0.02, x1 - 0.02, 6.92, 8.38, 2.1);
+  k.solid(x0, 0, x1, d, 0, 7);
+}
+function tallPantry(k, x0, x1, top = 8.4) {
+  k.box('rcab', x0, 0.35, 0, x1, top, 2.0); k.box('blackMatte', x0, 0, 0, x1, 0.35, 1.75);
+  const xm = (x0 + x1) / 2;
+  for (const [a, b] of [[x0 + 0.02, xm - 0.01], [xm + 0.01, x1 - 0.02]]) { shaker(k, a, b, 3.6, top - 0.03, 2.0); shaker(k, a, b, 0.4, 3.55, 2.0); }
+  pull(k, xm - 0.15, 3.6, 2.0, true); pull(k, xm + 0.15, 3.6, 2.0, true);
+  k.solid(x0, 0, x1, 2.0, 0, top);
+}
+function island(k, w = 9, d = 4.2, seat = 1.2) { // centered; working side faces +z, seating overhang on -z
+  k.box('island', -w / 2 + 0.1, 0.35, -d / 2 + seat, w / 2 - 0.1, 2.92, d / 2);
+  k.box('blackMatte', -w / 2 + 0.2, 0, -d / 2 + seat + 0.1, w / 2 - 0.2, 0.35, d / 2 - 0.25);
+  const n = Math.round(w / 1.8), cw = (w - 0.2) / n;
+  for (let i = 0; i < n; i++) {
+    const a = -w / 2 + 0.1 + i * cw + 0.02, b = a + cw - 0.04;
+    shaker(k, a, b, 2.3, 2.88, d / 2, 'island', 'island'); pull(k, (a + b) / 2, 2.6, d / 2);
+    shaker(k, a, b, 0.4, 2.26, d / 2, 'island', 'island'); pull(k, (a + b) / 2, 2.0, d / 2);
+  }
+  k.box('rcounter', -w / 2, 2.92, -d / 2, w / 2, 3.1, d / 2 + 0.08);
+  k.box('rcounter', -w / 2, 0, -d / 2, -w / 2 + 0.18, 2.92, d / 2 + 0.08);
+  k.box('rcounter', w / 2 - 0.18, 0, -d / 2, w / 2, 2.92, d / 2 + 0.08);
+  k.solid(-w / 2, -d / 2 + seat - 0.4, w / 2, d / 2, 0, 3.1);
+}
+function stool(k, color = '#c9b8a0') { // counter stool, 26" seat, faces +z
+  for (const [x, z] of [[-0.55, -0.55], [0.55, -0.55], [-0.55, 0.55], [0.55, 0.55]]) k.cyl('black', x, z, 0.04, 0.05, 0, 2.15, 6);
+  k.box('black', -0.5, 0.8, -0.5, 0.5, 0.85, 0.5);
+  k.soft(fab(color), -0.7, 2.1, -0.65, 0.7, 2.35, 0.65, 0.1);
+  k.soft(fab(color), -0.65, 2.3, -0.72, 0.65, 3.25, -0.55, 0.08);
+}
+function pendant(k, ceilY, hang, key = 'black') {
+  const y = ceilY - hang;
+  k.cyl(key, 0, 0, 0.2, 0.2, ceilY - 0.06, ceilY, 10);
+  k.cyl(key, 0, 0, 0.015, 0.015, y + 0.9, ceilY - 0.06, 4);
+  k.cyl('shade', 0, 0, 0.12, 0.55, y + 0.4, y + 0.9, 14); k.cyl('shade', 0, 0, 0.55, 0.35, y, y + 0.4, 14);
+}
+function orb(k, ceilY, hang, r = 1.0) { // frosted globe pendant on a black stem
+  const y = ceilY - hang;
+  k.cyl('black', 0, 0, 0.25, 0.25, ceilY - 0.08, ceilY, 10); k.cyl('black', 0, 0, 0.03, 0.03, y + r, ceilY - 0.08, 6);
+  for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI, r0 = Math.sin(a) * r, r1 = Math.sin(a + Math.PI / 6) * r; k.cyl('shade', 0, 0, r0, r1, y + r - Math.cos(a) * r, y + r - Math.cos(a + Math.PI / 6) * r, 16, 1, false); }
+}
+function linearPendant(k, ceilY, hang, len = 5) {
+  const y = ceilY - hang;
+  for (const x of [-len / 2 + 0.3, len / 2 - 0.3]) k.box('black', x - 0.01, y, -0.01, x + 0.01, ceilY, 0.01);
+  k.box('black', -len / 2, y - 0.25, -0.25, len / 2, y, 0.25); k.box('shade', -len / 2 + 0.1, y - 0.27, -0.2, len / 2 - 0.1, y - 0.24, 0.2);
+}
+
+// ------------------------------------------------------------------ kitchen opened to the family room
+function buildKitchen() {
+  const rs = 'on:kitchen', bat = renoBat(rs, 'f1'), L = LV.f1;
+  const at = (x, y, rot = 0, y0 = 0, b = bat, t = rs) => { const [lx, lz] = F(x, y); return new Kit(b, t).at(lx, lz, y0, rot); };
+  // walls: the stub wall and pier go; a beam carries the bedroom wall above. Counter-height window over the new sink.
+  buildWall(L, [474, 197.5, 474, 305, 'i', [[197.5, 305, 'o', { head: 8.4 }]], { top: 10, rs }]);
+  buildWall(L, [323.5, 197.5, 323.5, 351.5, 'e', [[257, 313, 'w', { g: 'cs2', sill: 3.6 }]], { rs }]);
+  // family room floor leveled to the kitchen (no step)
+  const famRoom = L._rooms.find((r) => r.vault);
+  bat.prism({ top: 'subfloor', bottom: 'joist', side: 'joist' }, famRoom.pts, -1.5, 0);
+  bat.poly(famRoom.floorKey, famRoom.pts, 0.012);
+  addFloorPoly(famRoom.pts, [], 0, rs);
+  // west wall: sink under the window, dishwasher, 36" range + plaster hood at the north end
+  {
+    const { k, len } = runKit(bat, rs, F(326.5, 200.5), F(326.5, 351.5), [1, 0]);
+    baseRun(k, 0, 4.4, { drawers: true }); baseRun(k, 4.4, 6.4);
+    k.box('steel', 6.4, 0.4, 1.95, 8.4, 2.88, 2.0); k.box('rcab', 6.4, 0.35, 0, 8.4, 2.92, 1.95);
+    baseRun(k, 8.4, 9.1, { drawers: true });
+    counterTop(k, 0, 9.1); farmSink(k, 5.4);
+    k.box('rsplash', 0, 3.08, 0, 2.7, 4.6, 0.04); k.box('rsplash', 8.1, 3.08, 0, 9.1, 4.6, 0.04);
+    upperRun(k, 0, 2.6); shelf(k, 8.25, 8.85, 5.0); shelf(k, 8.25, 8.85, 6.4);
+    proRange(k, 9.1, 12.1); baseRun(k, 12.1, len); counterTop(k, 12.1, len);
+    k.solid(0, 0, 9.1, 2.1, 0, 3.08); k.solid(12.1, 0, len, 2.1, 0, 3.08);
+  }
+  // tall pantry beside the patio slider
+  { const { k } = runKit(bat, rs, F(440, 200.5), F(472, 200.5), [0, 1]); tallPantry(k, 0, 2.6); }
+  // 9 ft island facing the family room, seating on the family-room side, three pendants
+  {
+    const [ix, iz] = F(428.5, 299.5);
+    const ik = new Kit(bat, rs).at(ix, iz, 0, -90); // working side faces west (the sink + range), seats face it from the east
+    island(ik, 9, 4.2, 1.25);
+    for (const dx of [-3.0, -1.0, 1.0, 3.0]) { const p = ik.P(dx, 0, -2.7); stool(new Kit(renoBat('on:kitchen&furn', 'f1'), 'on:kitchen&furn').at(p.x, p.z, 0, -90), '#c9bba6'); }
+    for (const dz of [-3, 0, 3]) pendant(new Kit(bat, rs).at(ix, iz + dz, 0), 9, 2.6);
+  }
+  for (const [x, y] of [[360, 220], [360, 330], [470, 230]]) recessed(at(x, y), 9);
+  // old kitchen -> dining: banquette in the window bump, table for six, fridge + pantry wall on the hall side
+  {
+    const { k, len } = runKit(bat, rs, F(294.9, 360), F(294.9, 488), [1, 0]);
+    k.box('rcab', 0, 0, 0, len, 1.45, 1.8); k.box('rcabDoor', 0, 1.45, 0, len, 1.55, 1.9);
+    k.soft(fab('#7d8a86'), 0.05, 1.55, 0.05, len - 0.05, 1.85, 1.85, 0.08);
+    k.soft(fab('#7d8a86'), 0.05, 1.85, 0.0, len - 0.05, 3.2, 0.45, 0.12);
+    for (let i = 0; i < 3; i++) k.soft(fab(['#c9a96e', '#e9e3d6', '#a35d4b'][i]), 1.5 + i * 3.4, 1.85, 0.3, 2.9 + i * 3.4, 3.0, 0.7, 0.15);
+    k.solid(0, 0, len, 1.9, 0, 1.85);
+    const t = at(345, 424, 90, 0, renoBat('on:kitchen&furn', 'f1'), 'on:kitchen&furn');
+    for (const [cx, cz, r] of diningTable(t, 7, 3.5, { color: '#8a6a4a' })) { if (cz < -0.1) continue; const p = t.P(cx, 0, cz); chair(new Kit(renoBat('on:kitchen&furn', 'f1'), 'on:kitchen&furn').at(p.x, p.z, 0, r), '#d8d2c6', '#2b2b2b'); }
+  }
+  {
+    const { k, u } = runKit(bat, rs, F(473.4, 390), F(473.4, 491.4), [-1, 0]);
+    builtInFridge(k, 0.1, 3.1); tallPantry(k, 3.1, 5.6); baseRun(k, 5.6, 8.3); counterTop(k, 5.6, 8.3); upperRun(k, 5.6, 8.3);
+    k.cyl('black', 6.5, 0.8, 0.35, 0.35, 3.08, 4.2, 12);
+    k.solid(5.6, 0, 8.3, 2.1, 0, 3.08); void u;
+  }
+  // family room restaged around the (now level) fireplace wall: sofa + two chairs, TV over the mantel
+  const FK = renoBat('on:kitchen&furn', 'f1'), fk = (x, y, rot, fn) => { const [lx, lz] = F(x, y); fn(new Kit(FK, 'on:kitchen&furn').at(lx, lz, 0, rot)); };
+  fk(588, 150, 0, (k) => rug(k, 9, 12, '#d8d3ca', '#9c9284'));
+  fk(588, 205, 180, (k) => sofa(k, 8.5, { color: '#cfc6b8', cushion: '#d8d0c3', pillows: ['#5d6b73', '#b48a5a'] }));
+  fk(588, 150, 180, (k) => coffeeTable(k, 4.5, 2.4, '#8a6a4a'));
+  fk(520, 120, 70, (k) => armchair(k, { color: '#8c7b68' }));
+  fk(656, 120, -70, (k) => armchair(k, { color: '#8c7b68' }));
+  // the dining chandelier over the new table (style follows the refresh option)
+  { const [lx, lz] = F(345, 424); chandelier(new Kit(renoBat('on:kitchen&off:refresh', 'f1'), 'on:kitchen&off:refresh').at(lx, lz, 0), 9, 3.0, 5); linearPendant(new Kit(renoBat('on:kitchen&on:refresh', 'f1'), 'on:kitchen&on:refresh').at(lx, lz, 0, 90), 9, 3.0, 5); }
+  // labels: the swapped rooms
+  const rooms = [
+    { name: 'Kitchen (remodel)', dims: "open to the family room · 9' island", floor: 'oak', wall: 'paint:#f3f2ee', poly: [[323.5, 197.5], [474, 197.5], [474, 340], [323.5, 340]] },
+    { name: 'Dining (remodel)', dims: 'banquette in the bump · seats 6', floor: 'oak', wall: 'paint:#f3f2ee', poly: [[323.5, 340], [474, 340], [474, 494.5], [292, 494.5], [292, 351.5], [323.5, 351.5]] },
+  ].map((r, i) => roleRoom(L, r, i, 'kr'));
+  for (const r of rooms) RENO_ROOMS.push({ rs, level: 'f1', room: r });
+  RENO_LABELS.push(...buildLabels(L, renoGroup(rs, 'f1'), rooms).map((l) => ((l.userData.rs = rs), l)));
+}
+
+// ------------------------------------------------------------------ kitchen | living room opening
+function buildOpenLiving() {
+  const rs = 'on:openLiving', L = LV.f1;
+  buildWall(L, [323.5, 494.5, 476, 494.5, 'i', [[333, 467, 'o', { head: 8.3, cased: true }]], { rs }]);
+}
+
+// ------------------------------------------------------------------ cosmetic refresh (fixed elements)
+function fireplaceNew(k) { // limewash plaster breast to the ceiling, floating oak beam mantel, linear firebox, stone ledge hearth
+  k.box('plaster', -3.4, 0, 0, 3.4, 9.2, 0.7);
+  k.box('black', -2.0, 0.9, 0.7, 2.0, 2.5, 0.72);
+  k.box('ember', -1.6, 1.0, 0.6, 1.6, 1.15, 0.71);
+  k.box(wood('#a87a4c'), -3.0, 4.2, 0.7, 3.0, 4.7, 1.35);
+  k.box('col:#b8b2a6', -3.6, 0, 0.7, 3.6, 0.55, 2.0);
+  k.solid(-3.6, 0, 3.6, 2.0, 0, 9);
+}
+function ironSpindles(bat, a, b, h0, h1) {
+  const dx = b[0] - a[0], dz = b[1] - a[1], len = Math.hypot(dx, dz), cnt = Math.max(2, Math.round(len / 0.38));
+  for (let i = 1; i < cnt; i++) { const f = i / cnt, x = a[0] + dx * f, z = a[1] + dz * f, h = h0 + (h1 - h0) * f; bat.aabox('black', x - 0.03, h, z - 0.03, x + 0.03, h + 2.9, z + 0.03); }
+}
+function buildRefresh() {
+  const rs = 'on:refresh';
+  { const [lx, lz] = F(593, 60.5); for (const [tag, y] of [['on:refresh&off:kitchen', H.family], ['on:refresh&on:kitchen', 0]]) fireplaceNew(new Kit(renoBat(tag, 'f1'), tag).at(lx, lz, y, 0)); }
+  // stair + balcony: square black iron spindles in place of the turned oak ones
+  const S = stairGeom(), t2 = S.treads[2], b1 = renoBat(rs, 'f1'), b2 = renoBat(rs, 'f2');
+  ironSpindles(b1, [S.x0 + 0.05, t2.z1 - 0.1], [S.x0 + 0.05, S.zTop], t2.top, H.f2);
+  ironSpindles(b2, [S.x0 + 0.05, S.zTop + 0.05], G2(752.5, 215.5), H.f2, H.f2);
+  ironSpindles(b2, G2(752.5, 215.5), G2(752.5, 245.5), H.f2, H.f2);
+  ironSpindles(b2, G2(783.5, 163), G2(835.5, 163), H.f2, H.f2);
+  // light fixtures: big frosted orb in the two-story foyer, linear pendant over the dining table
+  { const [lx, lz] = F(520, 500); orb(new Kit(b1, rs).at(lx, lz, 0), 18, 6.5, 1.3); }
+  { const [lx, lz] = F(398, 250); linearPendant(new Kit(renoBat('on:refresh&off:kitchen', 'f1'), 'on:refresh&off:kitchen').at(lx, lz, 0), 9, 3.0, 5); }
+}
+
+// ------------------------------------------------------------------ primary bath remodel
+function buildPrimaryBath() {
+  const rs = 'on:pbath', bat = renoBat(rs, 'f2');
+  const at = (x, y, rot = 0) => { const [lx, lz] = G2(x, y); return new Kit(bat, rs).at(lx, lz, H.f2, rot); };
+  // new large-format floor
+  bat.poly('tile:#d9d5ce', ftPoly([[863, 129], [893, 129], [893, 109.5], [931, 109.5], [931, 185], [863, 185]].map(([x, y]) => F2(x, y))), H.f2 + 0.03);
+  // 5'4" x 5'6" walk-in shower in the corner: glass on two sides, bench, rain head
+  {
+    const [x0, z0] = G2(899, 110.5), [x1, z1] = G2(930, 143);
+    const k = new Kit(bat, rs).at(0, 0, H.f2, 0);
+    k.box('tile:#ecebe7', x0, 0, z0, x1, 0.06, z1);
+    k.box('tile:#ecebe7', x0 + 0.05, 0, z0, x1, 8.0, z0 + 0.05); k.box('tile:#ecebe7', x1 - 0.05, 0, z0, x1, 8.0, z1);
+    k.box('showerGlass', x0, 0.06, z1 - 0.02, x1, 7.0, z1 + 0.02); k.box('black', x0, 7.0, z1 - 0.03, x1, 7.05, z1 + 0.03);
+    const zg = z0 + (z1 - z0) * 0.45;
+    k.box('showerGlass', x0 - 0.02, 0.06, z0, x0 + 0.02, 7.0, zg); k.box('black', x0 - 0.03, 0.06, zg - 0.03, x0 + 0.03, 7.0, zg + 0.03);
+    k.solid(x0 - 0.05, z1 - 0.05, x1, z1 + 0.05, 0, 7); k.solid(x0 - 0.05, z0, x0 + 0.05, zg, 0, 7);
+    k.box('tile:#ecebe7', x0 + 0.5, 0, z0 + 0.05, x1 - 0.1, 1.5, z0 + 1.3); k.solid(x0 + 0.5, z0, x1, z0 + 1.3, 0, 1.5);
+    const hk = new Kit(bat, rs).at((x0 + x1) / 2, (z0 + z1) / 2, H.f2); hk.cyl('black', 0, 0, 0.02, 0.02, 7.3, 8, 4); hk.cyl('chrome', 0, 0, 0.55, 0.55, 7.25, 7.3, 18);
+  }
+  // freestanding soaking tub under the window
+  { const k = at(914, 161.5, 0); k.cyl('porcelain', 0, 0, 1.35, 1.25, 0, 1.9, 24, 2.05); k.cyl('col:#eef1f2', 0, 0, 1.15, 1.15, 1.9, 1.905, 24, 2.1); k.cyl('black', 0, -2.6, 0.05, 0.05, 0, 3.4, 6); k.box('black', -0.04, 3.3, -2.6, 0.04, 3.36, -2.0); k.solid(-1.3, -2.7, 1.3, 2.7, 0, 1.9); }
+  // 6 ft floating double vanity + linen tower on the west wall
+  { const k = at(864, 162, 90);
+    k.box('rcab', -3, 1.0, 0, 3, 2.75, 1.8); for (const s of [-1, 1]) { shaker(k, s > 0 ? 0.05 : -2.95, s > 0 ? 2.95 : -0.05, 1.05, 2.7, 1.8); pull(k, s * 1.5, 2.5, 1.8); }
+    k.box('rcounter', -3.05, 2.75, 0, 3.05, 2.9, 1.9);
+    for (const x of [-1.5, 1.5]) { k.cyl('porcelain', x, 0.95, 0.7, 0.6, 2.9, 3.25, 18, 0.75); k.cyl('black', x, 0.2, 0.04, 0.04, 2.9, 3.6, 6); k.box('black', x - 0.03, 3.5, 0.2, x + 0.03, 3.56, 0.6); k.box('mirror', x - 1.1, 3.9, 0, x + 1.1, 6.6, 0.05); k.box('black', x - 1.15, 3.85, -0.01, x + 1.15, 6.65, 0.03); }
+    for (const x of [-2.75, 0, 2.75]) { k.box('black', x - 0.06, 5.0, 0, x + 0.06, 6.1, 0.15); k.cyl('shade', x, 0.3, 0.14, 0.14, 5.2, 5.9, 10); }
+    k.solid(-3, 0, 3, 1.9, 1, 2.9); }
+  { const k = at(864, 135, 90); k.box('rcab', -0.85, 0, 0, 0.85, 7.0, 1.7); shaker(k, -0.8, 0.8, 3.6, 6.9, 1.7); shaker(k, -0.8, 0.8, 0.4, 3.5, 1.7); k.solid(-0.85, 0, 0.85, 1.7, 0, 7); }
+  { const k = at(914, 161.5); k.cyl('black', 0, 0, 0.02, 0.02, 5.6, 8, 4); for (let i = 0; i < 4; i++) k.cyl('shade', 0, 0, 0.5 - i * 0.1, 0.4 - i * 0.1, 5.4 + i * 0.12, 5.52 + i * 0.12, 14); }
+  const rooms = [{ name: 'Primary Bath (remodel)', dims: "5'4\" x 5'6\" shower · soaking tub · 6' vanity", floor: 'tileBeige', wall: 'paint:#f4f3f0', poly: [[863, 129], [893, 129], [893, 109.5], [931, 109.5], [931, 185], [863, 185]] }].map((r, i) => roleRoom(LV.f2, r, i, 'pb'));
+  for (const r of rooms) RENO_ROOMS.push({ rs, level: 'f2', room: r });
+  RENO_LABELS.push(...buildLabels(LV.f2, renoGroup(rs, 'f2'), rooms).map((l) => ((l.userData.rs = rs), l)));
+}
+
+// ------------------------------------------------------------------ laundry / mudroom
+function lockers(k, len, n) { // back at z = 0: open lockers over a bench, cubbies above
+  const cw = len / n;
+  k.box('rcab', 0, 0, 0, len, 7.2, 0.15);
+  for (let i = 0; i <= n; i++) k.box('rcabDoor', i * cw - 0.04, 0, 0, i * cw + 0.04, 7.2, 1.6);
+  k.box('rcabDoor', 0, 1.45, 0, len, 1.6, 1.6); k.soft('fab:#7c8a8f', 0.05, 1.6, 0.25, len - 0.05, 1.8, 1.55, 0.06);
+  k.box('rcabDoor', 0, 5.6, 0, len, 5.7, 1.6); k.box('rcabDoor', 0, 7.1, 0, len, 7.25, 1.7);
+  for (let i = 0; i < n; i++) { k.box('brass', i * cw + cw / 2 - 0.15, 4.6, 0.15, i * cw + cw / 2 + 0.15, 4.7, 0.4); k.box('fab:#6b5a48', i * cw + 0.2, 0.05, 0.25, i * cw + cw - 0.2, 1.0, 1.4); for (let j = 0; j < 2; j++) k.soft(fab(['#5d6b73', '#a9895f', '#7a4f44', '#3d4c5e'][(i + j) % 4]), i * cw + 0.25 + j * 0.6, 2.4, 0.2, i * cw + 0.75 + j * 0.6, 4.55, 0.5, 0.08); }
+  k.solid(0, 0, len, 1.6, 0, 7.2);
+}
+function buildMudroom() {
+  const rs = 'on:mud', bat = renoBat(rs, 'f1'), L = LV.f1;
+  buildWall(L, [688, 378, 688, 451.5, 'i', [[384, 447, 'o', { cased: true, head: 7.6 }]], { rs }]);
+  // slate-look tile for the whole laundry/mudroom
+  const room = L._rooms.find((r) => r.name === 'Laundry');
+  bat.poly('slate', room.pts, 0.03);
+  bat.poly('slate', ftPoly([[688, 378], [725.5, 378], [725.5, 451.5], [688, 451.5]]), 0.03);
+  // stacked washer + dryer in the old closet, shelf + cabinet above
+  { const [x, z] = F(723.4, 414); const k = new Kit(bat, rs).at(x, z, 0, -90);
+    for (const [y0, y1, front] of [[0, 3.0, true], [3.05, 6.0, false]]) { k.box('porcelain', -1.25, y0, 0.1, 1.25, y1, 2.45); k.cyl('col:#b9c0c6', 0, 2.46, 0.75, 0.75, y0 + 1.5 - 0.0, y0 + 1.5 + 0.0 + 0.01, 18); k.box('col:#d9dcdf', -1.0, y1 - 0.45, 2.45, 1.0, y1 - 0.15, 2.47); void front; }
+    k.box('rcab', -1.4, 6.2, 0, 1.4, 8.2, 1.4); shaker(k, -1.35, -0.02, 6.25, 8.15, 1.4); shaker(k, 0.02, 1.35, 6.25, 8.15, 1.4); k.solid(-1.25, 0.1, 1.25, 2.45, 0, 6); }
+  // lockers + bench on the stair wall, hooks, boot tray
+  { const { k, len } = runKit(bat, rs, F(612.6, 428), F(612.6, 492), [1, 0]); lockers(k, len, 4); }
+  { const [x, z] = F(650, 515); new Kit(bat, rs).at(x, z, 0, 0).box('blackMatte', -1.2, 0.03, -0.7, 1.2, 0.12, 0.7); }
+  const rooms = [{ name: 'Laundry / Mudroom', dims: 'stacked W/D in the niche · 4 lockers', floor: 'slate', wall: 'paint:#f1f0ec', poly: room.poly }].map((r, i) => roleRoom(L, r, i, 'md'));
+  for (const r of rooms) RENO_ROOMS.push({ rs, level: 'f1', room: r });
+  RENO_LABELS.push(...buildLabels(L, renoGroup(rs, 'f1'), rooms).map((l) => ((l.userData.rs = rs), l)));
+}
+
+// ------------------------------------------------------------------ modern facade (geometry; finishes swap in app.js)
+function buildFacade() {
+  const rs = 'on:facade', bat = renoBat(rs, 'f1'), rb = renoBat(rs, 'roof');
+  // cedar garage doors get a band of frosted glass and black frames (overlay just outside the doors)
+  for (const [y0, y1] of [[403, 594], [613, 711]]) {
+    const [x, za] = F(988.5, y0 + 3), [, zb] = F(0, y1 - 3);
+    const k = new Kit(bat, rs);
+    k.box('black', x + 0.1, 5.6, za, x + 0.16, 6.6, zb);
+    const n = Math.round((zb - za) / 2.0);
+    for (let i = 0; i < n; i++) { const a = za + ((zb - za) * i) / n + 0.12, b = za + ((zb - za) * (i + 1)) / n - 0.12; k.box('frosted', x + 0.16, 5.7, a, x + 0.18, 6.5, b); }
+    k.box('black', x + 0.1, -0.6, za - 0.25, x + 0.2, 7.4, za); k.box('black', x + 0.1, -0.6, zb, x + 0.2, 7.4, zb + 0.25); k.box('black', x + 0.1, 7.15, za - 0.25, x + 0.2, 7.4, zb + 0.25);
+  }
+  // cedar slat accent wall at the entry (between the door and the stacked windows), full height
+  { const [x0, z] = F(556, 566.6), [x1] = F(634, 0); const k = new Kit(bat, rs);
+    k.box('col:#2b2c2e', x0, 2.6, z, x1, 18.0, z + 0.05);
+    for (let x = x0 + 0.1; x < x1 - 0.1; x += 0.33) k.box(wood('#a66d3c'), x, 2.6, z + 0.05, x + 0.22, 18.0, z + 0.2); }
+  // flat black steel entry canopy with a cedar soffit, no post
+  { const [x0, z0] = F(476, 566.6), [x1, z1] = F(566, 616); const k = new Kit(bat, rs);
+    k.box('col:#1f2022', x0, 9.6, z0, x1, 10.1, z1); k.box(wood('#a66d3c'), x0 + 0.15, 9.5, z0, x1 - 0.15, 9.6, z1 - 0.15);
+    for (const x of [x0 + 0.8, x1 - 0.8]) k.box('col:#1f2022', x - 0.03, 10.1, z0, x + 0.03, 13.0, z0 + 0.05); }
+  // modern sconces + house number at the door
+  { const [x, z] = F(474.2, 590); const k = new Kit(bat, rs).at(x, z, 0, 90); k.box('col:#1f2022', -0.12, 5.6, 0, 0.12, 7.0, 0.3); k.box('bulb', -0.08, 5.5, 0.1, 0.08, 5.6, 0.25); k.box('bulb', -0.08, 7.0, 0.1, 0.08, 7.1, 0.25); }
+  void rb;
+}
+
+// ------------------------------------------------------------------ backyard: bigger patio + playground
+function pergola(k, x0, x1, z0, z1, top = 8.6) {
+  const W = wood('#8a5a34');
+  for (const x of [x0, x1]) for (const z of [z0, z1]) { k.cbox(W, x, z, 0.5, 0.5, 0, top + 0.6); k.cbox('foundation', x, z, 0.9, 0.9, 0, 0.3); k.solid(x - 0.3, z - 0.3, x + 0.3, z + 0.3, 0, top); }
+  for (const z of [z0, z1]) for (const dz of [-0.33, 0.33]) k.box(W, x0 - 1.2, top - 0.2, z + dz - 0.08, x1 + 1.2, top + 0.65, z + dz + 0.08);
+  for (let x = x0 - 0.9; x <= x1 + 0.9; x += 1.4) k.box(W, x - 0.08, top + 0.65, z0 - 1.4, x + 0.08, top + 1.25, z1 + 1.4);
+  for (let z = z0 - 1.0; z <= z1 + 1.0; z += 0.9) k.box(W, x0 - 1.3, top + 1.25, z - 0.06, x1 + 1.3, top + 1.4, z + 0.06);
+  for (let x = x0; x <= x1; x += 1.3) for (const z of [z0 + (z1 - z0) / 4, z0 + (z1 - z0) / 2, z0 + (3 * (z1 - z0)) / 4]) k.cyl('bulb', x, z, 0.08, 0.08, top - 0.25, top - 0.1, 6);
+}
+function buildPatio() {
+  const rs = 'on:patio', bat = renoBat(rs, 'site'), y = -0.97;
+  // L-shaped paver patio: off the dining slider and along the back of the family room
+  const poly = [[-0.5, 13.6], [14.7, 13.6], [14.7, 2.2], [36.5, 2.2], [36.5, -15], [-0.5, -15]];
+  bat.prism({ top: 'pavers', side: 'foundation' }, poly, -1.05, y);
+  addFloorPoly(poly, [], y, rs);
+  for (const [a, b] of [[[-0.5, -15], [36.5, -15]], [[-0.5, -15], [-0.5, 13.6]], [[36.5, -15], [36.5, 2.2]]]) { const k = new Kit(bat, rs); k.box('tile:#57534d', Math.min(a[0], b[0]) - 0.6, -1.05, Math.min(a[1], b[1]) - 0.6, Math.max(a[0], b[0]) + 0.6, y + 0.005, Math.max(a[1], b[1]) + 0.6); }
+  // wide steps down from the slider
+  { const [sx0] = F(350, 0), [sx1] = F(442, 0), [, sz] = F(0, 197.5); const k = new Kit(bat, rs);
+    k.box('pavers', sx0, y, sz - 2.2, sx1, -0.66, sz); k.box('pavers', sx0 + 0.3, y, sz - 1.1, sx1 - 0.3, -0.33, sz); addFloorPoly([[sx0, sz - 2.2], [sx1, sz - 2.2], [sx1, sz - 1.1], [sx0, sz - 1.1]], [], -0.66, rs); addFloorPoly([[sx0 + 0.3, sz - 1.1], [sx1 - 0.3, sz - 1.1], [sx1 - 0.3, sz], [sx0 + 0.3, sz]], [], -0.33, rs); }
+  const k = new Kit(bat, rs).at(0, 0, y, 0);
+  pergola(k, 1.0, 13.5, 0.5, 9.5);
+  const FB = renoBat('on:patio&furn', 'site'), fk = (x, z, rot, fn) => fn(new Kit(FB, 'on:patio&furn').at(x, z, y, rot));
+  { const t = new Kit(FB, 'on:patio&furn').at(7.2, 5, y, 90); for (const [cx, cz, r] of diningTable(t, 7, 3.5, { color: '#4a4a4a' })) { const p = t.P(cx, 0, cz); patioChair(new Kit(FB, 'on:patio&furn').at(p.x, p.z, y, r)); } }
+  // lounge: outdoor sectional + chairs around a fire pit
+  fk(26, -6.5, 0, firePit);
+  fk(26, -12.6, 0, (k2) => sofa(k2, 8.5, { color: '#c8c1b4', cushion: '#d6d0c4', pillows: ['#2f5d6e', '#c98a3a'] }));
+  for (const [dx, rot] of [[-5.2, 90], [5.2, -90]]) fk(26 + dx, -6.5, rot, (k2) => adirondack(k2, '#2f4a5a'));
+  // grill counter along the family room wall
+  fk(32, 1.5, 180, (k2) => { k2.box('stone', -4, 0, 0, 4, 3.0, 2.4); k2.box('col:#3a3a3a', -4.05, 3.0, -0.05, 4.05, 3.15, 2.5); k2.box('steel', -1.6, 3.15, 0.3, 1.6, 4.0, 2.2); k2.solid(-4, 0, 4, 2.4, 0, 3); });
+  const L = { ...LV.f1, id: 'site' };
+  RENO_LABELS.push(...buildLabels(L, renoGroup(rs, 'site'), [{ name: 'Patio (new)', dims: '~900 sq ft · pergola dining · fire pit lounge', pts: [[3, -10], [20, -10], [20, 0], [3, 0]], y: -0.9 }]).map((l) => ((l.userData.rs = rs), (l.userData.level = 'ext'), l)));
+}
+function buildPlay() {
+  const rs = 'on:play', bat = renoBat(rs, 'site'), G = -1;
+  const cx = 58, cz = -30;
+  bat.poly('mulch', [[cx - 13, cz - 9], [cx + 13, cz - 9], [cx + 13, cz + 9], [cx - 13, cz + 9]], G + 0.05);
+  for (const [x0, z0, x1, z1] of [[cx - 13.3, cz - 9.3, cx + 13.3, cz - 9], [cx - 13.3, cz + 9, cx + 13.3, cz + 9.3], [cx - 13.3, cz - 9, cx - 13, cz + 9], [cx + 13, cz - 9, cx + 13.3, cz + 9]]) bat.aabox('cedar', x0, G, z0, x1, G + 0.45, z1);
+  const k = new Kit(bat, rs).at(cx, cz, G, 90);
+  const W = 'cedar', fx = -6.5;
+  for (const x of [fx - 2.5, fx + 2.5]) for (const z of [-2.5, 2.5]) k.cbox(W, x, z, 0.33, 0.33, 0, 10.2);
+  k.box(W, fx - 2.6, 4.8, -2.6, fx + 2.6, 5.05, 2.6);
+  for (const z of [-2.5, 2.5]) for (let y = 5.3; y < 7.6; y += 0.45) k.box(W, fx - 2.5, y, z - 0.05, fx + 2.5, y + 0.3, z + 0.05);
+  k.box(W, fx - 2.5, 5.05, -2.5, fx - 2.45, 7.6, 2.5);
+  k.prof('col:#3f7a3c', [[-3.1, 10.0], [3.1, 10.0], [0, 12.4]], fx - 3.0, fx + 3.0);
+  for (let y = 0.9; y < 4.8; y += 0.95) k.box(W, fx + 2.55, y, -1.0, fx + 2.75, y + 0.15, 1.0);
+  k.box(W, fx + 2.55, 0, -1.1, fx + 2.75, 5.0, -0.95); k.box(W, fx + 2.55, 0, 0.95, fx + 2.75, 5.0, 1.1);
+  for (let i = 0; i < 14; i++) k.cbox(['col:#d9452f', 'col:#2f6fbf', 'col:#f2b632', 'col:#3a9b4a'][i % 4], fx - 2.6 - 0.12, -1.8 + (i % 4) * 1.1, 0.25, 0.4, 0.6 + Math.floor(i / 4) * 1.1, 0.95 + Math.floor(i / 4) * 1.1);
+  bat.box('col:#3f9a46', k.P(fx - 1.0, 4.85, 2.6), k.ez().multiplyScalar(9.0).add(V(0, -4.45, 0)), V(0, 0.15, 0), k.ex().multiplyScalar(2.0));
+  k.box(W, fx + 2.5, 8.6, -0.25, 9.5, 9.1, 0.25);
+  for (const s of [-1, 1]) bat.box(W, k.P(9.3, 0, s * 3.4), k.ez().multiplyScalar(-s * 3.2).add(V(0, 8.9, 0)), k.ex().multiplyScalar(0.33), k.ez().multiplyScalar(0.33));
+  for (const [x, kind] of [[0.8, 'swing'], [3.8, 'swing'], [7.0, 'glider']]) {
+    for (const dz of [-0.75, 0.75]) k.box('col:#8c8c8c', x - 0.03, 1.8, dz - 0.03, x + 0.03, 8.6, dz + 0.03);
+    k.box(kind === 'swing' ? 'col:#1e1e1e' : 'col:#2f6fbf', x - 0.4, 1.6, -0.85, x + 0.4, 1.8, 0.85);
+  }
+  k.solid(fx - 2.8, -2.8, fx + 2.8, 2.8, 0, 10);
+  k.solid(9.0, -3.6, 9.6, -3.2, 0, 9); k.solid(9.0, 3.2, 9.6, 3.6, 0, 9);
+  // sandbox
+  const sb = new Kit(bat, rs).at(cx - 4, cz + 13, G, 0); sb.box('cedar', -3, 0, -3, 3, 0.8, 3); sb.box('col:#e2d3ae', -2.8, 0.6, -2.8, 2.8, 0.7, 2.8); sb.solid(-3, -3, 3, 3, 0, 0.8);
+  const L = { ...LV.f1, id: 'site' };
+  RENO_LABELS.push(...buildLabels(L, renoGroup(rs, 'site'), [{ name: 'Playground (new)', dims: 'play fort, slide, swings, sandbox', pts: [[cx - 4, cz - 4], [cx + 4, cz - 4], [cx + 4, cz + 4], [cx - 4, cz + 4]], y: 0 }]).map((l) => ((l.userData.rs = rs), (l.userData.level = 'ext'), l)));
+}
+
+// ------------------------------------------------------------------ basement finish + layouts
+// lay:A  rec room + guest suite + gym, lay:B  theater + playroom + office, lay:C  open rec + ping-pong + craft room
+function buildBasement() {
+  const ALL = 'lay:A|lay:B|lay:C', bat = renoBat(ALL, 'b'), Lb = LV.b, y0 = H.basement;
+  const rooms = Lb._rooms.filter((r) => !/Utility|^Closet$/.test(r.name));
+  for (const r of rooms) bat.poly(/Bath/.test(r.name) ? 'tile:#cfcac1' : 'lvp:#b49b7d', r.pts, y0 + 0.025);
+  // the roughed-in bath, finished: toilet, vanity, 3 x 4 ft shower
+  const at = (b, t, x, y, rot = 0) => { const [lx, lz] = P(LV.b, x, y); return new Kit(b, t).at(lx, lz, y0, rot); };
+  toilet(at(bat, ALL, 690, 525, 90));
+  { const k = at(bat, ALL, 763, 474.8, 0); vanity(k, 3.0, 1, { faucet: 'black', frame: 'black', mirrorTop: 6.8 }); lightBar(k, 2.4, 7.0, 3, 'black'); }
+  { const [x0, z0] = P(LV.b, 742, 520), [x1, z1] = P(LV.b, 782, 569); const k = new Kit(bat, ALL).at(0, 0, y0, 0);
+    k.box('tile:#ecebe7', x0, 0, z0, x1, 0.25, z1); k.box('showerGlass', x0 - 0.02, 0.25, z0, x0 + 0.02, 6.8, z1 - 1.6); k.box('black', x0 - 0.03, 6.8, z0, x0 + 0.03, 6.85, z1); k.solid(x0 - 0.05, z0, x0 + 0.05, z1 - 1.6, 0, 6.8); }
+  const lay = (L, x, y, rot, fn) => { const t = 'lay:' + L; fn(at(renoBat(t, 'b'), t, x, y, rot)); };
+  // ---- A: TV on the brown accent wall with a sectional, game table in the bay, wet bar, gym in the north room, guest bedroom east
+  lay('A', 532.2, 430, -90, (k) => wallTV(k, 75));
+  lay('A', 532.2, 430, -90, (k) => mediaConsole(k, 6));
+  lay('A', 383, 430, 90, (k) => sofa(k, 9, { color: '#5e5348', cushion: '#665a4e', pillows: ['#8b6f4e', '#a1886a'] }));
+  lay('A', 455, 430, 90, (k) => coffeeTable(k, 4.5, 2.2, '#4b3426'));
+  lay('A', 455, 430, 0, (k) => rug(k, 9, 12, '#bfb3a2', '#8a7d6c'));
+  lay('A', 455, 655, 0, (k) => { for (const [cx, cz, r] of [[0, 2.7, 180], [0, -2.7, 0], [2.7, 0, -90], [-2.7, 0, 90]]) { const p = k.P(cx, 0, cz); chair(new Kit(k.bat, k.tag).at(p.x, p.z, k.oy, r), '#3e4a54', '#2b2b2b'); } k.cyl(wood('#2f2219'), 0, 0, 2.0, 2.0, 2.4, 2.5, 20); k.cyl(wood('#2f2219'), 0, 0, 0.2, 0.25, 0, 2.4, 8); k.solid(-1.5, -1.5, 1.5, 1.5, 0, 2.5); });
+  lay('A', 615, 210.8, 0, (k) => { k.box('rcab', -5, 0.35, 0, 5, 2.92, 2.0); k.box('rcounter', -5.05, 2.92, 0, 5.05, 3.08, 2.1); k.box('rcab', -5, 4.6, 0, 5, 7.0, 1.1); for (let i = -3; i <= 3; i += 2) shaker(k, i - 0.95, i + 0.95, 0.45, 2.85, 2.0); k.solid(-5, 0, 5, 2.1, 0, 3.08); });
+  lay('A', 615, 262, 180, (k) => { for (const x of [-3, -1, 1, 3]) { const p = k.P(x, 0, -0.2); stool(new Kit(k.bat, k.tag).at(p.x, p.z, k.oy, 0), '#7d6a5a'); } });
+  lay('A', 662, 138, 0, (k) => rubberFloor(k, 17, 9.5));
+  lay('A', 543.3, 138, 90, (k) => powerRack(k));
+  lay('A', 625, 138, 90, (k) => liftBench(k));
+  lay('A', 745, 69.8, 0, (k) => dumbbellRack(k, 5.5));
+  lay('A', 760, 175, -90, (k) => pelotonBike(k));
+  lay('A', 930.7, 320, -90, (k) => bed(k, 'queen', { frame: '#6b4a33', duvet: '#efeae0', accent: '#5f7f8c', headboard: '#cfc6b8' }));
+  lay('A', 930.7, 278, -90, (k) => nightstand(k)); lay('A', 930.7, 362, -90, (k) => nightstand(k));
+  lay('A', 850, 238.3, 0, (k) => dresser(k, 4.5, { lamp: true }));
+  // ---- B: theater in the north room, playroom in the rec room, office in the east room
+  lay('B', 782, 140, -90, (k) => projectionScreen(k, 110));
+  lay('B', 782, 95, -90, (k) => towerSpeaker(k)); lay('B', 782, 185, -90, (k) => towerSpeaker(k));
+  for (const [x, h] of [[680, 0], [575, 0.8]]) for (const y of [100, 140, 180]) lay('B', x, y, -90, (k) => { if (h) k.box('col:#3a302a', -1.6, 0, -1.7, 1.6, h, 1.7); const kk = new Kit(k.bat, k.tag).at(k.ox, k.oz, k.oy + h, k.rot); kk.soft('col:#2c2c2e', -1.5, 0.3, -1.4, 1.5, 1.5, 1.5, 0.25); kk.soft('col:#2c2c2e', -1.25, 1.2, -1.6, 1.25, 3.4, -0.6, 0.35); for (const s of [-1, 1]) kk.soft('col:#2c2c2e', s * 1.5 - 0.3, 0.3, -1.4, s * 1.5 + 0.3, 2.3, 1.3, 0.2); kk.solid(-1.6, -1.6, 1.6, 1.5, 0, 3.2); if (h) k.solid(-1.6, -1.7, 1.6, 1.7, 0, h); });
+  lay('B', 457, 420, 0, (k) => rug(k, 10, 14, '#a9c4d6', '#3d6e8a'));
+  lay('B', 420, 300, 0, (k) => { k.box(wood('#e8d9bf'), -1.5, 0, -1, 1.5, 1.8, 1); k.box('col:#d9452f', -1.4, 1.8, -0.9, -0.2, 2.6, 0.9); k.box('col:#2f6fbf', 0.2, 1.8, -0.9, 1.4, 2.4, 0.9); });
+  lay('B', 348.3, 470, 90, (k) => { for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) k.box('col:' + ['#f2b632', '#3a9b4a', '#d9452f', '#2f6fbf'][(i + j) % 4], -2.6 + i * 1.8, 0.1 + j * 1.3, 0.1, -1.0 + i * 1.8, 1.2 + j * 1.3, 1.3); k.box(wood('#e8d9bf'), -2.8, 0, 0, 2.8, 2.7, 0.1); });
+  lay('B', 440, 560, 0, (k) => { k.cyl(wood('#e8d9bf'), 0, 0, 1.6, 1.6, 1.7, 1.8, 18); k.cyl(wood('#e8d9bf'), 0, 0, 0.15, 0.15, 0, 1.7, 8); for (let i = 0; i < 4; i++) { const a = (i / 4) * Math.PI * 2; k.cyl('col:' + ['#f2b632', '#3a9b4a', '#d9452f', '#2f6fbf'][i], Math.cos(a) * 2.2, Math.sin(a) * 2.2, 0.55, 0.55, 0, 1.0, 12); } });
+  lay('B', 860, 238.3, 0, (k) => officeDesk(k, 5.5)); lay('B', 860, 272, 180, (k) => officeChair(k));
+  lay('B', 930.7, 300, -90, (k) => bookcase(k, 3.0, 6.5, 7)); lay('B', 930.7, 345, -90, (k) => bookcase(k, 3.0, 6.5, 9));
+  // ---- C: open rec room with a sectional in the bay end, ping-pong in the rec room, gym north, craft room east
+  lay('C', 383, 570, 90, (k) => sofa(k, 9, { color: '#7d8a86', cushion: '#86938f', pillows: ['#c9a96e', '#e9e3d6'] }));
+  lay('C', 455, 570, 90, (k) => coffeeTable(k, 4.5, 2.2, '#4b3426'));
+  lay('C', 532.2, 570, -90, (k) => wallTV(k, 65));
+  lay('C', 457, 330, 90, (k) => { k.box('col:#1f4e7a', -4.5, 2.4, -2.5, 4.5, 2.5, 2.5); k.box('white', -0.03, 2.5, -2.5, 0.03, 2.55, 2.5); k.box('white', -4.5, 2.5, -0.02, 4.5, 2.52, 0.02); k.box('col:#f4f4f2', -0.02, 2.5, -2.6, 0.02, 3.0, 2.6); for (const [x, z] of [[-3.8, -2], [3.8, -2], [-3.8, 2], [3.8, 2]]) k.cbox('black', x, z, 0.25, 0.25, 0, 2.4); k.solid(-4.5, -2.5, 4.5, 2.5, 0, 2.5); });
+  lay('C', 662, 138, 0, (k) => rubberFloor(k, 17, 9.5));
+  lay('C', 543.3, 138, 90, (k) => powerRack(k)); lay('C', 745, 69.8, 0, (k) => dumbbellRack(k, 5.5)); lay('C', 700, 160, -90, (k) => treadmill(k));
+  lay('C', 860, 310, 0, (k) => { k.box(wood('#e8d9bf'), -3, 2.9, -1.5, 3, 3.0, 1.5); for (const [x, z] of [[-2.8, -1.3], [2.8, -1.3], [-2.8, 1.3], [2.8, 1.3]]) k.cbox('col:#8a6b4e', x, z, 0.2, 0.2, 0, 2.9); k.solid(-3, -1.5, 3, 1.5, 0, 3); });
+  lay('C', 930.7, 320, -90, (k) => shelving(k, 6, 1.5, 6.5));
+}
+
+export function buildRenovations() {
+  buildKitchen();
+  buildOpenLiving();
+  buildRefresh();
+  buildPrimaryBath();
+  buildMudroom();
+  buildFacade();
+  buildPatio();
+  buildPlay();
+  buildBasement();
+}
+export { shaker };
