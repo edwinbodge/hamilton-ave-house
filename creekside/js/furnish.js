@@ -335,6 +335,197 @@ function car(k, color) { // centered, length along local z, front at +z
   }
   k.solid(-W / 2, -L / 2, W / 2, L / 2, 0, 4.6);
 }
+// straight rod of square section between two local points (for tilted or curved parts: chain several)
+function rod(k, key, a, b, r = 0.03) {
+  const A = k.P(...a), B = k.P(...b), d = B.clone().sub(A);
+  if (d.lengthSq() < 1e-8) return;
+  const up = Math.abs(d.y) / d.length() > 0.9 ? V(1, 0, 0) : V(0, 1, 0);
+  const u = d.clone().cross(up).normalize().multiplyScalar(2 * r), w = d.clone().cross(u).normalize().multiplyScalar(2 * r);
+  k.bat.box(key, A.clone().addScaledVector(u, -0.5).addScaledVector(w, -0.5), u, d, w);
+}
+// ---- true-size vehicles for planning the garage. Centered, length along local z, nose at +z.
+// The body is lofted from cross-sections every 3": a side outline (bottom with wheel-arch cut-outs,
+// beltline, greenhouse roof line), a plan outline with rounded nose and tail corners, shoulders and
+// tumblehome. Glass, pillars and roof are picked per section segment.
+const TIRE = 'col:#161718', TRIMBLK = 'col:#1b1c1e', CARGLASS = 'col:#1a2027';
+function ring(cz, cy, r, n = 20) { return [...Array(n)].map((_, i) => [cz + Math.cos((i / n) * Math.PI * 2) * r, cy + Math.sin((i / n) * Math.PI * 2) * r]); }
+function lerpPts(pts, z) { // piecewise-linear y(z); pts sorted by z
+  if (z <= pts[0][0]) return pts[0][1];
+  for (let i = 1; i < pts.length; i++) if (z <= pts[i][0]) { const [z0, y0] = pts[i - 1], [z1, y1] = pts[i]; return y0 + ((y1 - y0) * (z - z0)) / (z1 - z0 || 1); }
+  return pts[pts.length - 1][1];
+}
+function vehicle(k, o) {
+  const { L, W, H, r } = o, body = 'col:' + o.color, h = L / 2, HW = W / 2, rc = o.rc;
+  const zf = h - o.fo, zr = zf - o.wb, belt = o.belt, roof = o.roof.slice().sort((a, b) => a[0] - b[0]);
+  const g0 = roof[0][0], g1 = roof[roof.length - 1][0];
+  const inR = (z, [a, b]) => z >= a && z <= b;
+  const hwAt = (z) => { const d = h - Math.abs(z); return d >= rc ? HW : HW - (rc - Math.sqrt(Math.max(0, rc * rc - (rc - d) * (rc - d)))); };
+  const botAt = (z) => { let y = o.base; for (const w of [zf, zr]) { const dz = Math.abs(z - w), R = r + 0.22; if (dz < R) y = Math.max(y, r * 0.95 + Math.sqrt(R * R - dz * dz)); } return Math.min(y, lerpPts(belt, z) - 0.6); };
+  const section = (z) => {
+    const hw = hwAt(z), yb = botAt(z), yt = lerpPts(belt, z), gr = z > g0 && z < g1 ? Math.max(yt, lerpPts(roof, z)) : yt, gh = gr - yt;
+    const half = [[hw - 0.28, yb], [hw, Math.min(yb + 0.35, yt - 0.5)], [hw, yt - 0.55], [hw - 0.06, yt - 0.12], [hw - 0.3, yt],
+      [hw - 0.32 - gh * 0.24, yt + gh * 0.92], [hw - 0.5 - gh * 0.3, gr], [0, gr + (gh > 0.1 ? 0.05 : 0.04)]];
+    return half.map(([x, y]) => [-x, y]).concat(half.slice(0, -1).reverse());
+  };
+  const segKey = (j, z, gh) => { // j: 0..14 over the section (7 = center)
+    const m = j < 7 ? j : 13 - j + 0; // mirror index 0..6
+    if (m <= 0) return o.rocker || body;
+    if (m <= 3) return body;
+    if (gh < 0.08) return body;                                     // hood / rear deck
+    const ws = inR(z, o.ws), rg = inR(z, o.rg);
+    if (m === 4) return o.pillars.some((p) => inR(z, p)) ? (o.pillarKey || body) : CARGLASS; // side windows
+    if (m === 5) return ws || rg ? (o.pillarKey || body) : (o.roofKey || body);               // A / D pillars, roof edge
+    return ws || rg ? CARGLASS : (o.roofKey || body);                                          // windshield, rear glass, roof
+  };
+  const N = Math.ceil(L / 0.25), Z = [...Array(N + 1)].map((_, i) => -h + (L * i) / N);
+  const S = Z.map((z) => section(z).map(([x, y]) => [x, y, z]));
+  const M = S[0].length, cen = (i) => [0, (botAt(Z[i]) + lerpPts(belt, Z[i])) / 2, Z[i]];
+  const nrm = (a, b, c) => { const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]]; const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]]; const l = Math.hypot(...n) || 1; return n.map((t) => t / l); };
+  // vertex normals: average of adjacent face normals, oriented away from the section center
+  const FN = [];
+  for (let i = 0; i < N; i++) { FN.push([]); for (let j = 0; j < M - 1; j++) { let n = nrm(S[i][j], S[i + 1][j], S[i][j + 1]); const c = cen(i), p = S[i][j]; if (n[0] * (p[0] - c[0]) + n[1] * (p[1] - c[1]) < 0 && Math.abs(n[2]) < 0.9) n = n.map((t) => -t); FN[i].push(n); } }
+  const VN = (i, j) => { let s = [0, 0, 0]; for (const ii of [i - 1, i]) for (const jj of [j - 1, j]) { const f = FN[ii] && FN[ii][jj]; if (f) s = s.map((t, q) => t + f[q]); } const l = Math.hypot(...s) || 1; return s.map((t) => t / l); };
+  const W3 = (p) => k.P(p[0], p[1], p[2]), WN = (n) => k.P(n[0], n[1], n[2]).sub(k.P(0, 0, 0));
+  for (let i = 0; i < N; i++) {
+    const zm = (Z[i] + Z[i + 1]) / 2, gh = Math.max(0, (zm > g0 && zm < g1 ? lerpPts(roof, zm) : 0) - lerpPts(belt, zm));
+    for (let j = 0; j < M - 1; j++) {
+      const key = segKey(j, zm, gh), a = S[i][j], b = S[i + 1][j], c = S[i + 1][j + 1], d = S[i][j + 1];
+      const raw = nrm(a, b, d), flip = raw[0] * FN[i][j][0] + raw[1] * FN[i][j][1] + raw[2] * FN[i][j][2] < 0;
+      const [na, nb, nc, nd] = [VN(i, j), VN(i + 1, j), VN(i + 1, j + 1), VN(i, j + 1)].map(WN);
+      if (!flip) { k.bat.triN(key, W3(a), W3(b), W3(c), na, nb, nc); k.bat.triN(key, W3(a), W3(c), W3(d), na, nc, nd); }
+      else { k.bat.triN(key, W3(a), W3(c), W3(b), na, nc, nb); k.bat.triN(key, W3(a), W3(d), W3(c), na, nd, nc); }
+    }
+    k.bat.face(TRIMBLK, [W3(S[i][0]), W3(S[i + 1][0]), W3(S[i + 1][M - 1]), W3(S[i][M - 1])], WN([0, -1, 0])); // underbody
+  }
+  for (const [i, s] of [[0, -1], [N, 1]]) { // nose and tail caps (fan around the center)
+    const c = W3(cen(i)), n = WN([0, 0, s]);
+    for (let j = 0; j < M; j++) k.bat.face(o.capKey || body, [c, W3(S[i][j]), W3(S[i][(j + 1) % M])], n);
+  }
+  const noseZ = (x, s = 1) => { const ax = Math.abs(x); if (ax <= HW - rc) return s * h; const t = rc - (HW - ax); return s * (h - (rc - Math.sqrt(Math.max(0, rc * rc - t * t)))); };
+  for (const z of [zf, zr]) for (const s of [-1, 1]) { // tires and wheels
+    k.prof(TIRE, ring(z, r, r, 24), s > 0 ? HW - 0.9 : -HW + 0.08, s > 0 ? HW - 0.08 : -HW + 0.9);
+    k.prof('col:#2a2c2e', ring(z, r, r * 0.68, 20), s > 0 ? HW - 0.1 : -HW + 0.07, s > 0 ? HW - 0.07 : -HW + 0.1);
+    for (let i = 0; i < (o.spokes || 5); i++) {
+      const a = (i / (o.spokes || 5)) * Math.PI * 2, sw = o.spokeW || 0.2;
+      k.prof(o.rim || 'col:#b9bcbf', [[z + Math.cos(a) * 0.14, r + Math.sin(a) * 0.14], [z + Math.cos(a + sw) * r * 0.66, r + Math.sin(a + sw) * r * 0.66], [z + Math.cos(a - sw) * r * 0.66, r + Math.sin(a - sw) * r * 0.66]], s > 0 ? HW - 0.07 : -HW + 0.04, s > 0 ? HW - 0.04 : -HW + 0.07);
+    }
+    k.prof(o.rim || 'col:#b9bcbf', ring(z, r, 0.2, 10), s > 0 ? HW - 0.07 : -HW + 0.03, s > 0 ? HW - 0.03 : -HW + 0.07);
+  }
+  for (const s of [-1, 1]) { // mirrors and door handles
+    const yb = lerpPts(belt, o.mirrorZ);
+    k.soft(body, s > 0 ? HW - 0.3 : -HW - 0.5, yb + 0.05, o.mirrorZ - 0.15, s > 0 ? HW + 0.5 : -HW + 0.3, yb + 0.55, o.mirrorZ + 0.3, 0.12, 10, 6);
+    for (const z of o.handles) k.box(o.handleKey || 'col:#cfd2d4', s > 0 ? HW - 0.02 : -HW - 0.03, lerpPts(belt, z) - 0.42, z - 0.4, s > 0 ? HW + 0.03 : -HW + 0.02, lerpPts(belt, z) - 0.32, z + 0.1);
+  }
+  o.details(k, { h, HW, body, zf, zr, noseZ });
+  k.solid(-HW, -h, HW, h, 0, H);
+}
+// thin panel lying on the nose (s = 1) or tail (s = -1) surface between x0 and x1
+function noseLamp(k, key, ctx, x0, x1, y0, y1, s = 1, t = 0.04) {
+  const n = 6;
+  for (let i = 0; i < n; i++) {
+    const a = x0 + ((x1 - x0) * i) / n, b = x0 + ((x1 - x0) * (i + 1)) / n, z = ctx.noseZ((a + b) / 2, s);
+    k.box(key, a, y0, s > 0 ? z - 0.15 : z - t, b, y1, s > 0 ? z + t : z + 0.15);
+  }
+}
+// Rivian R2: 185.6" L x 75.9" W x 66.9" H, 115.6" wheelbase. Upright two-row with short overhangs, a
+// near-vertical tailgate glass, black wheel-arch cladding, oval "stadium" headlights joined by a light bar,
+// and a full-width tail bar.
+function rivianR2(k, color = '#56634a') {
+  const L = 15.47, W = 6.33, H = 5.58, h = L / 2;
+  vehicle(k, {
+    L, W, H, color, wb: 9.63, fo: 2.9, r: 1.3, rc: 0.75, base: 1.05, rocker: TRIMBLK, mirrorZ: h - 4.7, spokes: 6, spokeW: 0.16, rim: 'col:#8d9196',
+    belt: [[-h, 3.25], [-h + 0.25, 3.55], [h - 4.2, 3.5], [h - 2.2, 3.38], [h - 0.55, 3.22], [h, 2.75]],
+    roof: [[h - 4.2, 3.5], [h - 6.05, 5.4], [h - 6.5, 5.52], [-h + 0.9, 5.55], [-h + 0.32, 5.25], [-h + 0.2, 3.56]],
+    ws: [h - 6.1, h - 4.2], rg: [-h + 0.15, -h + 0.5], pillars: [[0.05, 0.45], [-h + 0.5, -h + 1.75]],
+    pillarKey: TRIMBLK, handles: [0.9, -1.6],
+    details(k, c) {
+      for (const s of [-1, 1]) {                                                           // stadium headlights
+        const x = s * (c.HW - 1.15), z = c.noseZ(x);
+        k.soft('col:#f4f3ea', x - 0.42, 2.38, z - 0.2, x + 0.42, 2.92, z + 0.05, 0.26, 14, 8);
+        k.soft('col:#2b2d30', x - 0.3, 2.47, z - 0.15, x + 0.3, 2.83, z + 0.06, 0.18, 12, 6);
+      }
+      noseLamp(k, 'col:#eceadf', c, -c.HW + 1.6, c.HW - 1.6, 2.6, 2.68);                   // light bar
+      noseLamp(k, TRIMBLK, c, -c.HW + 0.5, c.HW - 0.5, 1.05, 1.75);                          // lower bumper
+      noseLamp(k, 'col:#b3141b', c, -c.HW + 0.35, c.HW - 0.35, 3.08, 3.2, -1);               // full-width tail bar
+      noseLamp(k, TRIMBLK, c, -c.HW + 0.5, c.HW - 0.5, 1.05, 1.6, -1);
+      for (const s of [-1, 1]) k.box('col:#2a2c2f', s > 0 ? c.HW - 0.75 : -c.HW + 0.6, 5.55, -h + 1.2, s > 0 ? c.HW - 0.6 : -c.HW + 0.75, 5.66, h - 6.6); // roof rails
+    },
+  });
+}
+// Acura MDX (2025): 198.7" L x 78.7" W x 67.6" H, 113.8" wheelbase. Longer three-row: long hood, raked
+// windshield, roof falling toward a sloped hatch, pentagon grille, Jewel Eye LED headlights, chrome window trim.
+function acuraMDX(k, color = '#c9ccce') {
+  const L = 16.56, W = 6.56, H = 5.63, h = L / 2;
+  vehicle(k, {
+    L, W, H, color, wb: 9.48, fo: 3.15, r: 1.24, rc: 1.0, base: 0.95, mirrorZ: h - 5.35, spokes: 10, spokeW: 0.11, rim: 'col:#8e9296',
+    belt: [[-h, 3.2], [-h + 0.25, 3.82], [-h + 1.4, 3.9], [h - 4.8, 3.62], [h - 2.0, 3.35], [h - 0.75, 3.12], [h, 2.55]],
+    roof: [[h - 4.8, 3.62], [h - 7.2, 5.45], [h - 7.6, 5.55], [-h + 2.9, 5.45], [-h + 2.2, 5.3], [-h + 0.45, 3.86]],
+    ws: [h - 7.25, h - 4.8], rg: [-h + 0.4, -h + 2.25], pillars: [[-0.7, -0.3], [-h + 3.3, -h + 3.75]],
+    pillarKey: TRIMBLK, handles: [0.5, -2.2],
+    details(k, c) {
+      const z = c.noseZ(0);
+      k.prof('col:#232528', [[z + 0.03, 1.1], [z + 0.03, 2.25], [z - 0.12, 2.25], [z - 0.12, 1.1]], -1.15, 1.15);  // pentagon grille
+      k.prof('col:#232528', [[z + 0.03, 0.85], [z + 0.03, 1.1], [z - 0.12, 1.1], [z - 0.12, 0.85]], -0.7, 0.7);
+      noseLamp(k, 'chrome', c, -1.22, 1.22, 2.25, 2.32);
+      for (const s of [-1, 1]) {
+        for (let i = 0; i < 5; i++) { const x = s * (1.45 + i * 0.27); noseLamp(k, 'col:#f4f3ec', c, x - 0.1, x + 0.1, 2.36 - i * 0.025, 2.54 - i * 0.025); } // Jewel Eye
+        noseLamp(k, 'col:#f4f3ec', c, s > 0 ? 1.35 : -2.95, s > 0 ? 2.95 : -1.35, 2.58, 2.62);                              // DRL strip
+        noseLamp(k, 'col:#a8121a', c, s > 0 ? c.HW - 1.7 : -c.HW + 0.15, s > 0 ? c.HW - 0.15 : -c.HW + 1.7, 3.38, 3.52, -1);  // slim tails
+      }
+      noseLamp(k, 'chrome', c, -c.HW + 1.7, c.HW - 1.7, 3.42, 3.47, -1);
+      noseLamp(k, TRIMBLK, c, -c.HW + 0.4, c.HW - 0.4, 0.95, 1.25, -1);
+      for (const s of [-1, 1]) k.box('chrome', s > 0 ? c.HW - 0.33 : -c.HW + 0.29, 3.62, -h + 0.6, s > 0 ? c.HW - 0.29 : -c.HW + 0.33, 3.66, h - 4.9); // window trim
+    },
+  });
+}
+// ---- garage sport storage
+function golfBag(k, color = '#20324d') { // standing cart bag, about 36" tall with clubs, back at z = 0
+  k.cyl('col:' + color, 0, 0.45, 0.42, 0.45, 0, 2.9, 16);
+  k.cyl('col:#e8e6e0', 0, 0.45, 0.43, 0.43, 2.6, 2.75, 16);
+  k.cyl('col:#1d1d1f', 0, 0.45, 0.46, 0.46, 0.05, 0.25, 16);
+  for (let i = 0; i < 12; i++) {                                                          // club heads + headcovers
+    const a = (i / 12) * Math.PI * 2, x = Math.cos(a) * 0.24, z = 0.45 + Math.sin(a) * 0.24, tall = i < 4;
+    k.cyl('steel', x, z, 0.025, 0.025, 2.9, tall ? 3.55 : 3.25, 5);
+    if (tall) k.csoft('col:' + ['#1d1d1f', '#c43a2f', '#1d1d1f', '#e8e6e0'][i], x, z, 0.32, 0.22, 3.5, 3.9, 0.1);
+    else k.box('chrome', x - 0.12, 3.2, z - 0.04, x + 0.08, 3.38, z + 0.05);
+  }
+  k.box('col:#1d1d1f', -0.08, 1.0, 0.0, 0.08, 2.5, 0.06);                                 // strap
+  k.solid(-0.45, 0, 0.45, 0.9, 0, 3.9);
+}
+function tennisRacket(k, x, y, z, color) { // hanging flat against the wall (face parallel to the wall), head up
+  const rim = ring(0, 0, 1, 22).map(([a, b]) => [x + a * 0.43, y + 1.2 + b * 0.55]);
+  for (let i = 0; i < rim.length; i++) { const [ax, ay] = rim[i], [bx, by] = rim[(i + 1) % rim.length]; rod(k, 'col:' + color, [ax, ay, z], [bx, by, z], 0.022); }
+  k.box('col:#e9e8e2', x - 0.38, y + 0.75, z - 0.005, x + 0.38, y + 1.65, z + 0.005);    // string bed
+  rod(k, 'col:' + color, [x - 0.12, y + 0.68, z], [x, y + 0.45, z], 0.022); rod(k, 'col:' + color, [x + 0.12, y + 0.68, z], [x, y + 0.45, z], 0.022);
+  k.box('col:#202022', x - 0.05, y, z - 0.04, x + 0.05, y + 0.46, z + 0.04);             // grip
+}
+function racketRack(k) { // wall rack with 4 rackets and a ball hopper below; back at z = 0
+  k.box('wood:#a77d52', -1.6, 4.2, 0, 1.6, 4.45, 0.12);
+  ['#c8d22a', '#1e4e8c', '#c43a2f', '#2b2b2b'].forEach((c, i) => { const x = -1.2 + i * 0.8; k.box('steel', x - 0.03, 4.3, 0.12, x + 0.03, 4.36, 0.3); tennisRacket(k, x, 2.1, 0.25, c); });
+  k.box('steel', -0.55, 0, 0.15, 0.55, 1.6, 1.25);
+  for (let i = 0; i < 14; i++) k.csoft('col:#d6e64a', -0.4 + (i % 4) * 0.27, 0.4 + Math.floor(i / 4) * 0.25, 0.12, 0.12, 1.5 + (i % 3) * 0.02, 1.62 + (i % 3) * 0.02, 0.06); // balls in the hopper
+  k.solid(-0.55, 0.15, 0.55, 1.25, 0, 1.6);
+}
+// bicycle, facing local +z (wheels on the ground), or with o.hang hung vertically by the front wheel from a
+// wall hook o.hang ft up: the frame then sticks straight out from a wall at z = 0 toward +z.
+function bike(k, o = {}) {
+  const c = 'col:' + (o.color || '#2b4f7a'), R = o.r || 1.13, WB = o.wb || 3.4, zr = -WB / 2, zf = WB / 2, y = R;
+  const T = o.hang ? ([x, yy, zz]) => [x, o.hang - (zf + R - zz), yy + 0.25] : (p) => p;
+  const r = (key, a, b, w) => rod(k, key, T(a), T(b), w);
+  for (const z of [zr, zf]) {
+    const rim = ring(z, y, R, 26);
+    for (let i = 0; i < rim.length; i++) { const [az, ay] = rim[i], [bz, by] = rim[(i + 1) % rim.length]; r(TIRE, [0, ay, az], [0, by, bz], 0.04); }
+    for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI; r('steel', [0, y - Math.sin(a) * R * 0.92, z - Math.cos(a) * R * 0.92], [0, y + Math.sin(a) * R * 0.92, z + Math.cos(a) * R * 0.92], 0.008); }
+  }
+  const bb = [0, y - 0.1, -0.15], st = [0, y + 1.25, -0.55], ht = [0, y + 1.25, zf - 0.55];
+  r(c, bb, st, 0.06); r(c, st, ht, 0.06); r(c, bb, [0, y + 1.05, zf - 0.5], 0.065);
+  r(c, bb, [0, y, zr], 0.035); r(c, st, [0, y, zr], 0.035); r(c, ht, [0, y, zf], 0.045);
+  r('col:#1d1d1f', st, [0, y + 1.55, -0.7], 0.035); r('col:#1d1d1f', [0, y + 1.6, -0.95], [0, y + 1.6, -0.4], 0.07);   // seatpost + saddle
+  r('col:#1d1d1f', ht, [0, y + 1.6, zf - 0.7], 0.03); r('col:#1d1d1f', [-0.8, y + 1.62, zf - 0.7], [0.8, y + 1.62, zf - 0.7], 0.03); // stem + bar
+  const cr = ring(bb[2], bb[1], 0.3, 12);
+  for (let i = 0; i < cr.length; i++) r('col:#1d1d1f', [0.13, cr[i][1], cr[i][0]], [0.13, cr[(i + 1) % 12][1], cr[(i + 1) % 12][0]], 0.03); // chainring
+  if (o.hang) { k.box('steel', -0.03, o.hang - 0.1, 0, 0.03, o.hang, 0.35); k.solid(-0.5, 0, 0.5, y + 1.8, o.hang - WB - 2 * R, o.hang); }
+}
 function shelving(k, w = 6, d = 1.5, h = 6) {
   for (const x of [-w / 2, w / 2 - 0.1]) for (const z of [0.05, d - 0.1]) k.box('col:#7b7f82', x, 0, z, x + 0.1, h, z + 0.05);
   for (let y = 0.4; y < h; y += 1.4) k.box('col:#9aa0a3', -w / 2, y, 0, w / 2, y + 0.06, d);
@@ -1276,9 +1467,32 @@ export function buildFurniture(bats) {
     drapes(new Kit(KF, 'off:kitchen&furn').at(...F(396, 200.6), 0, 0), 7.4, 7.5, '#dcdad5'); // sheer gray panels at the slider (photo 16)
   }
   // ---- living room (photos 19-20): burgundy leather reclining sofa under the side window, iron-and-glass console; no rug
-  place('f1', 327.5, 578, 90, (k) => leatherSofa(k, 7.2));
+  // (as listed only: the front-room options below bring their own furniture)
+  const LR = 'off:frontOffice&off:frontDining&furn', placeL = (x, y, rot, fn, tag = LR) => { const [lx, lz] = F(x, y); fn(new Kit(renoBat(tag, 'f1'), tag).at(lx, lz, 0, rot)); };
+  placeL(327.5, 578, 90, (k) => leatherSofa(k, 7.2));
   place('f1', 326.6, 577.5, 90, (k) => drapes(k, 5.2, 7.7, '#5d4d5a'));
-  place('f1', 473.5, 615, -90, (k) => { k.box('glass', -2.0, 2.5, 0, 2.0, 2.56, 1.2); k.box('glass', -1.85, 0.5, 0.15, 1.85, 0.53, 1.05); for (const x of [-1.9, 1.9]) for (const z of [0.12, 1.08]) k.box('col:#7d7a72', x - 0.04, 0, z - 0.04, x + 0.04, 2.5, z + 0.04); k.box('col:#7d7a72', -1.95, 2.35, 0.08, 1.95, 2.5, 0.16); k.solid(-2, 0, 2, 1.2, 0, 2.5); });
+  placeL(473.5, 615, -90, (k) => { k.box('glass', -2.0, 2.5, 0, 2.0, 2.56, 1.2); k.box('glass', -1.85, 0.5, 0.15, 1.85, 0.53, 1.05); for (const x of [-1.9, 1.9]) for (const z of [0.12, 1.08]) k.box('col:#7d7a72', x - 0.04, 0, z - 0.04, x + 0.04, 2.5, z + 0.04); k.box('col:#7d7a72', -1.95, 2.35, 0.08, 1.95, 2.5, 0.16); k.solid(-2, 0, 2, 1.2, 0, 2.5); });
+  // ---- front room option: home office. Desk floats in front of the bay so the screen faces away from the window and
+  // the seat looks at the foyer opening; bookcases flank the side window, credenza on the tower wall, reading chair
+  { const OF = 'on:frontOffice&furn';
+    placeL(400, 585, 0, (k) => rug(k, 8, 9, '#d8cfc0', '#7d6a55'), OF);
+    placeL(400, 602, 0, (k) => officeDesk(k, 5.5), OF);
+    placeL(400, 645, 180, (k) => officeChair(k), OF);
+    placeL(400, 585, 0, (k) => chair(k, '#8a7f72', '#5a3a26'), OF);                       // guest chair across the desk
+    placeL(326.8, 520, 90, (k) => bookcase(k, 2.8, 6.5, 5, '#5a3a26'), OF);
+    placeL(326.8, 632, 90, (k) => bookcase(k, 2.8, 6.5, 8, '#5a3a26'), OF);
+    placeL(473.5, 610, -90, (k) => buffet(k, 5), OF);                                       // credenza / printer + files
+    placeL(352, 527, 45, (k) => armchair(k, { color: '#9a8a74' }), OF);
+    placeL(372, 512, 0, (k) => floorLamp(k, 0, 0), OF);
+    placeL(355, 568, 0, (k) => plant(k, 0, 0, 4.5), OF); }
+  // ---- front room option: formal dining. 60" round pedestal table for six centered under the tray, chandelier, buffet
+  { const DF = 'on:frontDining&furn', cx = 400, cy = 575, [tx, tz] = F(cx, cy), R = 3.15;
+    placeL(cx, cy, 0, (k) => rug(k, 9, 9, '#d6cdbd', '#6f5e4d'), DF);
+    placeL(cx, cy, 0, (k) => roundTable(k, 2.5, { color: '#6b4a33', base: '#5a3a26' }), DF);
+    for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2 + Math.PI / 6; chair(new Kit(renoBat(DF, 'f1'), DF).at(tx + Math.sin(a) * R, tz + Math.cos(a) * R, 0, (a * 180) / Math.PI + 180), '#cfc6b6', '#5a3a26'); }
+    chandelier(new Kit(renoBat('on:frontDining', 'f1'), 'on:frontDining').at(tx, tz, 0), H.ceil1 + 0.7, 2.6, 6);
+    placeL(473.5, 610, -90, (k) => buffet(k, 5), DF);
+    placeL(326.8, 630, 90, (k) => plant(k, 0.8, 0.8, 5), DF); }
   // ---- office / bedroom 4
   // photos 17-18: black bow-front desk under the back window, white hutch desk + light maple bookcase in the front corner,
   // a dark three-drawer file cabinet with the printer beside the French doors
@@ -1290,9 +1504,16 @@ export function buildFurniture(bats) {
   place('f1', 703.8, 222, 90, (k) => { k.box(wood('#4e3524'), -1.3, 0, 0, 1.3, 2.4, 1.7); for (let i = 0; i < 3; i++) { k.box(wood('#5c4030'), -1.22, 0.12 + i * 0.75, 1.7, 1.22, 0.8 + i * 0.75, 1.73); k.box('steel', -0.3, 0.6 + i * 0.75, 1.73, 0.3, 0.65 + i * 0.75, 1.78); } k.box('col:#2b2b2b', -0.9, 2.4, 0.2, 0.9, 3.05, 1.45); k.box('col:#d9d9d6', -0.7, 3.05, 0.4, 0.7, 3.1, 1.2); k.solid(-1.3, 0, 1.3, 1.7, 0, 3.1); });
   // ---- foyer: pewter console against the wall under the stair (photo 06)
   place('f1', 561.2, 512, -90, (k) => { k.box('col:#8c8c86', -1.8, 2.45, 0, 1.8, 2.6, 0.95); for (const x of [-1.65, 1.65]) for (const z of [0.12, 0.83]) k.box('col:#8c8c86', x - 0.04, 0, z - 0.04, x + 0.04, 2.45, z + 0.04); k.solid(-1.8, 0, 1.8, 0.95, 0, 2.6); });
-  // ---- garage: two cars in the double bay, storage + bikes in the single bay
-  place('f1', 860, 450, -90, (k) => car(k, '#5f6b78'), H.garage);
-  place('f1', 860, 548, -90, (k) => car(k, '#d8d8d3'), H.garage);
+  // ---- garage: Acura MDX and Rivian R2 at true size in the double bay, nosed in 1.2 ft past the door;
+  // bikes, rackets and golf bags along the back side wall of the single bay (clear of its window)
+  place('f1', 873, 445, -90, (k) => acuraMDX(k), H.garage);
+  place('f1', 879, 553, -90, (k) => rivianR2(k), H.garage);
+  place('f1', 745, 719, 180, (k) => bike(k, { color: '#2b4f7a', hang: 6.6 }), H.garage);
+  place('f1', 765, 719, 180, (k) => bike(k, { color: '#b3332b', hang: 6.6 }), H.garage);
+  place('f1', 785, 719, 180, (k) => bike(k, { color: '#d8d6cf', hang: 6.6 }), H.garage);
+  place('f1', 808, 719, 180, (k) => racketRack(k), H.garage);
+  place('f1', 908, 719, 180, (k) => golfBag(k, '#20324d'), H.garage);
+  place('f1', 936, 719, 180, (k) => golfBag(k, '#6b1f2a'), H.garage);
   place('f1', 703, 640, 90, (k) => shelving(k, 8, 1.6, 6), H.garage);
   place('f1', 703, 700, 90, (k) => shelving(k, 3, 1.6, 6), H.garage);
   // ---- 2nd floor

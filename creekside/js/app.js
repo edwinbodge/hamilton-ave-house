@@ -62,7 +62,7 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const state = {
   view: 'ext', labels: true, furniture: true, mode: 'orbit', layout: '0',
-  reno: { kitchen: false, openLiving: false, refresh: false, pbath: false, mud: false, facade: false, classic: false, patio: false, play: false },
+  reno: { kitchen: false, openLiving: false, frontOffice: false, frontDining: false, refresh: false, pbath: false, mud: false, facade: false, classic: false, patio: false, play: false },
   style: { ...STYLE_PRESETS[DEFAULT_PRESET].values },
 };
 const STORE = 'creekside-options';
@@ -137,10 +137,13 @@ document.querySelectorAll('[data-reno]').forEach((el) => el.addEventListener('ch
   // the two exterior looks are alternatives
   if (el.checked && el.dataset.reno === 'facade') state.reno.classic = false;
   if (el.checked && el.dataset.reno === 'classic') state.reno.facade = false;
+  // so are the two front-room uses
+  if (el.checked && el.dataset.reno === 'frontOffice') state.reno.frontDining = false;
+  if (el.checked && el.dataset.reno === 'frontDining') state.reno.frontOffice = false;
   applyReno();
 }));
 // one switch for the whole suggested plan (basement: open plan, layout D)
-const SUGGESTED = ['kitchen', 'openLiving', 'refresh', 'pbath', 'mud', 'classic', 'patio', 'play'];
+const SUGGESTED = ['kitchen', 'frontOffice', 'refresh', 'pbath', 'mud', 'classic', 'patio', 'play'];
 const isSuggested = () => Object.keys(state.reno).every((k) => !!state.reno[k] === SUGGESTED.includes(k)) && state.layout === 'D';
 $('#suggested').addEventListener('change', (e) => {
   for (const k of Object.keys(state.reno)) state.reno[k] = e.target.checked && SUGGESTED.includes(k);
