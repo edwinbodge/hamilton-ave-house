@@ -2,7 +2,7 @@
 // dimensions in feet. Components use a Kit (see geom.js): local x = width, z = depth with
 // the front at +z, y = up. Wall-mounted pieces have their back at z = 0.
 import { LEVELS, toFt } from './data.js';
-import { Kit, V } from './geom.js';
+import { Kit, V, swap } from './geom.js';
 import { renoBat } from './build.js';
 
 const LV = Object.fromEntries(LEVELS.map((L) => [L.id, L]));
@@ -1342,7 +1342,7 @@ export function buildFixtures(bats) {
   // ---- kitchen
   buildKitchen(renoBat('off:kitchen', 'f1'), 'off:kitchen'); // as-built kitchen (replaced by the kitchen remodel)
   // ---- half bath (fixtures on the left wall, face at x 717.1)
-  toilet(at('f1', 717.1, 432, 90));
+  swap(at('f1', 717.1, 432, 90), { glb: 'Toilet03', back: true }, toilet);
   pedestalSink(at('f1', 717.1, 515, 90));
   lightBar(at('f1', 717.1, 515, 90), 1.9, 6.1, 3);
   { // photo 30: red-stained wall cabinet with an open shelf over the toilet, towel ring, paper holder, brass switch plate
@@ -1430,7 +1430,7 @@ export function buildFixtures(bats) {
   // ---- 2nd floor: primary bath
   vanity(atPB(279.2, 361, 90), 5.4, 2, { mirrorTop: 7.0 });
   lightBar(atPB(279.2, 361, 90), 5.0, 7.3, 8, 'brass', true);
-  toilet(atPB(279.2, 160, 90));
+  swap(atPB(279.2, 160, 90), { glb: 'Toilet03', back: true }, toilet);
   { // corner whirlpool on a tiled platform, with two steps
     const plat = [[384, 62], [664, 62], [664, 236], [505, 236], [384, 128]].map(([x, y]) => P('f2', x, y));
     const k = new Kit(PB, 'off:pbath').at(0, 0, 9, 0);
@@ -1470,7 +1470,7 @@ export function buildFixtures(bats) {
   // ---- 2nd floor: hall bath
   vanity(at('f2', 949.4, 345, 90), 6.4, 1, { faucet: 'chrome', mirrorW: 3.4, frame: 'col:#7d776c', sinkX: 0 });
   lightBar(at('f2', 949.4, 345, 90), 2.8, 7.2, 3, 'chrome');
-  toilet(at('f2', 949.4, 165, 90));
+  swap(at('f2', 949.4, 165, 90), { glb: 'Toilet03', back: true }, toilet);
   { // alcove tub with curtain
     const [x0, z0] = P('f2', 1121.5, 114), [x1, z1] = P('f2', 1218.5, 297.5); // 60" x 32" alcove tub, wall to wall
     const k = new Kit(bats.f2, 'f2').at(0, 0, 9, 0);
@@ -1579,12 +1579,12 @@ export function buildFurniture(bats) {
   // under two prints, waterfall coffee table, one spindle armchair angled in the front (south-east)
   // corner, floor lamps at the sofa's west end and by the chair, a side table + lamp by the north
   // window, a tall plant in the north-east corner. Bare carpet (no rug in the photos).
-  place('f1', 1697.6, 795, -90, (k) => sofa(k, 7.5, { color: '#ddd5c8', plinth: '#6b4a33', pillows: ['#9d6e64', '#cdb79c', '#7a5c4e', '#a88c84'], throw: '#9a8584' }));
-  place('f1', 1572, 795, 90, (k) => coffeeTable(k, 4, 2, '#bdae98'));
-  { const [ax, az] = P('f1', 1478, 960), [bx, bz] = P('f1', 1660, 800); place('f1', 1478, 960, (Math.atan2(bx - ax, bz - az) * 180) / Math.PI, (k) => spindleChair(k, { pillow: '#e4ddd0' })); }
+  place('f1', 1697.6, 795, -90, (k) => swap(k, { glb: 'Sofa08', w: 7.5, back: true }, (h) => sofa(h, 7.5, { color: '#ddd5c8', plinth: '#6b4a33', pillows: ['#9d6e64', '#cdb79c', '#7a5c4e', '#a88c84'], throw: '#9a8584' })));
+  place('f1', 1572, 795, 90, (k) => swap(k, { glb: 'Table34', w: 4, d: 2 }, (h) => coffeeTable(h, 4, 2, '#bdae98')));
+  { const [ax, az] = P('f1', 1478, 960), [bx, bz] = P('f1', 1660, 800); place('f1', 1478, 960, (Math.atan2(bx - ax, bz - az) * 180) / Math.PI, (k) => swap(k, { glb: 'Chair15' }, (h) => spindleChair(h, { pillow: '#e4ddd0' }))); }
   place('f1', 1683, 692, 0, (k) => floorLamp(k, 0, 0));
   place('f1', 1440, 1008, 140, (k) => floorLamp(k, 0, 0));
-  place('f1', 1680, 897, 0, (k) => sideTable(k, 1.5, { wire: true }));
+  place('f1', 1680, 897, 0, (k) => swap(k, { glb: 'Table37', w: 1.5, d: 1.5, h: 1.9 }, (h) => sideTable(h, 1.5, { wire: true })));
   place('f1', 1676, 1004, 0, (k) => plant(k, 0, 0, 6));
   place('f1', 1697.6, 760, -90, (k) => wallArt(k, 1.8, 2.3, 5.3, { art: 'col:#e7d7cd', motif: 'col:#b27f78' }));
   place('f1', 1697.6, 840, -90, (k) => wallArt(k, 1.8, 2.3, 5.5, { art: 'col:#ece6dc', motif: 'col:#6d6f7a' }));
@@ -1592,16 +1592,16 @@ export function buildFurniture(bats) {
   // ---- family room, staged as in photos 9 and 18-21: a gray spotted rug in front of the fireplace
   // with two chairs angled toward it (a white armchair with a plaid throw, a tufted track-arm chair)
   place('f1', 1548, 462, 90, (k) => texRug(k, 10, 7.6, 'spotRug'));
-  { const [ax, az] = P('f1', 1560, 395), [bx, bz] = P('f1', 1660, 500); place('f1', 1560, 395, (Math.atan2(bx - ax, bz - az) * 180) / Math.PI, (k) => tuxedoChair(k, { color: '#eeeae2', pillow: '#7a5a44', pillow2: '#e6e2da', throw: ['#ece9e2', '#77706a'] })); }
-  { const [ax, az] = P('f1', 1622, 572), [bx, bz] = P('f1', 1500, 430); place('f1', 1622, 572, (Math.atan2(bx - ax, bz - az) * 180) / Math.PI, (k) => tuxedoChair(k, { color: '#e9e5dc', tufted: true, pillow: '#7a5a44', pillow2: '#ece8e0' })); }
+  { const [ax, az] = P('f1', 1560, 395), [bx, bz] = P('f1', 1660, 500); place('f1', 1560, 395, (Math.atan2(bx - ax, bz - az) * 180) / Math.PI, (k) => swap(k, { glb: 'Chair12' }, (h) => tuxedoChair(h, { color: '#eeeae2', pillow: '#7a5a44', pillow2: '#e6e2da', throw: ['#ece9e2', '#77706a'] }))); }
+  { const [ax, az] = P('f1', 1622, 572), [bx, bz] = P('f1', 1500, 430); place('f1', 1622, 572, (Math.atan2(bx - ax, bz - az) * 180) / Math.PI, (k) => swap(k, { glb: 'Chair11' }, (h) => tuxedoChair(h, { color: '#e9e5dc', tufted: true, pillow: '#7a5a44', pillow2: '#ece8e0' }))); }
   { const k = at('f1', 1672, 515, 0); k.oy += 0.55; plant(k, 0, 0, 2.4); }    // small tree on the raised hearth
   { const k = at('f1', 1672, 410, 0); k.oy += 0.55; k.cyl('col:#a07a4e', 0, 0, 0.5, 0.42, 0, 0.75, 12); k.cyl('col:#7a5a38', 0, 0, 0.44, 0.44, 0.7, 0.78, 12, 1, false); } // log basket
   { const k = at('f1', 1697.6, 462, -90), p = k.P(0, 0, 0.16); wallArt(new Kit(k.bat, k.tag).at(p.x, p.z, k.oy, -90), 3.2, 2.0, 6.55, { art: 'col:#d9b6a8', frame: 'col:#d8cdb8', motif: 'col:#a77a6c' }); } // print standing on the mantel shelf
   place('f1', 1365, 316.5, 0, (k) => wallArt(k, 1.5, 1.8, 5.2, { frame: 'black', art: 'col:#ede9df', motif: 'col:#55574e' }));
   // ---- office (the listing's dining area): desk on the garage-side wall, bookcases, reading chair
   place('f1', 975, 866, 0, (k) => rug(k, 8, 10, '#c9c4bb', '#8d8a85'));
-  place('f1', 845.1, 866, 90, (k) => officeDesk(k, 5.5));
-  place('f1', 928, 866, -90, (k) => officeChair(k));
+  place('f1', 845.1, 866, 90, (k) => swap(k, { glb: 'Table49', w: 5.5, d: 2.4, h: 2.5, back: true }, (h) => officeDesk(h, 5.5)));
+  place('f1', 928, 866, -90, (k) => swap(k, { glb: 'Chair32' }, (h) => officeChair(h)));
   place('f1', 905, 708.1, 0, (k) => bookcase(k, 2.8, 6.5, 5));
   place('f1', 975, 708.1, 0, (k) => bookcase(k, 2.8, 6.5, 9));
 
@@ -1613,18 +1613,18 @@ export function buildFurniture(bats) {
     // mid-century chairs with gray seats
     const k = new Kit(NB, 'off:bump').at(nx, nz, 0, 0);
     k.box('fab:#b9c0c4', -3.5, 0.003, -2.6, 3.5, 0.025, 2.6); k.box('fab:#d6d9d6', -3.1, 0.004, -2.2, 3.1, 0.028, 2.2);
-    roundTable(k, 1.75, { base: '#f1efea' }).forEach(([cx, cz, r], i) => {
+    swap(k, { glb: 'Table29', w: 3.5, d: 3.5 }, (h) => roundTable(h, 1.75, { base: '#f1efea' })).forEach(([cx, cz, r], i) => {
       const p = k.P(cx * 1.05, 0, cz * 1.05), ck = new Kit(NB, 'off:bump').at(p.x, p.z, 0, r);
-      if (i % 2) tulipChair(ck); else chair(ck, '#b9b5ad', '#5c3d2a');
+      if (i % 2) swap(ck, { glb: 'Chair07' }, (h) => tulipChair(h)); else swap(ck, { glb: 'Chair08' }, (h) => chair(h, '#b9b5ad', '#5c3d2a'));
     });
   }
   // ---- sun room
   // (empty in the listing photos; two chairs facing the big window. The sun room extension
   // brings its own furniture, so these belong to the as-built set)
   { const SB = renoBat('off:sunext', 'f1'), sp = (x, y, r, fn) => { const [lx, lz] = P('f1', x, y); fn(new Kit(SB, 'off:sunext').at(lx, lz, 0, r)); };
-    sp(1520, 165, 180, (k) => loungeChair(k, '#d9d2b8'));
-    sp(1612, 165, 180, (k) => loungeChair(k, '#d9d2b8'));
-    sp(1566, 150, 0, (k) => sideTable(k, 1.4));
+    sp(1520, 165, 180, (k) => swap(k, { glb: 'Chair11' }, (h) => loungeChair(h, '#d9d2b8')));
+    sp(1612, 165, 180, (k) => swap(k, { glb: 'Chair11' }, (h) => loungeChair(h, '#d9d2b8')));
+    sp(1566, 150, 0, (k) => swap(k, { glb: 'Table36', w: 1.6, d: 1.6 }, (h) => sideTable(h, 1.4)));
     sp(1680, 285, 0, (k) => plant(k, 0, 0, 4.5)); }
   // ---- garage: Acura MDX and Rivian R2 at true size, nosed in 1.5 ft past the doors; sport storage on the back wall
   place('f1', 491, 817, 90, (k) => acuraMDX(k));
@@ -1638,27 +1638,27 @@ export function buildFurniture(bats) {
   { const [lx, lz] = P('f1', 390, 398.4); shelving(new Kit(renoBat('off:mud', 'f1'), 'off:mud').at(lx, lz, LV.f1.floor, 0), 9, 1.6, 6); } // rear storage bay (becomes the mudroom)
   // ---- primary bedroom: king bed on the windowless south wall
   place('f2', 470, 820, 90, (k) => rug(k, 8, 10, '#d8cbb8', '#9f8a72'));
-  place('f2', 279.2, 820, 90, (k) => bed(k, 'king', { duvet: '#efe9df', accent: '#6f5a4a', headboard: '#b9aa96', sham: '#d9cbb8' }));
-  place('f2', 279.2, 650, 90, (k) => nightstand(k));
-  place('f2', 279.2, 990, 90, (k) => nightstand(k));
-  place('f2', 601, 483.4, 0, (k) => dresser(k, 6, { mirror: true, lamp: false }));
+  place('f2', 279.2, 820, 90, (k) => swap(k, { glb: 'Bed16', w: 6.7, d: 7.4, back: true }, (h) => bed(h, 'king', { duvet: '#efe9df', accent: '#6f5a4a', headboard: '#b9aa96', sham: '#d9cbb8' })));
+  place('f2', 279.2, 650, 90, (k) => swap(k, { glb: 'Drawer02', back: true }, (h) => nightstand(h)));
+  place('f2', 279.2, 990, 90, (k) => swap(k, { glb: 'Drawer02', back: true }, (h) => nightstand(h)));
+  place('f2', 601, 483.4, 0, (k) => swap(k, { glb: 'Drawer35', w: 6, back: true }, (h) => dresser(h, 6, { mirror: true, lamp: false })));
   place('f2', 584, 820, 90, (k) => bench(k, 4.5, 1.4, '#a99683'));
-  place('f2', 772, 1045, -135, (k) => armchair(k, { color: '#c7b49b' }));
+  place('f2', 772, 1045, -135, (k) => swap(k, { glb: 'Chair11' }, (h) => armchair(h, { color: '#c7b49b' })));
   place('f2', 818, 1085, -135, (k) => floorLamp(k, 0, 0));
   // ---- bedroom 11'6" (pale yellow): queen bed on the hall wall
   place('f2', 1514.5, 965, 0, (k) => rug(k, 5, 8, '#cfd6d8', '#8fa0a6'));
   // headboard on the front wall between the two windows
-  place('f2', 1514.5, 1095.8, 180, (k) => bed(k, 'queen', { frame: '#e9e4da', duvet: '#dfe7ea', accent: '#5f7f8c', headboard: '#e9e4da', sham: '#f1f0ec', pillow: '#c9d6db' }));
-  place('f2', 1371, 1095.8, 180, (k) => nightstand(k, { color: '#e9e4da' }));
-  place('f2', 1658, 1095.8, 180, (k) => nightstand(k, { color: '#e9e4da' }));
-  place('f2', 1719.8, 775, -90, (k) => dresser(k, 4.5, { color: '#e9e4da', front: '#efebe3', lamp: true }));
+  place('f2', 1514.5, 1095.8, 180, (k) => swap(k, { glb: 'Bed15', w: 5.35, d: 7.4, back: true }, (h) => bed(h, 'queen', { frame: '#e9e4da', duvet: '#dfe7ea', accent: '#5f7f8c', headboard: '#e9e4da', sham: '#f1f0ec', pillow: '#c9d6db' })));
+  place('f2', 1371, 1095.8, 180, (k) => swap(k, { glb: 'Drawer04', back: true }, (h) => nightstand(h, { color: '#e9e4da' })));
+  place('f2', 1658, 1095.8, 180, (k) => swap(k, { glb: 'Drawer04', back: true }, (h) => nightstand(h, { color: '#e9e4da' })));
+  place('f2', 1719.8, 775, -90, (k) => swap(k, { glb: 'Drawer38', w: 4.5, back: true }, (h) => dresser(h, 4.5, { color: '#e9e4da', front: '#efebe3', lamp: true })));
   // ---- bedroom 10'10" (tan): full bed on the east wall, desk
   // headboard on the rear wall, clear of the window
-  place('f2', 1560, 120.7, 0, (k) => bed(k, 'full', { frame: '#6b4a33', duvet: '#e4dccd', accent: '#8a3f3a', headboard: '#6b4a33' }));
-  place('f2', 1430, 120.7, 0, (k) => nightstand(k));
-  place('f2', 1684, 120.7, 0, (k) => nightstand(k));
-  place('f2', 1590, 573.6, 180, (k) => desk(k, 4));
-  place('f2', 1590, 525, 0, (k) => chair(k, '#3e4a54', '#2b2b2b'));
+  place('f2', 1560, 120.7, 0, (k) => swap(k, { glb: 'Bed12', w: 4.85, d: 7.0, back: true }, (h) => bed(h, 'full', { frame: '#6b4a33', duvet: '#e4dccd', accent: '#8a3f3a', headboard: '#6b4a33' })));
+  place('f2', 1430, 120.7, 0, (k) => swap(k, { glb: 'Drawer02', back: true }, (h) => nightstand(h)));
+  place('f2', 1684, 120.7, 0, (k) => swap(k, { glb: 'Drawer02', back: true }, (h) => nightstand(h)));
+  place('f2', 1590, 573.6, 180, (k) => swap(k, { glb: 'Table44', w: 4, d: 2, h: 2.45, back: true }, (h) => desk(h, 4)));
+  place('f2', 1590, 525, 0, (k) => swap(k, { glb: 'Chair29' }, (h) => chair(h, '#3e4a54', '#2b2b2b')));
   // ---- basement, layout A: TV & couch in the octagonal bay, gym at the east end
   const atL = (lay, x, y, rot = 0) => { const [lx, lz] = P('b', x, y); return new Kit(bats['b' + lay], 'b' + lay).at(lx, lz, -9, rot); };
   const placeA = (x, y, rot, fn) => fn(atL('A', x, y, rot));
@@ -1666,10 +1666,10 @@ export function buildFurniture(bats) {
   const placeC = (x, y, rot, fn) => fn(atL('C', x, y, rot));
   // ---- layout C: gym in the west end of the rec room, TV in the bay with the couch set back, storage left empty
   placeC(1044, 289.8, 0, (k) => wallTV(k, 65));
-  placeC(1044, 291, 0, (k) => mediaConsole(k, 5.5));
+  placeC(1044, 291, 0, (k) => swap(k, { glb: 'Drawer40', w: 5.5, d: 1.5, h: 2.2, back: true }, (h) => mediaConsole(h, 5.5)));
   placeC(1044, 505, 0, (k) => rug(k, 8, 10, '#bfb3a2', '#8a7d6c'));
-  placeC(1044, 640, 180, (k) => sofa(k, 8, { color: '#5e5348', cushion: '#665a4e', pillows: ['#8b6f4e', '#a1886a'] }));
-  placeC(1044, 515, 0, (k) => coffeeTable(k, 4, 2, '#4b3426'));
+  placeC(1044, 640, 180, (k) => swap(k, { glb: 'Sofa36', w: 8, back: true }, (h) => sofa(h, 8, { color: '#5e5348', cushion: '#665a4e', pillows: ['#8b6f4e', '#a1886a'] })));
+  placeC(1044, 515, 0, (k) => swap(k, { glb: 'Table38', w: 4, d: 2 }, (h) => coffeeTable(h, 4, 2, '#4b3426')));
   placeC(772, 600, 0, (k) => rubberFloor(k, 8.6, 14.5));
   // keeps the utility door and the walk from the stairs clear; nothing under the beam bulkhead
   // (the electrical panel and tall cabinet are on the theater bay's north wall, away from the gym)
@@ -1679,10 +1679,10 @@ export function buildFurniture(bats) {
   placeC(850, 409.3, 0, (k) => dumbbellRack(k, 3.4));          // shorter rack under the mirror
   placeC(800, 595, 180, (k) => pelotonBike(k));                // rider faces the mirror, 2.5 ft ahead of the bike
   placeA(1044, 289.8, 0, (k) => wallTV(k, 65));
-  placeA(1044, 291, 0, (k) => mediaConsole(k, 5.5));
+  placeA(1044, 291, 0, (k) => swap(k, { glb: 'Drawer40', w: 5.5, d: 1.5, h: 2.2, back: true }, (h) => mediaConsole(h, 5.5)));
   placeA(1044, 452, 0, (k) => rug(k, 8, 10, '#bfb3a2', '#8a7d6c'));
-  placeA(1044, 548, 180, (k) => sofa(k, 8, { color: '#5e5348', cushion: '#665a4e', pillows: ['#8b6f4e', '#a1886a'] }));
-  placeA(1044, 420, 0, (k) => coffeeTable(k, 4, 2, '#4b3426'));
+  placeA(1044, 548, 180, (k) => swap(k, { glb: 'Sofa36', w: 8, back: true }, (h) => sofa(h, 8, { color: '#5e5348', cushion: '#665a4e', pillows: ['#8b6f4e', '#a1886a'] })));
+  placeA(1044, 420, 0, (k) => swap(k, { glb: 'Table38', w: 4, d: 2 }, (h) => coffeeTable(h, 4, 2, '#4b3426')));
   // ---- basement: home gym at the east end (rubber floor, rack, bench, dumbbells, bike, BodyPump)
   placeA(1481, 345, 0, (k) => rubberFloor(k, 11.6, 21.4));
   placeA(1638.2, 175, -90, (k) => powerRack(k));
@@ -1700,7 +1700,7 @@ export function buildFurniture(bats) {
   patio(33, 0.4, 0, firePit); // (centered so the outer chairs stay on the slab, not hanging over the lawn)
   for (const [dx, dz] of [[-3.8, -3.8], [3.8, -3.8], [-3.8, 3.8], [3.8, 3.8]]) {
     const rot = (Math.atan2(-dx, -dz) * 180) / Math.PI;
-    patio(33 + dx, 0.4 + dz, rot, (k) => adirondack(k));
+    patio(33 + dx, 0.4 + dz, rot, (k) => swap(k, { glb: 'Chair44' }, (h) => adirondack(h)));
   }
   {
     const PD = (x, z, rot = 0) => new Kit(bats.f1F, 'f1F').at(x, z, -0.62, rot);
@@ -1713,15 +1713,15 @@ export function buildFurniture(bats) {
   placeB(1481, 57.3, 0, (k) => projectionScreen(k, 110));
   // (a 7 ft sofa set a little south of center keeps 3 ft clear in front of the electrical panel)
   placeB(1470, 300, 0, (k) => rug(k, 10, 8, '#bfb3a2', '#8a7d6c'));
-  placeB(1460, 365, 180, (k) => sofa(k, 7, { color: '#5e5348', cushion: '#665a4e', pillows: ['#8b6f4e', '#a1886a'] }));
-  placeB(1352, 235, 135, (k) => armchair(k, { color: '#5e5348' }));
+  placeB(1460, 365, 180, (k) => swap(k, { glb: 'Sofa36', w: 7, back: true }, (h) => sofa(h, 7, { color: '#5e5348', cushion: '#665a4e', pillows: ['#8b6f4e', '#a1886a'] })));
+  placeB(1352, 235, 135, (k) => swap(k, { glb: 'Chair16' }, (h) => armchair(h, { color: '#5e5348' })));
   // (no armchair on the north side: that aisle is the way to the seats and to the electrical panel)
-  placeB(1481, 240, 0, (k) => coffeeTable(k, 4.5, 2, '#4b3426'));
+  placeB(1481, 240, 0, (k) => swap(k, { glb: 'Table38', w: 4.5, d: 2 }, (h) => coffeeTable(h, 4.5, 2, '#4b3426')));
   placeB(1331, 57.3, 0, (k) => towerSpeaker(k));
   placeB(1631, 57.3, 0, (k) => towerSpeaker(k));
   placeB(1481, 420, 0, (k) => { k.box('white', -0.6, 6.95, -0.7, 0.6, 7.35, 0.7); k.cyl('black', 0, -0.7, 0.18, 0.18, 7.05, 7.25, 10); });
   placeB(1044, 400, 0, (k) => rug(k, 6, 8, '#bfb3a2', '#8a7d6c'));
-  placeB(1000, 340, 160, (k) => armchair(k, { color: '#8a6b55' }));
+  placeB(1000, 340, 160, (k) => swap(k, { glb: 'Chair16' }, (h) => armchair(h, { color: '#8a6b55' })));
   placeB(1100, 330, -160, (k) => floorLamp(k, 0, 0));
   placeB(1148, 1039.5, 0, (k) => rubberFloor(k, 34, 9.8));
   placeB(1419, 771, 0, (k) => rubberFloor(k, 15.8, 8.6));

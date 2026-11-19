@@ -31,7 +31,7 @@
 //   garage2     detached 2-car garage/studio at the end of a longer driveway (golf / pottery / gym).
 import * as THREE from 'three';
 import { toFt, F2 } from './data.js';
-import { Kit, V, addFloorPoly, addSolid, pip } from './geom.js';
+import { Kit, V, addFloorPoly, addSolid, pip, swap } from './geom.js';
 import { LV, P, CTX, renoBat, renoGroup, roleRoom, buildWall, buildLabels, gableRoof, leanRoof, gableTri, buildSunroomGable, ROOFT, skylight, sunRoomRoof } from './build.js';
 import {
   toilet, vanity, lightBar, diningTable, chair, buffet, firePit, adirondack, patioDining, patioChair, powerRack, liftBench, dumbbellRack,
@@ -186,7 +186,7 @@ function buildKitchenRemodel() {
   island(ik, 9, 4);
   for (const dx of [-2.2, 0, 2.2]) {
     const p = ik.P(dx, 0, -2.6);
-    stool(new Kit(bat, TAG).at(p.x, p.z, 0, 0));
+    swap(new Kit(bat, TAG).at(p.x, p.z, 0, 0), { glb: 'Chair24' }, (h) => stool(h));
     pendant(new Kit(bat, TAG).at(ix + dx, iz, 0), 8, 2.15);
   }
 }
@@ -375,7 +375,7 @@ function buildBumpOut() {
   { // 7 ft table for six, centered on the old wall line: it only fits because of the bump-out
     const t = at(1240, 308, 0);
     rug(at(1240, 308, 0), 9.5, 7, '#cfc7ba', '#9c9284');
-    for (const [cx, cz, r] of diningTable(t, 7, 3.5, { color: '#6e5038' })) { if (Math.abs(cx) > 3.5) continue; const p = t.P(cx, 0, cz); chair(new Kit(bat, rs).at(p.x, p.z, 0, r), '#cfc6b6'); }
+    for (const [cx, cz, r] of swap(t, { glb: 'Table17', w: 7, d: 3.5, h: 2.5 }, (h) => diningTable(h, 7, 3.5, { color: '#6e5038' }))) { if (Math.abs(cx) > 3.5) continue; const p = t.P(cx, 0, cz); swap(new Kit(bat, rs).at(p.x, p.z, 0, r), { glb: 'Chair03' }, (h) => chair(h, '#cfc6b6')); }
     for (const dx of [-1.7, 1.7]) pendant(new Kit(bat, rs).at(t.ox + dx, t.oz, 0), 8, 2.4);
   }
   for (const x of [1110, 1370]) recessed(at(x, 215), 8);
@@ -383,7 +383,7 @@ function buildBumpOut() {
   // fire pit group slides south so the new slider opens onto clear patio
   const pk = (x, z, rot, fn) => fn(new Kit(bat, rs).at(x, z, -0.62, rot));
   pk(29.5, -1.4, 0, firePit);
-  for (const [dx, dz] of [[-3.8, -3.8], [3.8, -3.8], [-3.8, 3.8], [3.8, 3.8]]) pk(29.5 + dx, -1.4 + dz, (Math.atan2(-dx, -dz) * 180) / Math.PI, (c) => adirondack(c));
+  for (const [dx, dz] of [[-3.8, -3.8], [3.8, -3.8], [-3.8, 3.8], [3.8, 3.8]]) pk(29.5 + dx, -1.4 + dz, (Math.atan2(-dx, -dz) * 180) / Math.PI, (c) => swap(c, { glb: 'Chair44' }, (h) => adirondack(h)));
 }
 
 // Sun room extension: 6 ft longer (11'6" x 16'9", about +70 sq ft). The arched gable wall is rebuilt
@@ -412,9 +412,9 @@ function buildSunExt() {
   for (const x of [1415, 1709]) { const [cx, cz] = toFt([x, yW]); k.cbox('white', cx, cz, 0.6, 0.6, -0.9, 9); }
   const at = (x, y, rot = 0) => { const [lx, lz] = toFt([x, y]); return new Kit(bat, rs).at(lx, lz, 0, rot); };
   // the added length takes a real seating group at the window end
-  sofa(at(1697.6, yG + 80, -90), 6, { color: '#d9d2b8' });
-  coffeeTable(at(1610, yG + 80, 90), 3.5, 1.8);
-  armchair(at(1470, yG + 80, 90), { color: '#e6e0cf' });
+  swap(at(1697.6, yG + 80, -90), { glb: 'Sofa08', w: 6, back: true }, (h) => sofa(h, 6, { color: '#d9d2b8' }));
+  swap(at(1610, yG + 80, 90), { glb: 'Table39', w: 3.5, d: 1.8 }, (h) => coffeeTable(h, 3.5, 1.8));
+  swap(at(1470, yG + 80, 90), { glb: 'Chair12' }, (h) => armchair(h, { color: '#e6e0cf' }));
   plant(at(1445, yG + 22), 0, 0, 5);
 }
 
@@ -459,8 +459,8 @@ function buildDetachedGarage() {
     k.box('white', -0.8, 10.4, 12.0, 0.8, 10.8, 13.2); k.cyl('black', 0, 12.0, 0.2, 0.2, 10.45, 10.75, 10);
     k.cyl('col:#2b2b2b', 4.5, 15.5, 0.45, 0.45, 0, 3.0, 12);  // golf bag
   });
-  golf(-8.5, -0.8, 180, (k) => armchair(k, { color: '#6d5d4e' }));
-  golf(-16.5, -0.8, 180, (k) => armchair(k, { color: '#6d5d4e' }));
+  golf(-8.5, -0.8, 180, (k) => swap(k, { glb: 'Chair16' }, (h) => armchair(h, { color: '#6d5d4e' })));
+  golf(-16.5, -0.8, 180, (k) => swap(k, { glb: 'Chair16' }, (h) => armchair(h, { color: '#6d5d4e' })));
   const pottery = use('pottery');
   for (const [x, z] of [[-17.5, -17.5], [-12.5, -17.5]]) pottery(x, z, 0, (k) => { // potter's wheel (wheel head 14"), splash pan, pedal, stool
     k.soft('col:#9aa0a5', -0.75, 0.25, -0.9, 0.75, 1.25, 0.9, 0.18);                                   // motor body

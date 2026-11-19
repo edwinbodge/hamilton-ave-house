@@ -2,7 +2,7 @@
 // dimensions in feet. Components use a Kit (see geom.js): local x = width, z = depth with
 // the front at +z, y = up. Wall-mounted pieces have their back at z = 0.
 import { LEVELS, toFt, F2, H, PX, vaultUnder, trayOct } from './data.js';
-import { Kit, V } from './geom.js';
+import { Kit, V, swap } from './geom.js';
 import { renoBat } from './build.js';
 
 const LV = Object.fromEntries(LEVELS.map((L) => [L.id, L]));
@@ -710,11 +710,15 @@ function bowDesk(k) { // office (photo 17): black bow-front top on a maple pedes
   k.box('black', -0.6, h, 0.35, 1.0, h + 0.05, 0.75); k.box('col:#cfcfcf', -1.6, h, -0.05, -0.6, h + 0.05, 0.55); // keyboard, laptop
   k.solid(-2.7, -0.15, 2.7, 1.3, 0, h);
 }
-function hutchDesk(k, w = 4.2) { // office (photo 18): white desk + cubby hutch, black work surface; back at z = 0
+function hutchDesk(k, w = 4.2, o = {}) { // office (photo 18): white desk + cubby hutch, black work surface; back at z = 0 (o.part: 'desk' | 'hutch' draws one half)
   const h = 2.5, d = 2.0, wt = 'col:#f2f1ec';
-  for (const x of [-w / 2, w / 2 - 0.08]) k.box(wt, x, 0, 0, x + 0.08, h - 0.08, d);
-  k.box(wt, -w / 2 + 0.08, 0.35, 0.02, w / 2 - 0.08, h - 0.08, 0.1);
-  k.box('col:#1c1c1d', -w / 2, h - 0.08, 0, w / 2, h, d + 0.05);
+  if (o.part !== 'hutch') {
+    for (const x of [-w / 2, w / 2 - 0.08]) k.box(wt, x, 0, 0, x + 0.08, h - 0.08, d);
+    k.box(wt, -w / 2 + 0.08, 0.35, 0.02, w / 2 - 0.08, h - 0.08, 0.1);
+    k.box('col:#1c1c1d', -w / 2, h - 0.08, 0, w / 2, h, d + 0.05);
+    k.solid(-w / 2, 0, w / 2, d, 0, h);
+  }
+  if (o.part === 'desk') return;
   const H0 = h + 0.9, H1 = h + 3.4, hd = 1.0;
   for (const x of [-w / 2, -w / 6, w / 6, w / 2 - 0.07]) k.box(wt, x, H0, 0, x + 0.07, H1, hd);
   for (const y of [H0, H0 + 1.25, H1 - 0.07]) k.box(wt, -w / 2, y, 0, w / 2, y + 0.07, hd);
@@ -723,7 +727,6 @@ function hutchDesk(k, w = 4.2) { // office (photo 18): white desk + cubby hutch,
   for (const x of [-0.95, 0.95]) { k.box('black', x - 0.85, h + 0.45, 0.55, x + 0.85, h + 1.55, 0.62); k.box('col:#1a2735', x - 0.8, h + 0.5, 0.62, x + 0.8, h + 1.5, 0.63); k.cbox('black', x, 0.55, 0.12, 0.12, h, h + 0.45); }
   k.box('col:#2a2a2a', -0.75, h, 1.1, 0.75, h + 0.05, 1.5);
   for (let i = 0; i < 6; i++) k.box('col:' + ['#e8e3d6', '#cfc6b2', '#9a8f7c', '#e4dfd2', '#b8ad97', '#efe9dc'][i], -w / 2 + 0.2 + i * 0.6, H0 + 1.32, 0.15, -w / 2 + 0.55 + i * 0.6, H0 + 1.32 + 0.4 + (i % 3) * 0.15, 0.85); // binders and boxes
-  k.solid(-w / 2, 0, w / 2, d, 0, h);
 }
 function officeChair(k) { // centered, faces +z
   for (let i = 0; i < 5; i++) {
@@ -1330,7 +1333,7 @@ export function buildFixtures(bats) {
   { const [lx, lz] = F(593, 60.5); for (const [tag, y] of [['off:refresh&off:kitchen', H.family], ['off:refresh&on:kitchen', 0]]) fireplace2(new Kit(renoBat(tag, 'f1'), tag).at(lx, lz, y, 0)); }
   // ---- half bath: oak vanity with gray top + brass-framed mirror, toilet
   { const k = f1(628, 307.2, 0); vanity(k, 3.6, 1, { faucet: 'chrome', frame: 'goldFrame', mirrorTop: 6.8, top: 'counter' }); lightBar(k, 2.8, 7.25, 5, 'brass'); } // gray laminate top, 5-light brass bar (photo 22)
-  toilet(f1(681, 307.2, 0));
+  swap(f1(681, 307.2, 0), { glb: 'Toilet03', back: true }, toilet);
   // ---- laundry: washer + dryer on the stair wall, oak uppers, drawer desk at the front window
   { const MB = renoBat('off:mud', 'f1'); const { k } = runKit(MB, 'off:mud', F(612.6, 428), F(612.6, 492), [1, 0]); washerDryer(new Kit(MB, 'off:mud').at(...F(612.6, 459.5), 0, 90)); upperCab(k, 0.1, 5.2); }
   {
@@ -1377,13 +1380,13 @@ export function buildFixtures(bats) {
   const f2 = (x, y, rot = 0) => { const [lx, lz] = G2(x, y); return new Kit(bats.f2, 'f2').at(lx, lz, H.f2, rot); };
   // hall bath: long oak vanity on the back wall, toilet beside it, tub/shower with a curtain
   { const k = f2(711, 191.9, 0); vanity(k, 5.0, 1, { faucet: 'chrome', sinkX: -0.6, mirrorW: 4.6, top: 'vanityTop2' }); lightBar(k, 2.5, 7.1, 3, 'chrome'); } // white laminate top (photo 33)
-  toilet(f2(686, 191.9, 0));
+  swap(f2(686, 191.9, 0), { glb: 'Toilet03', back: true }, toilet);
   tub(f2(692, 239.1, 180), 2.5, 4.95, { curtain: true }); // standard 60" x 30" alcove tub, wall to wall
   { const { k, len } = runKit(bats.f2, 'f2', G2(708, 239), G2(732, 239), [0, -1], H.f2); linenShelves(k, len, 13); }
   // primary bath: double oak vanity with a cultured-marble top, water closet, gold-framed shower, whirlpool under the window
   const PB = renoBat('off:pbath', 'f2'), pb2 = (x, y, rot = 0) => { const [lx, lz] = G2(x, y); return new Kit(PB, 'off:pbath').at(lx, lz, H.f2, rot); };
   { const k = pb2(864, 157, 90); vanity(k, 8.6, 2, { faucet: 'chrome', mirrorTop: 7.2 }); lightBar(k, 7.4, 7.5, 6, 'chrome'); }
-  toilet(f2(864, 119.3, 90));
+  swap(f2(864, 119.3, 90), { glb: 'Toilet03', back: true }, toilet);
   { const [sx, sz] = G2(911, 110.5); goldShower(new Kit(PB, 'off:pbath').at(sx, sz, H.f2, 0), G2(930, 0)[0] - sx, G2(0, 140)[1] - sz); }
   whirlpool(pb2(930.5, 160.5, -90), 3.1, 6.4);
   for (const [x, y] of [[880, 150], [880, 175], [895, 118]]) recessed(f2(x, y), 8);
@@ -1454,52 +1457,52 @@ export function buildFurniture(bats) {
   const placeK = (x, y, rot, fn, y0 = 0) => fn(atK(x, y, rot, y0));
   const KF = renoBat('off:kitchen&furn', 'f1'), atK = (x, y, rot = 0, y0 = 0) => { const [lx, lz] = F(x, y); return new Kit(KF, 'off:kitchen&furn').at(lx, lz, y0, rot); };
   // ---- family room (staged like the photos: patterned sofa + loveseat, blue leather recliners, TV on gray cabinets)
-  placeK(479, 150, 90, (k) => sofa(k, 7.6, { roll: true, color: '#4b4262', cushion: '#54486c', pillows: ['#b0283a', '#c9b49a', '#8d2f3a'] }), fam);
-  placeK(696.5, 165, -90, (k) => sofa(k, 5.8, { roll: true, color: '#4b4262', cushion: '#54486c', pillows: ['#b0283a', '#c9b49a'] }), fam);
-  placeK(668, 84, -150, (k) => recliner(k), fam); // navy leather recliner by the fireplace (photos 07, 09, 24)
+  placeK(479, 150, 90, (k) => swap(k, { glb: 'Sofa17', w: 7.6, d: 3.1, back: true }, (h) => sofa(h, 7.6, { roll: true, color: '#4b4262', cushion: '#54486c', pillows: ['#b0283a', '#c9b49a', '#8d2f3a'] })), fam);
+  placeK(696.5, 165, -90, (k) => swap(k, { glb: 'Sofa17', w: 5.8, d: 3.1, back: true }, (h) => sofa(h, 5.8, { roll: true, color: '#4b4262', cushion: '#54486c', pillows: ['#b0283a', '#c9b49a'] })), fam);
+  placeK(668, 84, -150, (k) => swap(k, { glb: 'Chair20', w: 3.1, d: 2.8 }, (h) => recliner(h)), fam); // navy leather recliner by the fireplace (photos 07, 09, 24)
   // 50" TV on gray lateral files under the loft balcony (photo 08)
   placeK(606, 302.6, 180, (k) => { fileCabinetStand(k); standTV(k, 50, 2.25); }, fam);
   // ---- dining area: oak table for six under the chandelier
   {
     const t = atK(398, 250, 0);
     rug(t, 8, 10, '#d9cfbd', '#8d6e4f');
-    for (const [cx, cz, r] of diningTable(t, 6, 3.4, { color: '#d2a86e' })) { const p = t.P(cx, 0, cz); spindleChair(new Kit(KF, 'off:kitchen&furn').at(p.x, p.z, 0, r)); }
+    for (const [cx, cz, r] of swap(t, { glb: 'Table17', w: 6, d: 3.4, h: 2.5 }, (h) => diningTable(h, 6, 3.4, { color: '#d2a86e' }))) { const p = t.P(cx, 0, cz); swap(new Kit(KF, 'off:kitchen&furn').at(p.x, p.z, 0, r), { glb: 'Chair03' }, (h) => spindleChair(h)); }
     drapes(new Kit(KF, 'off:kitchen&furn').at(...F(396, 200.6), 0, 0), 7.4, 7.5, '#dcdad5'); // sheer gray panels at the slider (photo 16)
   }
   // ---- living room (photos 19-20): burgundy leather reclining sofa under the side window, iron-and-glass console; no rug
   // (as listed only: the front-room options below bring their own furniture)
   const LR = 'off:frontOffice&off:frontDining&furn', placeL = (x, y, rot, fn, tag = LR) => { const [lx, lz] = F(x, y); fn(new Kit(renoBat(tag, 'f1'), tag).at(lx, lz, 0, rot)); };
-  placeL(327.5, 578, 90, (k) => leatherSofa(k, 7.2));
+  placeL(327.5, 578, 90, (k) => swap(k, { glb: 'Sofa36', w: 7.2, d: 3.2, back: true }, (h) => leatherSofa(h, 7.2)));
   place('f1', 326.6, 577.5, 90, (k) => drapes(k, 5.2, 7.7, '#5d4d5a'));
   placeL(473.5, 615, -90, (k) => { k.box('glass', -2.0, 2.5, 0, 2.0, 2.56, 1.2); k.box('glass', -1.85, 0.5, 0.15, 1.85, 0.53, 1.05); for (const x of [-1.9, 1.9]) for (const z of [0.12, 1.08]) k.box('col:#7d7a72', x - 0.04, 0, z - 0.04, x + 0.04, 2.5, z + 0.04); k.box('col:#7d7a72', -1.95, 2.35, 0.08, 1.95, 2.5, 0.16); k.solid(-2, 0, 2, 1.2, 0, 2.5); });
   // ---- front room option: home office. Desk floats in front of the bay so the screen faces away from the window and
   // the seat looks at the foyer opening; bookcases flank the side window, credenza on the tower wall, reading chair
   { const OF = 'on:frontOffice&furn';
     placeL(400, 585, 0, (k) => rug(k, 8, 9, '#d8cfc0', '#7d6a55'), OF);
-    placeL(400, 602, 0, (k) => officeDesk(k, 5.5), OF);
-    placeL(400, 645, 180, (k) => officeChair(k), OF);
-    placeL(400, 585, 0, (k) => chair(k, '#8a7f72', '#5a3a26'), OF);                       // guest chair across the desk
+    placeL(400, 602, 0, (k) => swap(k, { glb: 'Table49', w: 5.5, d: 2.5, h: 2.5, back: true }, (h) => officeDesk(h, 5.5)), OF);
+    placeL(400, 645, 180, (k) => swap(k, { glb: 'Chair33' }, (h) => officeChair(h)), OF);
+    placeL(400, 585, 0, (k) => swap(k, { glb: 'Chair17' }, (h) => chair(h, '#8a7f72', '#5a3a26')), OF);                    // guest chair across the desk
     placeL(326.8, 520, 90, (k) => bookcase(k, 2.8, 6.5, 5, '#5a3a26'), OF);
     placeL(326.8, 632, 90, (k) => bookcase(k, 2.8, 6.5, 8, '#5a3a26'), OF);
-    placeL(473.5, 610, -90, (k) => buffet(k, 5), OF);                                       // credenza / printer + files
-    placeL(352, 527, 45, (k) => armchair(k, { color: '#9a8a74' }), OF);
+    placeL(473.5, 610, -90, (k) => swap(k, { glb: 'Drawer31', w: 5, d: 1.6, h: 2.9, back: true }, (h) => buffet(h, 5)), OF);                                   // credenza / printer + files
+    placeL(352, 527, 45, (k) => swap(k, { glb: 'Chair12' }, (h) => armchair(h, { color: '#9a8a74' })), OF);
     placeL(372, 512, 0, (k) => floorLamp(k, 0, 0), OF);
     placeL(355, 568, 0, (k) => plant(k, 0, 0, 4.5), OF); }
   // ---- front room option: formal dining. 60" round pedestal table for six centered under the tray, chandelier, buffet
   { const DF = 'on:frontDining&furn', cx = 400, cy = 575, [tx, tz] = F(cx, cy), R = 3.15;
     placeL(cx, cy, 0, (k) => rug(k, 9, 9, '#d6cdbd', '#6f5e4d'), DF);
-    placeL(cx, cy, 0, (k) => roundTable(k, 2.5, { color: '#6b4a33', base: '#5a3a26' }), DF);
-    for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2 + Math.PI / 6; chair(new Kit(renoBat(DF, 'f1'), DF).at(tx + Math.sin(a) * R, tz + Math.cos(a) * R, 0, (a * 180) / Math.PI + 180), '#cfc6b6', '#5a3a26'); }
+    placeL(cx, cy, 0, (k) => swap(k, { glb: 'Table23', w: 5, d: 5, h: 2.5 }, (h) => roundTable(h, 2.5, { color: '#6b4a33', base: '#5a3a26' })), DF);
+    for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2 + Math.PI / 6; swap(new Kit(renoBat(DF, 'f1'), DF).at(tx + Math.sin(a) * R, tz + Math.cos(a) * R, 0, (a * 180) / Math.PI + 180), { glb: 'Chair08' }, (h) => chair(h, '#cfc6b6', '#5a3a26')); }
     chandelier(new Kit(renoBat('on:frontDining', 'f1'), 'on:frontDining').at(tx, tz, 0), H.ceil1 + 0.7, 2.6, 6);
-    placeL(473.5, 610, -90, (k) => buffet(k, 5), DF);
+    placeL(473.5, 610, -90, (k) => swap(k, { glb: 'Drawer31', w: 5, d: 1.6, h: 2.9, back: true }, (h) => buffet(h, 5)), DF);
     placeL(326.8, 630, 90, (k) => plant(k, 0.8, 0.8, 5), DF); }
   // ---- office / bedroom 4
   // photos 17-18: black bow-front desk under the back window, white hutch desk + light maple bookcase in the front corner,
   // a dark three-drawer file cabinet with the printer beside the French doors
-  place('f1', 752, 232, 0, (k) => bowDesk(k));
-  place('f1', 752, 214, 0, (k) => officeChair(k));
-  place('f1', 703.8, 322, 90, (k) => hutchDesk(k, 4.0));
-  place('f1', 728, 322, -90, (k) => officeChair(k));
+  place('f1', 752, 232, 0, (k) => swap(k, { glb: 'Table43', w: 5.4, d: 1.45, h: 2.5, dz: 0.575, turn: 180 }, (h) => bowDesk(h)));
+  place('f1', 752, 214, 0, (k) => swap(k, { glb: 'Chair31' }, (h) => officeChair(h)));
+  place('f1', 703.8, 322, 90, (k) => { swap(k, { glb: 'Table44', w: 4.0, d: 2.05, h: 2.5, back: true }, (h) => hutchDesk(h, 4.0, { part: 'desk' })); hutchDesk(k, 4.0, { part: 'hutch' }); });
+  place('f1', 728, 322, -90, (k) => swap(k, { glb: 'Chair31' }, (h) => officeChair(h)));
   place('f1', 718, 376.2, 180, (k) => bookcase(k, 2.6, 6.2, 5, '#d4ab74'));
   place('f1', 703.8, 222, 90, (k) => { k.box(wood('#4e3524'), -1.3, 0, 0, 1.3, 2.4, 1.7); for (let i = 0; i < 3; i++) { k.box(wood('#5c4030'), -1.22, 0.12 + i * 0.75, 1.7, 1.22, 0.8 + i * 0.75, 1.73); k.box('steel', -0.3, 0.6 + i * 0.75, 1.73, 0.3, 0.65 + i * 0.75, 1.78); } k.box('col:#2b2b2b', -0.9, 2.4, 0.2, 0.9, 3.05, 1.45); k.box('col:#d9d9d6', -0.7, 3.05, 0.4, 0.7, 3.1, 1.2); k.solid(-1.3, 0, 1.3, 1.7, 0, 3.1); });
   // ---- foyer: pewter console against the wall under the stair (photo 06)
@@ -1521,36 +1524,36 @@ export function buildFurniture(bats) {
   // primary (photos 25-28): queen bed with a white arched headboard on the front wall, one nightstand (bump side),
   // white dresser with an arched mirror + two urn lamps and a tall chest on the closet wall, white armoire beside the
   // bath door, floral sofa and a drop-leaf desk in the bump
-  p2(897, 274.4, 180, (k) => bed(k, 'queen', { style: 'arch', quilt: '#3d4c70', frame: '#efece6', headboard: '#f1eee8', skirt: '#9fb3aa', duvet: '#f3f2ee', accent: '#2d3f66', sham: '#f4f2ee', pillow: '#f4f2ee' }));
-  p2(920, 274.4, 180, (k) => nightstand(k, { color: '#efece6', front: '#f4f2ec' }));
-  p2(864.6, 240, 90, (k) => dresser(k, 5.2, { color: '#efece6', front: '#f4f2ec', mirror: true, arch: true, lamps: true }));
-  p2(864.6, 266, 90, (k) => tallChest(k, 2.5, 4.3));
+  p2(897, 274.4, 180, (k) => swap(k, { glb: 'Bed12', w: 5.35, d: 7.2, back: true }, (h) => bed(h, 'queen', { style: 'arch', quilt: '#3d4c70', frame: '#efece6', headboard: '#f1eee8', skirt: '#9fb3aa', duvet: '#f3f2ee', accent: '#2d3f66', sham: '#f4f2ee', pillow: '#f4f2ee' })));
+  p2(920, 274.4, 180, (k) => swap(k, { glb: 'Drawer04', back: true }, (h) => nightstand(h, { color: '#efece6', front: '#f4f2ec' })));
+  p2(864.6, 240, 90, (k) => swap(k, { glb: 'Drawer38', w: 5.2, back: true }, (h) => dresser(h, 5.2, { color: '#efece6', front: '#f4f2ec', mirror: true, arch: true, lamps: true })));
+  p2(864.6, 266, 90, (k) => swap(k, { glb: 'Drawer34', w: 2.5, d: 1.55, h: 4.3, back: true }, (h) => tallChest(h, 2.5, 4.3)));
   p2(913, 186.6, 0, (k) => armoire(k, 3.0, 5.2, { color: '#efece6', front: '#f4f2ec' }));
-  p2(953.5, 266.4, 180, (k) => sofa(k, 6.2, { color: '#ebe2d6', cushion: '#efe6da', pillows: ['#e3c9bd', '#c9d3d6'] }));
-  p2(945, 200.4, 0, (k) => dropLeafDesk(k));
-  p2(945, 207.5, 180, (k) => chair(k, '#24304a', '#24304a'));
+  p2(953.5, 266.4, 180, (k) => swap(k, { glb: 'Sofa08', w: 6.2, d: 3.15, back: true }, (h) => sofa(h, 6.2, { color: '#ebe2d6', cushion: '#efe6da', pillows: ['#e3c9bd', '#c9d3d6'] })));
+  p2(945, 200.4, 0, (k) => swap(k, { glb: 'Table17', w: 3.0, d: 1.8, h: 2.48, back: true }, (h) => dropLeafDesk(h)));
+  p2(945, 207.5, 180, (k) => swap(k, { glb: 'Chair29' }, (h) => chair(h, '#24304a', '#24304a')));
   // bedroom 3 (pink carpet, photos 34-35): twin bed with a metal headboard in the front-right corner, oak TV armoire
   // beside the north window, white Windsor rocker
-  p2(738.8, 111.1, 0, (k) => bed(k, 'twin', { style: 'iron', frame: '#6f7f72', headboard: '#7d8a80', skirt: '#f4efe8', duvet: '#efe3d6', accent: '#c98f8f', sham: '#f1e9df', pillow: '#d8b6a6' }));
+  p2(738.8, 111.1, 0, (k) => swap(k, { glb: 'Bed09', w: 3.6, d: 6.9, back: true }, (h) => bed(h, 'twin', { style: 'iron', frame: '#6f7f72', headboard: '#7d8a80', skirt: '#f4efe8', duvet: '#efe3d6', accent: '#c98f8f', sham: '#f1e9df', pillow: '#d8b6a6' })));
   p2(688.5, 111.1, 0, (k) => armoire(k, 2.6, 4.8));
   p2(690, 168, 160, (k) => rockingChair(k));
   // bedroom 2 (bay, photos 31-32): pine bed on the hall wall, white nightstand, dark chest beside the side window
-  p2(749.5, 300, -90, (k) => bed(k, 'full', { style: 'pine', frame: '#b98a52', headboard: '#c08a4e', skirt: '#9a8a7c', duvet: '#efe4e6', accent: '#b8a2c2', sham: '#efe8e0', pillow: '#c9b2cc' }));
-  p2(749.5, 278, -90, (k) => nightstand(k, { color: '#efece6', front: '#f4f2ec' }));
-  p2(678.5, 265, 90, (k) => tallChest(k, 2.6, 3.9, { color: '#4e3324', front: '#5b3c2a' }));
+  p2(749.5, 300, -90, (k) => swap(k, { glb: 'Bed02', w: 4.85, d: 7.0, back: true }, (h) => bed(h, 'full', { style: 'pine', frame: '#b98a52', headboard: '#c08a4e', skirt: '#9a8a7c', duvet: '#efe4e6', accent: '#b8a2c2', sham: '#efe8e0', pillow: '#c9b2cc' })));
+  p2(749.5, 278, -90, (k) => swap(k, { glb: 'Drawer04', back: true }, (h) => nightstand(h, { color: '#efece6', front: '#f4f2ec' })));
+  p2(678.5, 265, 90, (k) => swap(k, { glb: 'Drawer37', w: 2.6, d: 1.55, h: 3.9, back: true }, (h) => tallChest(h, 2.6, 3.9, { color: '#4e3324', front: '#5b3c2a' })));
   // loft: built-in desk with bookshelves at the balcony rail, white chair
   p2(810, 166, 0, (k) => { k.box(wood('#e8d9bf'), -3.0, 2.45, 0, 3.0, 2.55, 2.0); for (const x of [-3.0, 1.8]) { k.box(wood('#e8d9bf'), x, 0, 0, x + 1.2, 2.45, 2.0); for (let y = 0.6; y < 2.4; y += 0.6) k.box('col:' + ['#7a3b2e', '#2e4a6e', '#c9a96e', '#3e5a3c'][Math.floor(y * 3) % 4], x + 0.1, y - 0.5, 0.3, x + 1.1, y - 0.05, 1.6); } tableLamp(k, -2.4, 1.0, 2.55); tableLamp(k, 2.4, 1.0, 2.55); k.solid(-3, 0, 3, 2, 0, 2.55); });
-  p2(810, 178, 180, (k) => chair(k, '#f4f2ee', '#f4f2ee'));
+  p2(810, 178, 180, (k) => swap(k, { glb: 'Chair07' }, (h) => chair(h, '#f4f2ee', '#f4f2ee')));
   // ---- basement as listed: a pair of cream swivel chairs and carpet remnants in the rec room, a dresser in the north room
   const pb = (x, y, rot, fn) => { const [lx, lz] = P('b', x, y); fn(new Kit(renoBat('lay:0&furn', 'b'), 'lay:0&furn').at(lx, lz, H.basement, rot)); };
-  pb(500, 300, -100, (k) => armchair(k, { color: '#efe9dd' }));
-  pb(500, 360, -80, (k) => armchair(k, { color: '#efe9dd' }));
+  pb(500, 300, -100, (k) => swap(k, { glb: 'Chair11' }, (h) => armchair(h, { color: '#efe9dd' })));
+  pb(500, 360, -80, (k) => swap(k, { glb: 'Chair11' }, (h) => armchair(h, { color: '#efe9dd' })));
   pb(450, 330, 0, (k) => rug(k, 7, 12, '#cdbd9f', '#cdbd9f'));
-  pb(660, 200, 180, (k) => { k.box(wood('#2f2219'), -2.0, 0, 0, 2.0, 1.6, 1.6); k.solid(-2, 0, 2, 1.6, 0, 1.6); });
+  pb(660, 200, 180, (k) => swap(k, { glb: 'Drawer40', w: 4, d: 1.6, h: 2.6, back: true }, (h) => { h.box(wood('#2f2219'), -2.0, 0, 0, 2.0, 1.6, 1.6); h.solid(-2, 0, 2, 1.6, 0, 1.6); }));
   // ---- back patio as it is: four cast-aluminum chairs around a fire bowl, grill
   const pat = (x, z, rot, fn) => fn(new Kit(renoBat('off:patio', 'site'), 'off:patio').at(x, z, -0.96, rot));
   pat(10.5, 8, 0, (k) => { k.cyl('col:#5a3a2a', 0, 0, 1.2, 0.8, 0, 1.2, 14); k.cyl('ember', 0, 0, 0.9, 0.9, 1.15, 1.2, 12); k.solid(-1, -1, 1, 1, 0, 1.2); });
-  for (const [dx, dz] of [[-2.6, -2.2], [2.6, -2.2], [-2.6, 2.2], [2.6, 2.2]]) pat(10.5 + dx, 8 + dz, (Math.atan2(-dx, -dz) * 180) / Math.PI, (k) => patioChair(k));
+  for (const [dx, dz] of [[-2.6, -2.2], [2.6, -2.2], [-2.6, 2.2], [2.6, 2.2]]) pat(10.5 + dx, 8 + dz, (Math.atan2(-dx, -dz) * 180) / Math.PI, (k) => swap(k, { glb: 'Chair04' }, (h) => patioChair(h)));
   // gas grill (photo 46): ~4 ft wide with side shelves x 2 ft deep x 4 ft tall lid closed; on the patio by the
   // family-room wall (wall face at x 14.8), clear of the slider steps (x 5.5-11.7)
   pat(12.5, 3.75, 0, (k) => {

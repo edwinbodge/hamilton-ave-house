@@ -9,7 +9,7 @@ import { CONTROLS, PRESETS as STYLE_PRESETS, DEFAULT_PRESET, applyStyle } from '
 import { EXT_CONTROLS, EXT_PRESETS, applyExterior } from './exterior.js';
 import { RENO_LABELS, RENO_ROOMS } from './reno.js';
 import { buildSite } from './site.js';
-import { PHYS, pip, V, addSolid, addFloorPoly, applyFinish, ORIGIN } from './geom.js';
+import { PHYS, pip, V, addSolid, addFloorPoly, applyFinish, ORIGIN, setModels } from './geom.js';
 import { LOT, LATITUDE, X_AZ, toFt } from './data.js';
 
 // ------------------------------------------------------------------ renderer & scene
@@ -110,6 +110,16 @@ function setView(v, fly = true) {
 }
 $$('.views button').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
 $('#tgl-furn').addEventListener('change', (e) => { state.furniture = e.target.checked; applyReno(); });
+async function applyModels() {
+  const st = $('#models-status'), on = $('#tgl-models').checked;
+  try {
+    await setModels(on, (n, of) => { st.textContent = `(loading ${n}/${of})`; gfx.dirty(); });
+    st.textContent = '';
+  } catch (err) { st.textContent = '(could not load)'; console.error(err); }
+  gfx.dirty();
+}
+$('#tgl-models').addEventListener('change', applyModels);
+setTimeout(applyModels, 0);
 $('#tgl-labels').addEventListener('change', (e) => { state.labels = e.target.checked; applyView(); });
 $('#tgl-trees').addEventListener('change', (e) => { trees.visible = e.target.checked; gfx.dirty(); });
 $('#tgl-lot').addEventListener('change', (e) => { lotLines.visible = e.target.checked; });

@@ -20,7 +20,7 @@
 //   play      Playground on the flat back lawn: cedar play fort with slide and swings, sandbox.
 import * as THREE from 'three';
 import { toFt, F2, H, PX } from './data.js';
-import { Kit, V, addFloorPoly, addSolid } from './geom.js';
+import { Kit, V, addFloorPoly, addSolid, swap } from './geom.js';
 import { LV, P, F, CTX, renoBat, renoGroup, roleRoom, buildWall, buildLabels, railing, stairGeom, ROOF } from './build.js';
 import {
   toilet, vanity, lightBar, diningTable, chair, sofa, sectional, armchair, coffeeTable, floorLamp, plant, rug, runKit, recessed, flushDome,
@@ -351,9 +351,9 @@ function buildPatio() {
   addFloorPoly(pat, [], y, rs);
   const fk = (x, yy, rot, fn) => { const [lx, lz] = F(x, yy); fn(new Kit(FB, 'on:patio&furn').at(lx, lz, y, rot)); };
   fk(320, -120, 0, firePit);
-  fk(320, -170, 0, (k2) => sofa(k2, 8.5, { color: '#c8c1b4', cushion: '#d6d0c4', pillows: ['#2f5d6e', '#c98a3a'] }));
-  for (const [dx, rot] of [[-70, 90], [70, -90]]) fk(320 + dx, -120, rot, (k2) => adirondack(k2, '#2f4a5a'));
-  fk(260, 60, 0, (k2) => { for (const [cx, cz, r] of diningTable(k2, 6, 3.2, { color: '#4a4a4a' })) { const p = k2.P(cx, 0, cz); patioChair(new Kit(FB, 'on:patio&furn').at(p.x, p.z, y, r)); } });
+  fk(320, -170, 0, (k2) => swap(k2, { glb: 'Sofa08', w: 8.5, d: 3.3, back: true }, (h) => sofa(h, 8.5, { color: '#c8c1b4', cushion: '#d6d0c4', pillows: ['#2f5d6e', '#c98a3a'] })));
+  for (const [dx, rot] of [[-56, 90], [56, -90]]) fk(320 + dx, -120, rot, (k2) => swap(k2, { glb: 'Chair44' }, (h) => adirondack(h, '#2f4a5a')));
+  fk(260, 60, 0, (k2) => { for (const [cx, cz, r] of swap(k2, { glb: 'Table03', w: 6, d: 3.2, h: 2.5 }, (h) => diningTable(h, 6, 3.2, { color: '#4a4a4a' }))) { const p = k2.P(cx, 0, cz); swap(new Kit(FB, 'on:patio&furn').at(p.x, p.z, y, r), { glb: 'Chair29' }, (h) => patioChair(h)); } });
   siteLabel(rs, 'Deck + walk-out patio (new)', 'composite deck · paver patio · fire pit', [F(250, -150), F(390, -150), F(390, -90), F(250, -90)], y + 0.5);
 }
 
