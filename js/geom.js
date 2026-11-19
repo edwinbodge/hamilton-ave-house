@@ -14,6 +14,7 @@ export const ORIGIN = {
   trim: '#a5652c', door: '#8a3f1f', doorPanel: '#9b4a25', doorLine: '#1b1b1d', cab: '#a8682f', cabDoor: '#b5743a',
   cabPanel: '#bf7e42', counter: '#f1eee6', vanityTop: '#eee6d6', backsplash: 'backsplash', splashTrim: '#7d6a58',
   fpBrick: 'brick', mantel: '#b5743a', mantelPanel: '#bf7e42', stairCarpet: '#d8d1c4', 'W:wainscot': '#2c3a55', island: '#a8682f',
+  curtain: 'plaid', curtain2: 'floral', // window valances (kitchen/nook plaid, primary bedroom floral)
 };
 export const THEMED = new Map();
 function roughFor(key, spec) {
@@ -21,6 +22,7 @@ function roughFor(key, spec) {
   if (key === 'counter' || key === 'vanityTop') return /marble|plank/.test(spec) ? 0.3 : 0.25;
   if (key === 'backsplash') return 0.3;
   if (key.startsWith('W:') || key === 'fpBrick') return 0.9;
+  if (key.startsWith('curtain')) return 0.95;
   return 0.45;
 }
 export function applyFinish(key, spec) {
@@ -28,15 +30,18 @@ export function applyFinish(key, spec) {
   if (!spec) return;
   if (spec.startsWith('#')) { m.map = null; m.color.set(spec); } else { m.map = tex(spec); m.color.set('#ffffff'); }
   m.roughness = roughFor(key, spec);
+  if (key.startsWith('W:')) { // a little even "bounce light" on wall paint (stands in for interreflection)
+    m.emissiveMap = m.map; m.emissive.set(spec.startsWith('#') ? spec : '#ffffff'); m.emissiveIntensity = 0.16;
+  }
   m.needsUpdate = true;
 }
 // flat colors (roughness)
 const FLAT = {
   white: ['#f6f6f2', 0.6], trim: ['#a5652c', 0.45], oakLight: ['#c08a4e', 0.45], cut: ['#4a4744', 0.9],
-  ceiling: ['#f7f5ef', 0.95], soffit: ['#f2f2ee', 0.9], shutter: ['#23443a', 0.6], cherry: ['#8a3f1f', 0.35],
+  ceiling: ['#f7f5ef', 0.95], soffit: ['#f2f2ee', 0.9], shutter: ['#2a5141', 0.55], shutterIn: ['#132a21', 0.8], cherry: ['#8a3f1f', 0.35],
   cherryPanel: ['#9b4a25', 0.35], stairCarpet: ['#d8d1c4', 1], subfloor: ['#c9b48f', 0.9], joist: ['#c49a62', 0.9],
   foundation: ['#8d8b86', 0.95], post: ['#f4f4f0', 0.6], porcelain: ['#f7f6f2', 0.15], counter: ['#f1eee6', 0.3],
-  cultured: ['#eee6d6', 0.2], steel: ['#d3d6d8', 0.32, 0.45], brass: ['#bb8c34', 0.3, 0.85], chrome: ['#d9dcde', 0.1, 0.9],
+  cultured: ['#eee6d6', 0.2], steel: ['#d3d6d8', 0.32, 0.45], brass: ['#c79a45', 0.35, 0.55], chrome: ['#d9dcde', 0.18, 0.6],
   black: ['#1b1b1d', 0.4], blackMatte: ['#262626', 0.8], mirror: ['#c9d3d8', 0.12, 0.6], doorBrown: ['#6a4632', 0.5],
   felt: ['#1f6b46', 1], railWhite: ['#f2f2ee', 0.6], cedar: ['#a8734a', 0.8], mulchEdge: ['#9a958c', 0.9],
 };
@@ -46,6 +51,8 @@ export function material(key) {
   let m;
   if (/^[WF]:/.test(key) || key in ORIGIN) {
     m = new THREE.MeshStandardMaterial({ roughness: 0.9 });
+    // the room environment map lights walls very unevenly by direction; damp it so paint reads true
+    if (key.startsWith('W:')) m.envMapIntensity = 0.55;
     MATS[key] = m; THEMED.set(key, m);
     applyFinish(key, ORIGIN[key]);
     return m;
@@ -62,6 +69,8 @@ export function material(key) {
     m = new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: mt });
     // ceilings get almost no direct light; a touch of emissive stands in for bounce light
     if (key === 'ceiling' || key === 'soffit') { m.emissive.set('#ffffff'); m.emissiveIntensity = key === 'ceiling' ? 0.32 : 0.12; }
+    // mirrors: there is no real reflection, so give them a soft sky-ish glow instead of reading as a dark TV
+    if (key === 'mirror') { m.emissive.set('#aab6bc'); m.emissiveIntensity = 0.45; }
   } else if (GLOW[key]) {
     m = new THREE.MeshStandardMaterial({ color: GLOW[key], emissive: GLOW[key], emissiveIntensity: key === 'shade' ? 0.35 : 0.9, roughness: 0.8 });
   } else if (key === 'glass') {
@@ -71,7 +80,8 @@ export function material(key) {
   } else if (key === 'frosted') {
     m = new THREE.MeshStandardMaterial({ color: '#e7eef0', roughness: 0.6, transparent: true, opacity: 0.85 });
   } else if (key === 'skylight') {
-    m = new THREE.MeshStandardMaterial({ color: '#33424e', roughness: 0.1, metalness: 0.3 });
+    // dark tinted glass (a low roughness reflected the white room environment and read as white)
+    m = new THREE.MeshStandardMaterial({ color: '#1f2a33', roughness: 0.32, metalness: 0, envMapIntensity: 0.35 });
   } else if (kind === 'floor') {
     const rest = key.slice(6);
     m = new THREE.MeshStandardMaterial({ map: tex(rest), roughness: rest === 'oak' ? 0.35 : rest.startsWith('tile') || rest === 'slate' ? 0.4 : 0.95 });

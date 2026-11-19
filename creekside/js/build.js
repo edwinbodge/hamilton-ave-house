@@ -66,6 +66,11 @@ export function roleRoom(L, r, i, prefix = '') {
     ORIGIN[key] = r.wall;
     ROLES.walls.push({ key, cat, orig: r.wall });
     rr.wall = key;
+    if (r.lower) { // two-tone wall below a chair rail (its own themeable material, same category)
+      ORIGIN[key + 'L'] = r.lower;
+      ROLES.walls.push({ key: key + 'L', cat, orig: r.lower });
+      rr.lowerKey = key + 'L';
+    }
   }
   const fc = floorCat(L, r);
   if (fc) {
@@ -192,9 +197,16 @@ export function buildWall(L, w, bat) {
     }
     const r = k.room;
     if (!r || r.bare || r.tile || r.void) return;
-    const fy = r.y;
-    if (ya <= fy + 0.01) strip(side, s, e, fy, fy + 0.3, 0.05, L.id === 'b' ? 'col:#d9b98a' : 'trim');
-    if (r.chair && ya <= fy + 2.9 && yb2 >= fy + 3.1) strip(side, s, e, fy + 2.85, fy + 3.05, 0.06, 'trim');
+    const fy = r.y, tk = r.trim || (L.id === 'b' ? 'col:#d9b98a' : 'trim'), ceil = fy + (L.ceiling || 8);
+    if (ya <= fy + 0.01) strip(side, s, e, fy, fy + 0.3, 0.05, tk);
+    if (r.chair && ya <= fy + 2.9 && yb2 >= fy + 3.1) strip(side, s, e, fy + 2.85, fy + 3.05, 0.06, r.trim || 'trim');
+    if (r.lowerKey && ya <= fy + 0.31 && yb2 >= fy + 2.85) strip(side, s, e, fy + 0.3, fy + 2.85, 0.004, r.lowerKey);
+    if (r.crown && ya <= ceil - 0.45 && yb2 >= ceil - 0.01) { strip(side, s, e, ceil - 0.42, ceil, 0.05, tk); strip(side, s, e, ceil - 0.24, ceil, 0.13, tk); strip(side, s, e, ceil - 0.08, ceil, 0.2, tk); }
+    // duplex outlets along finished walls, about one per 11 ft of run (cheap realism)
+    if (ya <= fy + 0.01 && e - s > 3.5 && !r.noLabel) {
+      const cnt = Math.floor((e - s) / 11) + 1;
+      for (let i = 0; i < cnt; i++) { const sc = s + ((e - s) * (i + 0.5)) / cnt; strip(side, sc - 0.115, sc + 0.115, fy + 1.15, fy + 1.53, 0.02, 'white'); strip(side, sc - 0.05, sc + 0.05, fy + 1.22, fy + 1.3, 0.025, 'col:#e4e2dc'); strip(side, sc - 0.05, sc + 0.05, fy + 1.38, fy + 1.46, 0.025, 'col:#e4e2dc'); }
+    }
   };
 
   let cur = 0;
@@ -211,7 +223,7 @@ export function buildWall(L, w, bat) {
   function opening(op) {
     const { s, e, type, sill, head, oo } = op;
     const [kp, kn] = sidesAt((s + e) / 2);
-    const fk = (k) => (k.outside ? 'winTrim' : k.room && k.room.bare ? 'white' : 'trim');
+    const fk = (k) => (k.outside ? 'winTrim' : k.room && k.room.bare ? 'white' : (k.room && k.room.trim) || 'trim');
     const frameKeys = { pw: fk(kp), nw: fk(kn), def: fk(kp.outside ? kn : kp) };
     const ft = 0.15, fd = t + 0.04;
     const fbox = (s0, s1, h0, h1, keys = frameKeys, depth = fd, solid = false, off = 0) => {
@@ -253,14 +265,19 @@ export function buildWall(L, w, bat) {
     const swingSide = n.dot(into) >= 0 ? 1 : -1;
     switch (type) {
       case 'd': case 'x': {
-        const style = type === 'x' ? oo.style || 'half' : 'panel6';
+        const style = type === 'x' ? oo.style || 'half' : oo.style || 'panel6';
         const color = oo.color || 'door';
+        // light switch plate beside the latch side of interior doors, on each finished side
+        if (type === 'd') {
+          const sw = hingeEnd === 's' ? [e + 0.2, e + 0.44] : [s - 0.44, s - 0.2];
+          if (sw[0] > 0.05 && sw[1] < len - 0.05) for (const [sd, k] of [[1, kp], [-1, kn]]) if (k.room && !k.room.void && !k.outside) { strip(sd, sw[0], sw[1], base + 3.85, base + 4.27, 0.02, 'white'); strip(sd, sw[0] + 0.09, sw[1] - 0.09, base + 3.98, base + 4.14, 0.03, 'col:#e8e6e0'); }
+        }
         const pid = L.id + ':' + w.slice(0, 2).join(',') + ':' + s.toFixed(1);
         if (oo.pair) {
           const mid = (s + e) / 2;
-          hang(s + ft, mid, 's', swingSide, head - ft - 0.02, style, color, 85, pid, true);
-          hang(mid, e - ft, 'e', swingSide, head - ft - 0.02, style, color, 85, pid, true);
-        } else hang(s + ft, e - ft, hingeEnd, swingSide, head - ft - 0.02, style, color, type === 'x' ? 80 : 85, null, type !== 'x');
+          hang(s + ft, mid, 's', swingSide, head - ft - 0.02, style, color, 85, pid, !oo.closed);
+          hang(mid, e - ft, 'e', swingSide, head - ft - 0.02, style, color, 85, pid, !oo.closed);
+        } else hang(s + ft, e - ft, hingeEnd, swingSide, head - ft - 0.02, style, color, type === 'x' ? 80 : 85, null, type !== 'x' && !oo.closed);
         break;
       }
       case 'e': { // entry: as built = oak door with leaded oval-glass lites and sidelights; Classic refresh = black glass double door
@@ -358,7 +375,8 @@ export function buildWall(L, w, bat) {
       if (cols > 1 || rows > 1) grid(k, x0, x1, y0, y1, cols, rows, 'white', zoff);
     };
     // sash frames: oak inside, almond vinyl-clad outside (local +z is the wall's +n side)
-    const inKey = L.id === 'b' ? 'white' : 'trim', outKey = 'winExt';
+    const kIn = sidesAt((op.s + op.e) / 2)[outSide > 0 ? 1 : 0];
+    const inKey = L.id === 'b' ? 'white' : (kIn.room && kIn.room.trim) || 'trim', outKey = 'winExt';
     const rail = (x0, x1, y0, y1, zoff = 0) => {
       const sgn = outSide || -1;
       k.box(sgn > 0 ? inKey : outKey, x0, y0, zoff - 0.08, x1, y1, zoff);
@@ -371,6 +389,11 @@ export function buildWall(L, w, bat) {
     };
     const gk = outSide && L.id !== 'b' ? new Kit(renoBat('on:classic', L.id), 'on:classic').at(k.ox, k.oz, k.oy, k.rot) : null;
     const cs = (x0, x1) => { const f = sashFrame(x0, x1, h0, h1); glassAndGrid(f[0], f[1], f[2], f[3]); if (gk) grid(gk, f[0], f[1], f[2], f[3], 2, f[3] - f[2] > 3.2 ? 3 : 2, 'black', outSide * 0.05, 0.03); };
+    if (op.oo.blind) { // white blind / roller shade raised to the head, on the room side (kitchen, office, bedrooms, baths in the photos)
+      const sg = outSide || -1, za = -sg * (t / 2 + 0.03), zb = -sg * (t / 2 + 0.24), dr = op.oo.blind === true ? 0.55 : op.oo.blind;
+      k.box('white', -0.12, h1 - dr, Math.min(za, zb), w + 0.12, h1 + 0.12, Math.max(za, zb));
+      k.box('col:#e9e6df', -0.12, h1 - dr - 0.06, Math.min(za, zb) - 0.01, w + 0.12, h1 - dr, Math.max(za, zb) + 0.01);
+    }
     if (style === 'cs2') { cs(0, w / 2); cs(w / 2, w); }
     else if (style === 'cs' || style === 'gb') cs(0, w);
     else { const mid = h0 + h / 2; const lo = sashFrame(0, w, h0, mid + 0.06, 0.06), hi = sashFrame(0, w, mid - 0.06, h1, -0.06); glassAndGrid(lo[0], lo[1], lo[2], lo[3], 0.06); glassAndGrid(hi[0], hi[1], hi[2], hi[3], -0.06); }
@@ -410,6 +433,11 @@ export function buildWall(L, w, bat) {
     const key = color.startsWith('#') ? 'wood:' + color : color, th = 0.15;
     if (style === 'panel6') {
       sixPanel(k, w, h, y0, key, 0);
+    } else if (style === 'louver') { // full-louver utility door (basement furnace closet, photo 37)
+      const st = 0.35;
+      k.box(key, 0, y0, -th / 2, st, y0 + h, th / 2); k.box(key, w - st, y0, -th / 2, w, y0 + h, th / 2);
+      k.box(key, st, y0 + h - st, -th / 2, w - st, y0 + h, th / 2); k.box(key, st, y0, -th / 2, w - st, y0 + 0.6, th / 2); k.box(key, st, y0 + h / 2 - 0.15, -th / 2, w - st, y0 + h / 2 + 0.15, th / 2);
+      for (let y = y0 + 0.65; y < y0 + h - st - 0.05; y += 0.13) k.box(key, st, y, -0.05, w - st, y + 0.04, 0.05);
     } else if (style === 'entry') { // oak slab, raised panels low, two tall arched leaded lites
       const gw = (w - 0.9) / 2, g0 = y0 + 3.1, g1 = y0 + h - 0.6;
       k.box(key, 0, y0, -th / 2, w, g0, th / 2); k.box(key, 0, g1, -th / 2, w, y0 + h, th / 2);
@@ -634,7 +662,8 @@ export function gableTri(bat, pts, key = 'siding') {
 
 // skylights: primary bath (seen in the photos) and the upstairs hall (aerial photos). px rectangles + the roof plane they sit in.
 const sk = (x0, y0, x1, y1, plane) => ({ px: [x0, y0, x1, y1], plane, hole: ftPoly([[x0, y0], [x1, y0], [x1, y1], [x0, y1]]) });
-const SKYLIGHTS = [sk(780, 262, 805, 310, 'east'), sk(444, 365, 466, 412, 'west')];
+// The hall skylight is on the front slope above the entry (photos 04, 61; aerial 49), not the NE slope.
+const SKYLIGHTS = [sk(780, 262, 805, 310, 'east'), sk(494, 498, 518, 536, 'front')];
 
 export const ROOF = {}; // plane height functions (px -> ft), filled by buildRoofs, used by reno + site
 function buildRoofs(bats) {
@@ -659,7 +688,7 @@ function buildRoofs(bats) {
   ROOF.west = rplane(bat, [[X0o, Y0o], [X0o, PY1o], [Pr, PYr + 0], [Pr, vTop[1]]], { ...west, eaves: [0], ridges: [2] });
   rplane(bat, [[X0o, Y0o], [Pr, vTop[1]], [Rx0, Yr]], west);
   rplane(bat, [[PX1o, Y1o], [PX1o, PY1o], [Pr, PYr], [Pr, vTop[1]]], { o: [PX1, 0], up: [-1, 0], h0: RY, p, eaves: [0], ridges: [2] });
-  rplane(bat, [[X0o, PY1o], [PX1o, PY1o], [Pr, PYr]], { o: [0, PY1], up: [0, -1], h0: RY, p, eaves: [0] });
+  // (the tower's front slope is built with the bay roof below)
   // east slope, with the bedroom bump over the garage
   const BX1 = 931.9, BY0 = 379.4, BY1 = 520.6, bd = (BY1 - BY0) / 2, Bry = BY0 + bd, BX1o = BX1 + o, BY0o = BY0 - o, BY1o = BY1 + o, Brx = BX1 - bd;
   const vN = [X1o - (Bry - BY0o), Bry]; // valleys meet on the bump ridge line
@@ -688,9 +717,9 @@ function buildRoofs(bats) {
   rplane(bat, [[kx0, ky0], [kx0, ky1], [323.5, ky1 - kd], [323.5, ky0 + kd]], { o: [292, 0], up: [1, 0], h0: RK, p: pk, eaves: [0] });
   rplane(bat, [[kx0, ky0], [323.5, ky0 + kd], [323.5, ky0]], { o: [0, 351.5], up: [0, 1], h0: RK, p: pk, eaves: [2] });
   rplane(bat, [[kx0, ky1], [323.5, ky1], [323.5, ky1 - kd]], { o: [0, 494.5], up: [0, -1], h0: RK, p: pk, eaves: [0] });
-  // the two-story bay's own low bonnet roof, dying into the tower's front hip
+  // the two-story bay: the tower's front hip carried out over the bay outline at the same eave height
   {
-    const A = [357, 656.5], B = [372, 677], C = [425, 677], Dd = [440, 656.5], ob = 9;
+    const A = [357, 656.5], B = [372, 677], C = [425, 677], Dd = [440, 656.5], ob = PX;
     const off = (p0, p1) => { const dx = p1[0] - p0[0], dy = p1[1] - p0[1], l = Math.hypot(dx, dy); return [dy / l * ob, -dx / l * ob]; };
     const inter = (a1, a2, b1, b2) => { const d = (a2[0] - a1[0]) * (b2[1] - b1[1]) - (a2[1] - a1[1]) * (b2[0] - b1[0]); const t = ((b1[0] - a1[0]) * (b2[1] - b1[1]) - (b1[1] - a1[1]) * (b2[0] - b1[0])) / d; return [a1[0] + (a2[0] - a1[0]) * t, a1[1] + (a2[1] - a1[1]) * t]; };
     const oAB = off(A, B), oBC = off(B, C), oCD = off(C, Dd);
@@ -700,15 +729,42 @@ function buildRoofs(bats) {
     const wall = [[0, 656.5], [1, 656.5]];
     const Ap = inter(aA, aB, wall[0], wall[1]), Dp = inter(cC, cD, wall[0], wall[1]);
     const Bw = inter(Bp, B, wall[0], wall[1]), Cw = inter(Cp, C, wall[0], wall[1]);
-    const pb = 4 / 12, hb = RY - 0.35;
-    const fh = {};
-    const facet = (poly, e0, e1) => { const dx = e1[0] - e0[0], dy = e1[1] - e0[1], l = Math.hypot(dx, dy); return rplane(bat, poly, { o: e0, up: [dy / l, -dx / l], h0: hb, p: pb, eaves: [0] }); };
-    fh.f = facet([Bp, Cp, Cw, Bw], Bp, Cp);
-    facet([Ap, Bp, Bw], Ap, Bp);
-    facet([Cp, Dp, Cw], Cp, Dp);
-    // apron where the bonnet meets the tower wall above the hip
-    const apron = [Ap, Bw, Cw, Dp].map(([x, y], i) => { const [fx, fz] = F(x, y); return [fx, fz, i === 0 || i === 3 ? hb : fh.f(x, y)]; });
-    for (let i = 0; i < 3; i++) { const [ax, az, ah] = apron[i], [bx, bz, bh] = apron[i + 1]; gableTri(bat, [V(ax, RY - 0.7, az), V(bx, RY - 0.7, bz), V(bx, bh, bz)]); gableTri(bat, [V(ax, RY - 0.7, az), V(bx, bh, bz), V(ax, ah, az)]); }
+    void Bw; void Cw; void Ap; void Dp;
+    // The bay's eave runs at the tower's eave height and follows the bay outline (photos 01, 42): the tower's
+    // front hip is pushed out over the bay, with small hip facets on the angled sides and valleys back into the
+    // tower's front slope. Built exactly as the upper envelope of the planes, clipped by half-planes.
+    const lin = ({ o: q, up, h0 }) => { const l = Math.hypot(up[0], up[1]), ux = up[0] / l, uy = up[1] / l; return [p * ux / PX, p * uy / PX, h0 - p * (q[0] * ux + q[1] * uy) / PX]; };
+    const ev = (f, q) => f[0] * q[0] + f[1] * q[1] + f[2];
+    const dif = (f, g) => [f[0] - g[0], f[1] - g[1], f[2] - g[2]];
+    const clip = (poly, g) => { // keep g(q) <= 0
+      const out = [];
+      for (let i = 0; i < poly.length; i++) {
+        const P0 = poly[i], Q = poly[(i + 1) % poly.length], a = ev(g, P0), b = ev(g, Q);
+        if (a <= 1e-7) out.push(P0);
+        if ((a < -1e-7 && b > 1e-7) || (a > 1e-7 && b < -1e-7)) { const t = a / (a - b); out.push([P0[0] + (Q[0] - P0[0]) * t, P0[1] + (Q[1] - P0[1]) * t]); }
+      }
+      return out.filter((q, i, arr) => Math.hypot(q[0] - arr[(i + 1) % arr.length][0], q[1] - arr[(i + 1) % arr.length][1]) > 0.05);
+    };
+    const facetSpec = (a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy); return { o: a, up: [dy / l, -dx / l], h0: RY, p }; };
+    const bay = [facetSpec(A, B), facetSpec(B, C), facetSpec(C, Dd)];
+    const front = { o: [0, PY1], up: [0, -1], h0: RY, p }, fF = lin(front), bF = bay.map(lin), hE = RY - p; // eave height (1 ft overhang)
+    const hull = [[X0o, PY1o], Bp, Cp, [PX1o, PY1o], [Pr, PYr]];
+    const flags = (poly, f) => { const e = [], r = []; poly.forEach((q, i) => { const q2 = poly[(i + 1) % poly.length];
+      if (Math.abs(ev(f, q) - hE) < 0.02 && Math.abs(ev(f, q2) - hE) < 0.02) e.push(i);
+      else if (bF.some((g) => g !== f && Math.abs(ev(g, q) - ev(f, q)) < 0.02 && Math.abs(ev(g, q2) - ev(f, q2)) < 0.02)) r.push(i); }); return { eaves: e, ridges: r }; };
+    bF.forEach((f, i) => {
+      let poly = hull;
+      for (const g of bF) { if (g !== f) poly = clip(poly, dif(f, g)); poly = clip(poly, dif([0, 0, hE], g)); } // lowest bay plane, inside the bay outline
+      poly = clip(poly, dif(fF, f)); // and above the tower's front slope
+      if (poly.length >= 3) rplane(bat, poly, { ...bay[i], ...flags(poly, f) });
+    });
+    // the tower's front slope, minus the bay roof: left and right of the point where the two valleys meet
+    const M = (() => { const [a1, b1, c1] = dif(fF, bF[0]), [a2, b2, c2] = dif(fF, bF[2]), d = a1 * b2 - a2 * b1; return [(b1 * c2 - b2 * c1) / d, (a2 * c1 - a1 * c2) / d]; })();
+    const tri = [[X0o, PY1o], [PX1o, PY1o], [Pr, PYr]];
+    for (const [g, side] of [[bF[0], [1, 0, -M[0]]], [bF[2], [-1, 0, M[0]]]]) {
+      const poly = clip(clip(tri, dif(g, fF)), side);
+      if (poly.length >= 3) rplane(bat, poly, { ...front, eaves: poly.map((q, i) => i).filter((i) => Math.abs(poly[i][1] - PY1o) < 0.05 && Math.abs(poly[(i + 1) % poly.length][1] - PY1o) < 0.05) });
+    }
   }
   // entry canopy: shallow shed roof on a white post with a brick base (as in the front photos); the modern facade replaces it
   {
@@ -717,6 +773,12 @@ function buildRoofs(bats) {
     const k = new Kit(c1, 'off:facade').at(cx, cz, 0);
     k.cbox('brickExt', 0, 0, 1.6, 1.6, -0.9, 9.6); k.cbox('col:#cbbfae', 0, 0, 1.85, 1.85, 9.6, 9.85);
     addSolid(V(cx - 0.8, 0, cz - 0.8), V(1.6, 0, 0), V(0, 0, 1.6), -1, 9.85, 'off:facade');
+    // a white post rises from the pier cap to a boxed soffit that carries the eave out over the entry (photos 04, 42, 61)
+    const k2 = new Kit(renoBat('off:facade', 'f2'), 'off:facade').at(cx, cz, 0);
+    k2.cbox('extTrim', 0, 0, 0.62, 0.62, 9.85, 17.1);
+    const [tx] = F(477, 0), [, wz] = F(0, 563.5);
+    new Kit(renoBat('off:facade', 'f2'), 'off:facade').box({ def: 'extTrim', nv: 'soffit', pv: 'shingle' }, tx + 0.58, 17.05, wz + 0.25, cx + 0.42, 17.75, cz + 0.42);
+    void cr; void pc;
   }
   // chimney: tan brick from grade to above the roof, stone cap, flue
   {
@@ -791,7 +853,8 @@ function buildExterior(bats) {
   for (let i = 0; i < 3; i++) {
     const a = bay[i], c = bay[i + 1], dx = c[0] - a[0], dy = c[1] - a[1], l = Math.hypot(dx, dy), out = [-dy / l, dx / l];
     veneer(b1, a, c, out, -0.9, 1.85);
-    veneer(b1, a, c, out, 7.75, 11.75, 'shake', 0, 0, 0.06);
+    veneer(b1, a, c, out, 7.75, 10, 'shake', 0, 0, 0.06); // split at the floor line so the 1st-floor cut view stops at 10 ft
+    veneer(b2, a, c, out, 10, 11.75, 'shake', 0, 0, 0.06);
   }
   // brick wainscot across the stair/laundry front and around the garage front, with a sloped cap
   veneer(b1, [552, 563.5], [700, 563.5], [0, 1], -0.9, 2.6);

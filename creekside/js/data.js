@@ -59,7 +59,7 @@ export const LEVELS = [
       [380, 236, 541, 236, 'e'],
       [541, 67.5, 541, 236, 'e'],
       [541, 67.5, 635.5, 67.5, 'e'], [635.5, 28.5, 635.5, 67.5, 'e'], [635.5, 28.5, 701.5, 28.5, 'e'], [701.5, 28.5, 701.5, 67.5, 'e'],
-      [635.5, 67.5, 701.5, 67.5, 'i', [[657, 696, 'd', { hinge: 'hi', into: '+y', color: '#d9b98a' }]]],
+      [635.5, 67.5, 701.5, 67.5, 'i', [[657, 696, 'd', { hinge: 'hi', into: '+y', color: '#d9b98a', style: 'louver' }]]],
       [701.5, 67.5, 784.5, 67.5, 'e'],
       [784.5, 67.5, 784.5, 236, 'e'],
       [784.5, 236, 933, 236, 'e', [[844, 885, 'w']]],
@@ -77,7 +77,7 @@ export const LEVELS = [
       [534.5, 330.5, 562.5, 330.5, 'i', [], { rs: 'not:lay:D' }],
       [534.5, 330.5, 534.5, 537, 'i', [], { rs: 'not:lay:D' }],
       [514, 373.5, 534.5, 373.5, 'i', [], { rs: 'not:lay:D' }], [507, 535.5, 534.5, 535.5, 'i', [], { rs: 'not:lay:D' }],
-      [562.5, 330.5, 562.5, 458.5, 'i', [[350, 424, 'd', { pair: true, into: '+x', color: '#d9b98a' }]], { rs: 'not:lay:D' }],
+      [562.5, 330.5, 562.5, 458.5, 'i', [[350, 424, 'd', { pair: true, into: '+x', color: '#d9b98a', closed: true }]], { rs: 'not:lay:D' }],
       [514, 458.5, 564, 458.5, 'i', [], { rs: 'not:lay:D' }],
       [622, 330.5, 687.5, 330.5, 'i', [[645, 677, 'd', { hinge: 'lo', into: '-y', color: '#d9b98a' }]], { rs: 'not:lay:D' }],
       [623.5, 330.5, 623.5, 458.5, 'i', [[355, 392, 'd', { hinge: 'lo', into: '-x', color: '#d9b98a' }]], { rs: 'not:lay:D' }],
@@ -122,26 +122,26 @@ export const LEVELS = [
       [323.5, 197.5, 474, 197.5, 'e', [[354, 438, 's']]],
       [323.5, 197.5, 323.5, 351.5, 'e', [[233, 285, 'w', { g: 'cs2' }], [286, 338, 'w', { g: 'cs2' }]], { reno: 'kitchen' }],
       [292, 351.5, 323.5, 351.5, 'e'],
-      [292, 351.5, 292, 494.5, 'e', [[397, 450, 'w', { g: 'cs2', sill: 3.6 }]]],
+      [292, 351.5, 292, 494.5, 'e', [[397, 450, 'w', { g: 'cs2', sill: 3.6, blind: 0.9 }]]],
       [292, 494.5, 323.5, 494.5, 'e'],
       // living room + two-story bay
       [323.5, 494.5, 323.5, 656.5, 'e', [[550, 605, 'w', { g: 'cs2' }]]],
       [323.5, 656.5, 357, 656.5, 'e'],
-      [357, 656.5, 372, 677, 'e', [[660, 673, 'w', { g: 'cs', sill: 2.0, head: 7.4 }]]],
-      [372, 677, 425, 677, 'e', [[377, 420, 'w', { g: 'cs2', sill: 2.0, head: 7.4 }]]],
-      [425, 677, 440, 656.5, 'e', [[660, 673, 'w', { g: 'cs', sill: 2.0, head: 7.4 }]]],
+      [357, 656.5, 372, 677, 'e', [[660, 673, 'w', { g: 'cs', sill: 2.0, head: 7.4, blind: true }]]],
+      [372, 677, 425, 677, 'e', [[377, 420, 'w', { g: 'cs2', sill: 2.0, head: 7.4, blind: true }]]],
+      [425, 677, 440, 656.5, 'e', [[660, 673, 'w', { g: 'cs', sill: 2.0, head: 7.4, blind: true }]]],
       [440, 656.5, 477, 656.5, 'e'],
       [477, 563.5, 477, 656.5, 'e'],
       // front: entry door with sidelights, laundry window
       [477, 563.5, 700, 563.5, 'e', [[482, 552, 'e', { hinge: 'hi', into: '-y' }], [646, 685, 'w', { g: 'cs', sill: 3.6 }]]],
       // garage: doors on the north (driveway) side, service door at the back
       [700, 563.5, 700, 722.5, 'e'],
-      [700, 722.5, 987.5, 722.5, 'e', [[829, 889, 'w', { g: 'cs2', sill: 3.2 }]]],
+      [700, 722.5, 987.5, 722.5, 'e', [[829, 889, 'w', { g: 'cs2', sill: 2.85, head: 8.8 }]]],
       [987.5, 378.5, 987.5, 722.5, 'e', [[403, 594, 'g'], [613, 711, 'g']]],
       [839.5, 378.5, 987.5, 378.5, 'e', [[863, 899, 'x', { hinge: 'hi', into: '+y', style: 'half', color: '#ece6d6' }]]],
       // office (main-floor bedroom)
-      [839.5, 197.5, 839.5, 378.5, 'e', [[265, 326, 'w', { g: 'cs2' }]]],
-      [701.5, 197.5, 839.5, 197.5, 'e', [[743, 804, 'w', { g: 'cs2' }]]],
+      [839.5, 197.5, 839.5, 378.5, 'e', [[265, 326, 'w', { g: 'cs2', blind: true }]]],
+      [701.5, 197.5, 839.5, 197.5, 'e', [[743, 804, 'w', { g: 'cs2', blind: true }]]],
       // ---- interior
       [474, 197.5, 474, 305, 'i', [[212, 305, 'o', { head: 8.2 }]], { top: 10, reno: 'kitchen' }], // dining | family: open, short wing wall
       [474, 305, 474, 318, 'i', [], { top: 10, reno: 'kitchen' }],                          // pier at the hall corner
@@ -152,7 +152,7 @@ export const LEVELS = [
       [562, 305, 562, 378, 'i', [[312, 372, 'c']]],                                        // coat closet
       [597, 305, 597, 378, 'i'],
       [562, 378, 701.5, 378, 'i', [[601, 637, 'd', { hinge: 'lo', into: '-y' }]]],         // half bath door
-      [563.5, 422, 645, 422, 'i', [[569, 605, 'd', { hinge: 'hi', into: '-y' }]]],         // door to the basement stair
+      [563.5, 422, 645, 422, 'i', [[569, 605, 'd', { hinge: 'hi', into: '-y', closed: true }]]],         // door to the basement stair (swings into the 3'8" hall, so it starts closed)
       [645, 378, 645, 422, 'i', [[383, 416, 'd', { hinge: 'lo', into: '+x' }]]],           // laundry door
       [610.5, 422, 610.5, 563.5, 'i'],                                                     // stair | laundry
       [688, 378, 688, 451.5, 'i', [[384, 447, 'c']], { reno: 'mud' }],                     // laundry closet
@@ -187,7 +187,8 @@ export const LEVELS = [
       { name: 'Family Room', dims: "18'4\" x 20'2\" · 2-story, sunken", floor: 'carpet:#d9d4cb', wall: 'paint:#f3f2ee', y: H.family, vault: true, poly: [[474, 57.5], [701.5, 57.5], [701.5, 305], [474, 305]] },
       { name: 'Dining Area', dims: "12'2\" x 8'7\"", floor: 'oak', wall: 'paint:#f3f2ee', poly: [[323.5, 197.5], [474, 197.5], [474, 305], [323.5, 305]] },
       { name: 'Kitchen', dims: "14'9\" x 15'9\"", floor: 'oak', wall: 'paint:#f3f2ee', poly: [[323.5, 305], [474, 305], [474, 494.5], [292, 494.5], [292, 351.5], [323.5, 351.5]] },
-      { name: 'Living Room', dims: "12'2\" x 14'8\" · tray ceiling", floor: 'carpet:#86707a', wall: 'paint:#e2dfdc', chair: true, tray: true,
+      // photos 19-20: painted white trim (casings, base, chair rail, crown), pale gray-lavender walls, a shade darker below the rail
+      { name: 'Living Room', dims: "12'2\" x 14'8\" · tray ceiling", floor: 'carpet:#86707a', wall: 'paint:#e8e6e7', lower: 'paint:#d9d5d9', trim: 'white', crown: true, chair: true, tray: true,
         poly: [[323.5, 494.5], [477, 494.5], [477, 656.5], [440, 656.5], [425, 677], [372, 677], [357, 656.5], [323.5, 656.5]] },
       { name: 'Hall', dims: "13'9\" x 6'8\"", floor: 'tileFoyer', wall: 'paint:#f3f2ee', poly: [[475.5, 305], [562, 305], [562, 378], [645, 378], [645, 422], [563.5, 422], [563.5, 430], [475.5, 430]] },
       { name: 'Foyer', dims: "7'0\" x 11'7\" · 2-story", floor: 'tileFoyer', wall: 'paint:#f3f2ee', poly: [[475.5, 430], [563.5, 430], [563.5, 563.5], [477, 563.5], [477, 494.5], [475.5, 494.5]] },
@@ -203,8 +204,8 @@ export const LEVELS = [
     id: 'f2', name: '2nd Floor', map: F2, floor: H.f2, extBottom: 0, extTop: 8, intTop: 8,
     sill: 2.4, head: 6.9, ceiling: 8, grille: 'cs',
     walls: [
-      [677, 109.5, 677, 334.6, 'e', [[128, 158, 'w', { g: 'cs2' }], [203, 222, 'w', { g: 'cs', sill: 3.0 }], [275, 305, 'w', { g: 'cs2' }]]],
-      [677, 109.5, 751, 109.5, 'e', [[698, 727, 'w', { g: 'cs2' }]]],
+      [677, 109.5, 677, 334.6, 'e', [[128, 158, 'w', { g: 'cs2', blind: true }], [203, 222, 'w', { g: 'cs', sill: 3.0, blind: 1.3 }], [275, 305, 'w', { g: 'cs2', blind: true }]]],
+      [677, 109.5, 751, 109.5, 'e', [[698, 727, 'w', { g: 'cs2', blind: true }]]],
       [677, 334.6, 693.5, 334.6, 'e'],
       [693.5, 334.6, 700.9, 344.7, 'e', [[336, 343, 'w', { g: 'cs', sill: 1.8 }]]],
       [700.9, 344.7, 726.9, 344.7, 'e', [[703, 725, 'w', { g: 'cs2', sill: 1.8 }]]],
@@ -216,16 +217,16 @@ export const LEVELS = [
       [863, 276, 931, 276, 'e'],
       [931, 268, 931, 276, 'e'],
       [931, 268, 976, 268, 'e'],
-      [976, 198.8, 976, 268, 'e', [[206, 233, 'w', { g: 'cs2', sill: 2.6 }], [236, 263, 'w', { g: 'cs2', sill: 2.6 }]]],
+      [976, 198.8, 976, 268, 'e', [[206, 233, 'w', { g: 'cs2', sill: 2.6, blind: true }], [236, 263, 'w', { g: 'cs2', sill: 2.6, blind: true }]]],
       [931, 198.8, 976, 198.8, 'e'],
-      [931, 109.5, 931, 198.8, 'e', [[145, 175, 'w', { g: 'cs2', sill: 3.2 }]]],
+      [931, 109.5, 931, 198.8, 'e', [[145, 175, 'w', { g: 'cs2', sill: 3.2, blind: true }]]],
       [863, 109.5, 931, 109.5, 'e'],
       // interior
-      [751, 109.5, 751, 191, 'i', [[166, 185, 'd', { hinge: 'lo', into: '-x' }]]],      // bedroom 3 | family void, its closet door
+      [751, 109.5, 751, 191, 'i', [[166, 185, 'd', { pair: true, into: '-x', closed: true }]]],      // bedroom 3 | family void, its closet door
       [751, 162, 783, 162, 'i'], [783, 162, 783, 187, 'i'], [751, 187, 783, 187, 'i'],    // bedroom 3 walk-in closet
       [677, 191, 751, 191, 'i', [[734, 750, 'd', { hinge: 'hi', into: '-y' }]]],
       [733, 191, 733, 253, 'i', [[205, 222, 'd', { hinge: 'lo', into: '-x' }]]],        // hall bath door
-      [707, 222, 707, 240, 'i'], [707, 222, 733, 222, 'i', [[710, 730, 'd', { hinge: 'lo', into: '-y' }]]], // linen
+      [707, 222, 707, 240, 'i'], [707, 222, 733, 222, 'i', [[710, 730, 'd', { hinge: 'lo', into: '-y', closed: true }]]], // linen (swings into the bath, so it starts closed)
       [677, 240, 733, 240, 'i'],
       [677, 253, 733, 253, 'i', [[683, 727, 'c']]],                                       // bedroom 2 closet
       [733, 246, 751, 246, 'i', [[734, 750, 'd', { hinge: 'hi', into: '+y' }]]],
@@ -276,16 +277,26 @@ export const STAIRS = {
 // Lot: 0.29 acre (12,576 sq ft) drawn as a 96 x 131 ft rectangle; house placement estimated from the
 // aerial photos (garage-side driveway needs ~26 ft of apron, so the house sits toward the south line).
 // xSouth / xNorth are historical names for the plan-left (NE) and plan-right (SW, driveway) lot lines.
-export const LOT = { zBack: -46, zFront: 85, xSouth: -12, xNorth: 84 };
+// Refined from the Google aerial (58.webp, scaled on the house): the NE line runs ~6 ft off the kitchen bump
+// (the NE neighbor is ~14 ft away), the SW line is just past the driveway apron, the back line ~58 ft behind the
+// family room. 90 x 142 ft = 12,780 sq ft (listed 0.29 acre).
+export const LOT = { zBack: -58, zFront: 84, xSouth: -6, xNorth: 84 };
 // compass azimuth (degrees clockwise from north) of local +x; local +z is X_AZ + 90 (the front faces NW = 315)
 export const X_AZ = 225;
-export const STREET = { sidewalk: [86, 91], curb: 98, width: 32 };
-// Neighboring houses, roughly located from the aerials: [x0, z0, x1, z1, ridge height]
+export const STREET = { sidewalk: [84.5, 89], curb: 94.5, width: 30 };
+// Neighboring houses from the aerials (58, 49, 50) and photos: plan box, eave + ridge (ft above grade), roof
+// type ('gx' ridge along x, 'gz' along z, 'hip'), siding + roof colors, garage doors [cx, cz, width, nx, nz].
+const nb = (x0, z0, x1, z1, eave, ridge, type, wall, roof = '#62666b', doors) => ({ x0, z0, x1, z1, eave, ridge, type, wall, roof, doors });
 export const NEIGHBORS = [
-  [-62, 4, -24, 58, 28],   // northeast side
-  [98, -6, 140, 44, 28],   // southwest side, past the driveway
-  [-70, -120, -30, -80, 26],
-  [40, -130, 85, -92, 26],
+  nb(-56, 20, -15, 55, 18, 29, 'gx', '#ece4cf', '#6b6862'),                         // NE: cream 2-story, side gable, ~14 ft away
+  nb(-78, 28, -56, 54, 10, 18, 'gz', '#ece4cf', '#6b6862', [[-67, 54, 16, 0, 1]]),   //     its garage wing
+  nb(90, 40, 112, 64, 10, 19, 'gz', '#7f9cc4', '#5d6670', [[95.5, 64, 8, 0, 1], [106, 64, 8, 0, 1]]), // SW: blue, front-load garage
+  nb(108, 12, 140, 58, 18, 30, 'hip', '#86a2c8', '#5d6670'),
+  nb(-60, -150, -20, -115, 17, 28, 'gx', '#d9d2c3'),
+  nb(40, -160, 85, -125, 17, 28, 'hip', '#c9ccc8'),
+  nb(-45, 168, 0, 200, 17, 28, 'gx', '#d8d0c0'),                                     // across Creekside Ln
+  nb(28, 165, 68, 198, 17, 29, 'hip', '#b9c2c6'),
+  nb(96, 168, 136, 200, 17, 28, 'gx', '#e2ddd2'),
 ];
 export const LATITUDE = 43.32;
 export { OAK };

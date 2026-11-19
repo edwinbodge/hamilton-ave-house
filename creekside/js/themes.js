@@ -74,6 +74,7 @@ export function applyStyle(v) {
   applyFinish('rcab', shade(rc, 0.95)); applyFinish('rcabDoor', rc); applyFinish('rcabPanel', shade(rc, 0.97));
   applyFinish('island', v.island === 'match' ? rc : v.island);
   applyFinish('counter', v.counters); applyFinish('vanityTop', v.counters.startsWith('laminate') ? ORIGIN.vanityTop : v.counters);
+  applyFinish('vanityTop2', v.counters.startsWith('laminate') ? ORIGIN.vanityTop2 : v.counters);
   applyFinish('rcounter', v.counters.startsWith('laminate') ? ORIGIN.rcounter : v.counters);
   applyFinish('backsplash', v.backsplash);
   applyFinish('rsplash', v.backsplash.startsWith('paint') ? ORIGIN.rsplash : v.backsplash);

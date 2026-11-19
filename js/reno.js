@@ -32,7 +32,7 @@
 import * as THREE from 'three';
 import { toFt, F2 } from './data.js';
 import { Kit, V, addFloorPoly, addSolid, pip } from './geom.js';
-import { LV, P, CTX, renoBat, renoGroup, roleRoom, buildWall, buildLabels, gableRoof, leanRoof, gableTri, buildSunroomGable, ROOFT } from './build.js';
+import { LV, P, CTX, renoBat, renoGroup, roleRoom, buildWall, buildLabels, gableRoof, leanRoof, gableTri, buildSunroomGable, ROOFT, skylight, sunRoomRoof } from './build.js';
 import {
   toilet, vanity, lightBar, diningTable, chair, buffet, firePit, adirondack, patioDining, patioChair, powerRack, liftBench, dumbbellRack,
   pelotonBike, rubberFloor, shelving, recessed, flushDome, rug, sofa, armchair, coffeeTable, floorLamp, plant, runKit, IRON, RUBBER, disc,
@@ -364,7 +364,7 @@ function buildBumpOut() {
   k.cbox('white', x0 - 0.23, zE - 0.23, 0.6, 0.6, -0.9, 9);                  // corner board
   // roof: one lean-to from the 2nd-floor wall, same top line as the old nook roof (4:12)
   const mz0 = toFt(F2(0, 111.5))[1];
-  leanRoof(renoBat(rs, 'roof'), { x0, x1, zWall: mz0, zEave: zE, y: 9, p: (12 - 9) / (mz0 - zE), o: 1.0, hip0: true, hip1: false });
+  leanRoof(renoBat(rs, 'roof'), { x0, x1, zWall: mz0, zEave: zE, y: 9, p: (12 - 9) / (mz0 - zE), o: 1.0, hip0: true, hip1: false, hipStop0: toFt([0, 354.5])[1] - 0.25 });
   const at = (x, y, rot = 0, y0 = 0) => { const [lx, lz] = toFt([x, y]); return new Kit(bat, rs).at(lx, lz, y0, rot); };
   { // 7 ft table for six, centered on the old wall line: it only fits because of the bump-out
     const t = at(1240, 308, 0);
@@ -395,10 +395,10 @@ function buildSunExt() {
   buildSunroomGable(renoGroup(rs, 'f1'), yG, rs);
   const [sx0, zG] = toFt([1420.5, yG]), [sx1, z0] = toFt([1703.5, 49.5]), mz0 = toFt(F2(0, 111.5))[1], sp = 10 / 12;
   const rb = renoBat(rs, 'roof');
-  gableRoof(rb, { x0: sx0, x1: sx1, z0: zG, z1: mz0, y: 9, p: sp, o: 1.0, rake: [1.0, 0], gable: [false, false] });
+  sunRoomRoof(rb, renoBat('off:bump', 'roof'), sx0, sx1, zG, mz0);
   for (const za of [-3.4, 3.3, 7.6]) {
     const zb = za + 2.3, xa = sx0 + 1.2, xb = sx0 + 3.6, ya = 9 + (xa - sx0) * sp + 0.06, yb = 9 + (xb - sx0) * sp + 0.06;
-    rb.face('skylight', [V(xa, ya, za), V(xb, yb, za), V(xb, yb, zb), V(xa, ya, zb)], V(-0.6, 1, 0));
+    skylight(rb, xa, xb, ya, yb, za, zb);
     bat.face('white', [V(xa, ya - ROOFT - 0.02, za), V(xb, yb - ROOFT - 0.02, za), V(xb, yb - ROOFT - 0.02, zb), V(xa, ya - ROOFT - 0.02, zb)], V(0.6, -1, 0));
   }
   const k = new Kit(bat, rs), xc = (sx0 + sx1) / 2, ridge = 9 + ((sx1 - sx0) / 2) * sp - ROOFT;
@@ -436,7 +436,7 @@ function buildDetachedGarage() {
   gableRoof(rb, { x0, x1, z0, z1, y: 11, p: 8 / 12, o: 1.0, rake: [1.0, 1.0], gable: [true, true] });
   rb.poly('ceiling', room.pts, 11, [], true);
   // driveway extension from the pad back to the new doors
-  const drive = [[-20, 2], [-4, 2], [-4, 25.6], [-20, 25.6]];
+  const drive = [[-20, 2], [-4, 2], [-4, 14.6], [-20, 14.6]]; // meets the existing pad, which runs back to the garage's rear wall line
   bat.poly('paving', drive, -0.96);
   addFloorPoly(drive, [], -0.96, rs);
   RENO_LABELS.push(...buildLabels(L, renoGroup(rs, 'site'), [room]).map((l) => ((l.userData.rs = rs), l)));

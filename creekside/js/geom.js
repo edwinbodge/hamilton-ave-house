@@ -12,7 +12,7 @@ const MATS = {};
 // look is set with applyFinish(); ORIGIN holds the as-listed finish of each.
 export const ORIGIN = {
   trim: '#b9843f', door: '#b9843f', doorPanel: '#c4904c', doorLine: '#7d5426', cab: '#c28a48', cabDoor: '#c9924f',
-  cabPanel: '#d29c58', counter: 'laminate:#8d9093', vanityTop: '#e5e1da', backsplash: 'paint:#f3f2ee', splashTrim: 'laminate:#8d9093',
+  cabPanel: '#d29c58', counter: 'laminate:#8d9093', vanityTop: '#dccdc5', vanityTop2: 'laminate:#ecebe6', backsplash: 'paint:#f3f2ee', splashTrim: 'laminate:#8d9093',
   fpBrick: 'blackMarble', mantel: '#b9843f', mantelPanel: '#c4904c', stairCarpet: '#c9c3ba', island: '#46555e',
   // exterior (the modern-facade option re-finishes these)
   siding: 'lap:#6a5f56', brickExt: 'brickTan', extTrim: '#ebe5d6', winExt: '#e6dfcf', shingle: 'shingle', garageDoor: '#7b6e60',
@@ -33,7 +33,9 @@ function roughFor(key, spec) {
 export function applyFinish(key, spec) {
   const m = material(key);
   if (!spec) return;
-  if (spec.startsWith('#')) { m.map = null; m.color.set(spec); } else { m.map = tex(spec); m.color.set('#ffffff'); }
+  // hardwood floors run front-to-back (along z) in the photos: floor wood textures are rotated a quarter turn
+  const rot = key.startsWith('F:') && /^(oak|plank)/.test(spec);
+  if (spec.startsWith('#')) { m.map = null; m.color.set(spec); } else { m.map = tex(rot ? spec + (spec.includes(':') ? ':r' : '::r') : spec); m.color.set('#ffffff'); }
   m.roughness = roughFor(key, spec);
   m.needsUpdate = true;
 }
@@ -43,7 +45,7 @@ const FLAT = {
   ceiling: ['#f7f5ef', 0.95], soffit: ['#f2f2ee', 0.9], shutter: ['#23443a', 0.6], cherry: ['#8a3f1f', 0.35],
   cherryPanel: ['#9b4a25', 0.35], stairCarpet: ['#d8d1c4', 1], subfloor: ['#c9b48f', 0.9], joist: ['#c49a62', 0.9],
   foundation: ['#8d8b86', 0.95], post: ['#f4f4f0', 0.6], porcelain: ['#f7f6f2', 0.15], counter: ['#f1eee6', 0.3],
-  cultured: ['#eee6d6', 0.2], steel: ['#d3d6d8', 0.32, 0.45], brass: ['#bb8c34', 0.3, 0.85], chrome: ['#d9dcde', 0.1, 0.9],
+  cultured: ['#eee6d6', 0.2], steel: ['#d3d6d8', 0.32, 0.45], brass: ['#bb8c34', 0.3, 0.85], chrome: ['#dfe2e4', 0.16, 0.7],
   black: ['#1b1b1d', 0.4], blackMatte: ['#262626', 0.8], mirror: ['#c9d3d8', 0.12, 0.6], doorBrown: ['#6a4632', 0.5],
   felt: ['#1f6b46', 1], railWhite: ['#f2f2ee', 0.6], cedar: ['#a8734a', 0.8], mulchEdge: ['#9a958c', 0.9],
   ridgeCap: ['#4a4d52', 0.9], blackGloss: ['#141416', 0.22], goldFrame: ['#c9a75a', 0.3, 0.8], plaster: ['#efece6', 0.85],
@@ -76,6 +78,8 @@ export function material(key) {
     m = new THREE.MeshStandardMaterial({ color: '#bcd6e6', roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.25, depthWrite: false, side: THREE.DoubleSide });
   } else if (key === 'showerGlass') {
     m = new THREE.MeshStandardMaterial({ color: '#d7e6ea', roughness: 0.05, transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide });
+  } else if (key === 'smokeGlass') { // bronze-tinted shower glass (primary bath, photo 30)
+    m = new THREE.MeshStandardMaterial({ color: '#6b5a46', roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.38, depthWrite: false, side: THREE.DoubleSide });
   } else if (key === 'frosted') {
     m = new THREE.MeshStandardMaterial({ color: '#e7eef0', roughness: 0.6, transparent: true, opacity: 0.85 });
   } else if (key === 'skylight') {

@@ -105,9 +105,10 @@ export function tex(name) {
     case 'faux': // sponge-painted walls (living, family, primary bedroom)
       t = canvasTex(256, 256, (g, w, h) => {
         g.fillStyle = arg; g.fillRect(0, 0, w, h);
-        for (let i = 0; i < 260; i++) {
-          const x = Math.random() * w, y = Math.random() * h, r = 8 + Math.random() * 30;
-          const col = Math.random() < 0.5 ? shade(arg, 0.06) : shade(arg, -0.07);
+        // the listing photos show a fairly bold sponge pattern: pale cream highlights over tan mottling
+        for (let i = 0; i < 420; i++) {
+          const x = Math.random() * w, y = Math.random() * h, r = 6 + Math.random() * 26;
+          const col = Math.random() < 0.5 ? shade(arg, 0.085) : shade(arg, -0.1);
           wrapDraw(w, h, x, y, (xx, yy) => {
             const grd = g.createRadialGradient(xx, yy, 0, xx, yy, r);
             grd.addColorStop(0, col + 'aa'); grd.addColorStop(1, col + '00');
@@ -127,15 +128,16 @@ export function tex(name) {
         g.fillStyle = '#f2eee4'; g.fillRect(0, 0, w, h);
         const leaf = (x, y, a, col) => wrapDraw(w, h, x, y, (xx, yy) => {
           g.save(); g.translate(xx, yy); g.rotate(a); g.fillStyle = col;
-          g.beginPath(); g.ellipse(0, 0, 4.5, 2.0, 0, 0, Math.PI * 2); g.fill(); g.restore();
+          g.beginPath(); g.ellipse(0, 0, 5.5, 2.6, 0, 0, Math.PI * 2); g.fill(); g.restore();
         });
-        for (let v = 0; v < 16; v++) {
+        // short scattered sprigs (photos 24-29), not long vines
+        for (let v = 0; v < 70; v++) {
           let x = Math.random() * w, y = Math.random() * h, a = Math.random() * Math.PI * 2;
-          g.strokeStyle = 'rgba(125,116,102,0.7)'; g.lineWidth = 0.8;
-          for (let s = 0; s < 16; s++) {
+          g.strokeStyle = 'rgba(125,116,102,0.3)'; g.lineWidth = 0.6;
+          for (let s = 0; s < 7; s++) {
             const nx = x + Math.cos(a) * 5, ny = y + Math.sin(a) * 5;
             wrapDraw(w, h, 0, 0, (ox, oy) => { g.beginPath(); g.moveTo(x + ox, y + oy); g.lineTo(nx + ox, ny + oy); g.stroke(); });
-            if (s % 2 === 0) leaf(nx, ny, a + (Math.random() < 0.5 ? 0.9 : -0.9), Math.random() < 0.7 ? '#66625a' : '#8a857a');
+            leaf(nx, ny, a + (s % 2 ? 0.9 : -0.9), Math.random() < 0.6 ? '#6d6a60' : '#9a958a');
             if (s % 7 === 3) wrapDraw(w, h, nx + 3, ny + 3, (xx, yy) => { g.fillStyle = '#8c3b3b'; g.beginPath(); g.arc(xx, yy, 1.8, 0, 7); g.fill(); });
             x = nx; y = ny; a += (Math.random() - 0.5) * 0.9;
           }
@@ -328,6 +330,67 @@ export function tex(name) {
         }
         noise(g, w, h, 2500, 0.07);
       }, [6, 6]);
+      break;
+    case 'grain': { // stained wood with vertical grain (doors, cabinets, mantel): base color in arg
+      t = canvasTex(256, 512, (g, w, h) => {
+        g.fillStyle = arg; g.fillRect(0, 0, w, h);
+        // broad growth-ring bands, then fine streaks; everything runs along v (up the face)
+        for (let i = 0; i < 14; i++) {
+          const x = Math.random() * w, bw = 8 + Math.random() * 26, f = (Math.random() - 0.55) * 0.1;
+          g.fillStyle = shade(arg, f) + '55';
+          wrapDraw(w, h, x, 0, (xx) => {
+            g.beginPath(); g.moveTo(xx, 0);
+            for (let y = 0; y <= h; y += 32) g.lineTo(xx + Math.sin(y / 70 + i) * 4, y);
+            for (let y = h; y >= 0; y -= 32) g.lineTo(xx + bw + Math.sin(y / 70 + i) * 4, y);
+            g.fill();
+          });
+        }
+        for (let i = 0; i < 110; i++) {
+          const x = Math.random() * w;
+          g.strokeStyle = `rgba(60,25,8,${Math.random() * 0.1})`; g.lineWidth = 0.5 + Math.random() * 0.8;
+          g.beginPath(); g.moveTo(x, 0); g.bezierCurveTo(x + 3, h / 3, x - 3, (2 * h) / 3, x, h); g.stroke();
+        }
+        noise(g, w, h, 1500, 0.04, 1);
+      }, [1.5, 3]);
+      break;
+    }
+    case 'plaid': { // kitchen / nook valances: brown, rust and green tartan on tan
+      t = canvasTex(64, 64, (g, w, h) => {
+        g.fillStyle = '#b89a76'; g.fillRect(0, 0, w, h);
+        const bands = [[0, 14, 'rgba(92,46,32,0.75)'], [20, 4, 'rgba(48,70,52,0.7)'], [30, 10, 'rgba(140,58,40,0.55)'], [46, 2, 'rgba(235,220,190,0.8)'], [52, 6, 'rgba(60,40,30,0.6)']];
+        for (const [o, s, c] of bands) { g.fillStyle = c; g.fillRect(o, 0, s, h); g.fillRect(0, o, w, s); }
+      }, [0.9, 0.9]);
+      break;
+    }
+    case 'floral': { // primary bedroom valances: navy ground with dusky roses
+      t = canvasTex(64, 64, (g, w, h) => {
+        g.fillStyle = '#1f2a3f'; g.fillRect(0, 0, w, h);
+        for (let i = 0; i < 9; i++) {
+          const x = Math.random() * w, y = Math.random() * h;
+          wrapDraw(w, h, x, y, (xx, yy) => {
+            g.fillStyle = ['#a7525d', '#c98b8c', '#6f7d4e'][i % 3];
+            g.beginPath(); g.arc(xx, yy, 3 + Math.random() * 3, 0, 7); g.fill();
+          });
+        }
+      }, [1.2, 1.2]);
+      break;
+    }
+    case 'gingham': // laundry door shade: green check
+      t = canvasTex(32, 32, (g, w, h) => {
+        g.fillStyle = '#f2f0e8'; g.fillRect(0, 0, w, h);
+        g.fillStyle = 'rgba(30,95,60,0.55)'; g.fillRect(0, 0, 16, h); g.fillRect(0, 0, w, 16);
+      }, [0.25, 0.25]);
+      break;
+    case 'spotRug': // family room rug: soft gray ground with cream "fawn spot" pattern
+      t = canvasTex(128, 128, (g, w, h) => {
+        g.fillStyle = '#9d9991'; g.fillRect(0, 0, w, h);
+        for (let i = 0; i < 90; i++) {
+          const x = Math.random() * w, y = Math.random() * h, rx = 2 + Math.random() * 3.5, ry = 1.5 + Math.random() * 2;
+          g.fillStyle = '#d6d0c4';
+          wrapDraw(w, h, x, y, (xx, yy) => { g.beginPath(); g.ellipse(xx, yy, rx, ry, Math.random() * 3, 0, 7); g.fill(); });
+        }
+        noise(g, w, h, 1500, 0.08, 1);
+      }, [2.5, 2.5]);
       break;
     case 'felt':
       t = canvasTex(64, 64, (g, w, h) => { g.fillStyle = '#1f6b46'; g.fillRect(0, 0, w, h); noise(g, w, h, 900, 0.08, 1); }, [2, 2]);

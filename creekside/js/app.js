@@ -102,7 +102,7 @@ function applyView() {
   const showLabels = (lv) => state.labels && state.mode === 'orbit' && v === lv;
   for (const id of ['b', 'f1', 'f2']) {
     furn[id].visible = state.furniture;
-    for (const l of labels[id]) l.visible = showLabels(id) && !HIDE_LABELS.some(([r, n]) => state.reno[r] && n.test(l.userData.name)) && !(id === 'b' && state.layout === 'D' && /^(Hall|Recreation Room)$/.test(l.userData.name));
+    for (const l of labels[id]) l.visible = showLabels(id) && !HIDE_LABELS.some(([r, n]) => state.reno[r] && n.test(l.userData.name)) && !(id === 'b' && state.layout === 'D' && /^(Hall|Recreation Room)$/.test(l.userData.name)) && !(id === 'b' && state.layout !== '0' && /roughed in/.test(l.userData.name));
   }
   for (const l of RENO_LABELS) l.visible = showLabels(l.userData.level) && activeTag(l.userData.rs);
   $$('.views button').forEach((b) => b.classList.toggle('on', b.dataset.view === v));

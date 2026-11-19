@@ -388,22 +388,29 @@ export function tex(name) {
         noise(g, w, h, 1500, 0.06);
       }, [4, 2]);
       break;
-    case 'tileFoyer': // 13" beige ceramic set on the diagonal with small dot inserts
-      t = canvasTex(128, 128, (g, w, h) => {
-        g.fillStyle = '#cdbfa8'; g.fillRect(0, 0, w, h);
-        g.save(); g.translate(w / 2, h / 2); g.rotate(Math.PI / 4);
-        for (let i = -3; i < 3; i++) for (let j = -3; j < 3; j++) { g.fillStyle = `hsl(38,${16 + Math.random() * 6}%,${80 + Math.random() * 5}%)`; g.fillRect(i * 45.25 + 1.5, j * 45.25 + 1.5, 42.2, 42.2); }
-        g.restore();
-        noise(g, w, h, 900, 0.04);
-      }, [1.6, 1.6]);
+    case 'tileFoyer': // 13" pale beige ceramic set square, clipped corners with a 3" taupe diamond insert at every other joint (photos 05-06)
+      t = canvasTex(256, 256, (g, w, h) => {
+        const n = 2, s = w / n, c = s * 0.13;
+        g.fillStyle = '#c9bfb0'; g.fillRect(0, 0, w, h); // grout
+        for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+          const x = i * s, y = j * s;
+          g.fillStyle = `hsl(36,${13 + Math.random() * 5}%,${83 + Math.random() * 3}%)`;
+          g.fillRect(x + 1.5, y + 1.5, s - 3, s - 3);
+          for (let k = 0; k < 40; k++) { g.fillStyle = `rgba(150,130,105,${Math.random() * 0.06})`; g.fillRect(x + Math.random() * s, y + Math.random() * s, 6 + Math.random() * 14, 3 + Math.random() * 8); }
+        }
+        // the insert joint is at the canvas center (s, s): the four tiles around it are clipped there
+        g.fillStyle = '#c9bfb0'; g.beginPath(); g.moveTo(s, s - c - 1); g.lineTo(s + c + 1, s); g.lineTo(s, s + c + 1); g.lineTo(s - c - 1, s); g.closePath(); g.fill();
+        g.fillStyle = '#b8aa96'; g.beginPath(); g.moveTo(s, s - c + 1.5); g.lineTo(s + c - 1.5, s); g.lineTo(s, s + c - 1.5); g.lineTo(s - c + 1.5, s); g.closePath(); g.fill();
+        noise(g, w, h, 1500, 0.03);
+      }, [2.2, 2.2]);
       break;
     case 'vinylDiamond': // hall bath sheet vinyl: white with gray diamonds
       t = canvasTex(128, 128, (g, w, h) => {
         g.fillStyle = '#ecebe6'; g.fillRect(0, 0, w, h);
         g.fillStyle = '#8f949a';
-        for (const [cx, cy] of [[0, 0], [64, 64], [128, 0], [0, 128], [128, 128]]) { g.beginPath(); g.moveTo(cx, cy - 16); g.lineTo(cx + 16, cy); g.lineTo(cx, cy + 16); g.lineTo(cx - 16, cy); g.fill(); }
+        for (const [cx, cy] of [[0, 0], [64, 64], [128, 0], [0, 128], [128, 128]]) { g.beginPath(); g.moveTo(cx, cy - 22); g.lineTo(cx + 22, cy); g.lineTo(cx, cy + 22); g.lineTo(cx - 22, cy); g.fill(); }
         g.fillStyle = '#d6d6d2'; g.fillRect(0, 0, w, 1); g.fillRect(0, 0, 1, h); g.fillRect(0, 64, w, 1); g.fillRect(64, 0, 1, h);
-      }, [1.4, 1.4]);
+      }, [1.25, 1.25]); // ~4.5" gray diamonds on 7.5" centers (photo 33)
       break;
     case 'blackMarble': // black marble with white veining (fireplace surround)
       t = canvasTex(256, 256, (g, w, h) => {
@@ -453,6 +460,7 @@ export function tex(name) {
     default:
       throw new Error('unknown texture ' + name);
   }
+  if (name.endsWith(':r')) { t.center.set(0.5, 0.5); t.rotation = Math.PI / 2; } // floor boards running along z
   cache[name] = t;
   return t;
 }

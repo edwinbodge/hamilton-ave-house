@@ -28,10 +28,10 @@ import { toFt, F2, H, PX, vaultUnder } from './data.js';
 import { Kit, V, addFloorPoly, addSolid } from './geom.js';
 import { LV, P, F, CTX, renoBat, renoGroup, roleRoom, buildWall, buildLabels, rplane, railing, stairGeom, ROOF } from './build.js';
 import {
-  toilet, vanity, lightBar, diningTable, chair, sofa, armchair, coffeeTable, floorLamp, plant, rug, runKit, recessed, flushDome,
+  toilet, vanity, lightBar, diningTable, chair, sofa, sectional, armchair, coffeeTable, floorLamp, plant, rug, runKit, recessed, flushDome,
   bed, nightstand, dresser, wallTV, mediaConsole, projectionScreen, towerSpeaker, officeDesk, officeChair, bookcase, desk,
   powerRack, liftBench, dumbbellRack, pelotonBike, rubberFloor, treadmill, shelving, firePit, adirondack, patioChair, exteriorLantern,
-  taperLeg, knob, raisedPanel, sideTable, tableLamp, chandelier,
+  taperLeg, knob, raisedPanel, sideTable, tableLamp, chandelier, bellChandelier,
 } from './furnish.js';
 
 const fab = (c) => 'fab:' + c;
@@ -120,10 +120,11 @@ function island(k, w = 9, d = 4.2, seat = 1.2) { // centered; working side faces
   k.solid(-w / 2, -d / 2 + seat - 0.4, w / 2, d / 2, 0, 3.1);
 }
 function stool(k, color = '#c9b8a0') { // counter stool, 26" seat, faces +z
-  for (const [x, z] of [[-0.55, -0.55], [0.55, -0.55], [-0.55, 0.55], [0.55, 0.55]]) k.cyl('black', x, z, 0.04, 0.05, 0, 2.15, 6);
-  k.box('black', -0.5, 0.8, -0.5, 0.5, 0.85, 0.5);
-  k.soft(fab(color), -0.7, 2.1, -0.65, 0.7, 2.35, 0.65, 0.1);
-  k.soft(fab(color), -0.65, 2.3, -0.72, 0.65, 3.25, -0.55, 0.08);
+  for (const [x, z] of [[-0.55, -0.55], [0.55, -0.55], [-0.55, 0.55], [0.55, 0.55]]) k.cyl('black', x, z, 0.04, 0.05, 0, 1.95, 6);
+  k.box('black', -0.5, 0.75, -0.5, 0.5, 0.8, 0.5);
+  k.soft(fab(color), -0.7, 1.92, -0.65, 0.7, 2.15, 0.65, 0.1); // 26" seat top for a 36" counter
+  k.soft(fab(color), -0.65, 2.1, -0.72, 0.65, 3.05, -0.55, 0.08);
+  k.solid(-0.7, -0.72, 0.7, 0.65, 0, 2.15);
 }
 function pendant(k, ceilY, hang, key = 'black') {
   const y = ceilY - hang;
@@ -180,11 +181,12 @@ function buildKitchen() {
   // old kitchen -> dining: banquette in the window bump, table for six, fridge + pantry wall on the hall side
   {
     const { k, len } = runKit(bat, rs, F(294.9, 360), F(294.9, 488), [1, 0]);
-    k.box('rcab', 0, 0, 0, len, 1.45, 1.8); k.box('rcabDoor', 0, 1.45, 0, len, 1.55, 1.9);
-    k.soft(fab('#7d8a86'), 0.05, 1.55, 0.05, len - 0.05, 1.85, 1.85, 0.08);
-    k.soft(fab('#7d8a86'), 0.05, 1.85, 0.0, len - 0.05, 3.2, 0.45, 0.12);
-    for (let i = 0; i < 3; i++) k.soft(fab(['#c9a96e', '#e9e3d6', '#a35d4b'][i]), 1.5 + i * 3.4, 1.85, 0.3, 2.9 + i * 3.4, 3.0, 0.7, 0.15);
-    k.solid(0, 0, len, 1.9, 0, 1.85);
+    // built-in banquette: 18" seat (box 15", 3" cushion) for a 30" table, 22" deep, upholstered back
+    k.box('rcab', 0, 0, 0, len, 1.15, 1.8); k.box('rcabDoor', 0, 1.15, 0, len, 1.25, 1.9);
+    k.soft(fab('#7d8a86'), 0.05, 1.25, 0.05, len - 0.05, 1.5, 1.85, 0.08);
+    k.soft(fab('#7d8a86'), 0.05, 1.5, 0.0, len - 0.05, 3.15, 0.45, 0.12);
+    for (let i = 0; i < 3; i++) k.soft(fab(['#c9a96e', '#e9e3d6', '#a35d4b'][i]), 1.5 + i * 3.4, 1.5, 0.3, 2.9 + i * 3.4, 2.75, 0.7, 0.15);
+    k.solid(0, 0, len, 1.9, 0, 1.5);
     const t = at(345, 424, 90, 0, renoBat('on:kitchen&furn', 'f1'), 'on:kitchen&furn');
     for (const [cx, cz, r] of diningTable(t, 7, 3.5, { color: '#8a6a4a' })) { if (cz < -0.1) continue; const p = t.P(cx, 0, cz); chair(new Kit(renoBat('on:kitchen&furn', 'f1'), 'on:kitchen&furn').at(p.x, p.z, 0, r), '#d8d2c6', '#2b2b2b'); }
   }
@@ -202,7 +204,7 @@ function buildKitchen() {
   fk(520, 120, 70, (k) => armchair(k, { color: '#8c7b68' }));
   fk(656, 120, -70, (k) => armchair(k, { color: '#8c7b68' }));
   // the dining chandelier over the new table (style follows the refresh option)
-  { const [lx, lz] = F(345, 424); chandelier(new Kit(renoBat('on:kitchen&off:refresh', 'f1'), 'on:kitchen&off:refresh').at(lx, lz, 0), 9, 3.0, 5); linearPendant(new Kit(renoBat('on:kitchen&on:refresh', 'f1'), 'on:kitchen&on:refresh').at(lx, lz, 0, 90), 9, 3.0, 5); }
+  { const [lx, lz] = F(345, 424); bellChandelier(new Kit(renoBat('on:kitchen&off:refresh', 'f1'), 'on:kitchen&off:refresh').at(lx, lz, 0), 9, 3.0, 5); linearPendant(new Kit(renoBat('on:kitchen&on:refresh', 'f1'), 'on:kitchen&on:refresh').at(lx, lz, 0, 90), 9, 3.0, 5); }
   // labels: the swapped rooms
   const rooms = [
     { name: 'Kitchen (remodel)', dims: "open to the family room · 9' island", floor: 'oak', wall: 'paint:#f3f2ee', poly: [[323.5, 197.5], [474, 197.5], [474, 340], [323.5, 340]] },
@@ -405,7 +407,13 @@ function buildBasement() {
   // the roughed-in bath, finished: toilet, vanity, 3 x 4 ft shower
   const at = (b, t, x, y, rot = 0) => { const [lx, lz] = P(LV.b, x, y); return new Kit(b, t).at(lx, lz, y0, rot); };
   toilet(at(bat, ALL, 690, 525, 90));
-  { const k = at(bat, ALL, 763, 474.8, 0); vanity(k, 3.0, 1, { faucet: 'black', frame: 'black', mirrorTop: 6.8 }); lightBar(k, 2.4, 7.0, 3, 'black'); }
+  { const k = at(bat, ALL, 762.5, 474.8, 0); vanity(k, 3.0, 1, { faucet: 'black', frame: 'black', mirrorTop: 6.8, top: 'rcounter' }); lightBar(k, 2.4, 7.0, 3, 'black'); }
+  // the walk-mode readout and the plan label follow the finished bath (as listed it reads "Bath (roughed in)")
+  {
+    const bathR = roleRoom(Lb, { name: 'Bath', dims: "7'1\" x 7'4\" · finished: toilet, vanity, 3' x 4' shower", floor: 'concrete', wall: 'paint:#efefec', poly: [[687.5, 472.5], [784, 472.5], [784, 571.5], [687.5, 571.5]] }, 0, 'bb');
+    RENO_ROOMS.push({ rs: ALL, level: 'b', room: bathR });
+    RENO_LABELS.push(...buildLabels(Lb, renoGroup(ALL, 'b'), [bathR]).map((l) => ((l.userData.rs = ALL), l)));
+  }
   { const [x0, z0] = P(LV.b, 742, 520), [x1, z1] = P(LV.b, 782, 569); const k = new Kit(bat, ALL).at(0, 0, y0, 0);
     k.box('tile:#ecebe7', x0, 0, z0, x1, 0.25, z1); k.box('showerGlass', x0 - 0.02, 0.25, z0, x0 + 0.02, 6.8, z1 - 1.6); k.box('black', x0 - 0.03, 6.8, z0, x0 + 0.03, 6.85, z1); k.solid(x0 - 0.05, z0, x0 + 0.05, z1 - 1.6, 0, 6.8); }
   const lay = (L, x, y, rot, fn) => { const t = 'lay:' + L; fn(at(renoBat(t, 'b'), t, x, y, rot)); };
@@ -418,18 +426,22 @@ function buildBasement() {
   lay('A', 455, 655, 0, (k) => { for (const [cx, cz, r] of [[0, 2.7, 180], [0, -2.7, 0], [2.7, 0, -90], [-2.7, 0, 90]]) { const p = k.P(cx, 0, cz); chair(new Kit(k.bat, k.tag).at(p.x, p.z, k.oy, r), '#3e4a54', '#2b2b2b'); } k.cyl(wood('#2f2219'), 0, 0, 2.0, 2.0, 2.4, 2.5, 20); k.cyl(wood('#2f2219'), 0, 0, 0.2, 0.25, 0, 2.4, 8); k.solid(-1.5, -1.5, 1.5, 1.5, 0, 2.5); });
   lay('A', 615, 210.8, 0, (k) => { k.box('rcab', -5, 0.35, 0, 5, 2.92, 2.0); k.box('rcounter', -5.05, 2.92, 0, 5.05, 3.08, 2.1); k.box('rcab', -5, 4.6, 0, 5, 7.0, 1.1); for (let i = -3; i <= 3; i += 2) shaker(k, i - 0.95, i + 0.95, 0.45, 2.85, 2.0); k.solid(-5, 0, 5, 2.1, 0, 3.08); });
   lay('A', 615, 262, 180, (k) => { for (const x of [-3, -1, 1, 3]) { const p = k.P(x, 0, -0.2); stool(new Kit(k.bat, k.tag).at(p.x, p.z, k.oy, 0), '#7d6a5a'); } });
-  lay('A', 662, 138, 0, (k) => rubberFloor(k, 17, 9.5));
+  lay('A', 652.5, 138, 0, (k) => rubberFloor(k, 17, 9.5)); // mat from the west wall so the rack stands on it
   lay('A', 543.3, 138, 90, (k) => powerRack(k));
   lay('A', 625, 138, 90, (k) => liftBench(k));
-  lay('A', 745, 69.8, 0, (k) => dumbbellRack(k, 5.5));
-  lay('A', 760, 175, -90, (k) => pelotonBike(k));
+  lay('A', 620, 69.8, 0, (k) => dumbbellRack(k, 5.5)); // on the north wall west of the furnace + softener
+  lay('A', 766, 148, 0, (k) => pelotonBike(k)); // 59" long, along the east wall, rider facing out toward the rec room (keeps the doorway clear)
   lay('A', 930.7, 320, -90, (k) => bed(k, 'queen', { frame: '#6b4a33', duvet: '#efeae0', accent: '#5f7f8c', headboard: '#cfc6b8' }));
-  lay('A', 930.7, 278, -90, (k) => nightstand(k)); lay('A', 930.7, 362, -90, (k) => nightstand(k));
+  lay('A', 930.7, 270, -90, (k) => nightstand(k)); lay('A', 930.7, 370, -90, (k) => nightstand(k)); // clear of the 5.6 ft wide queen
   lay('A', 850, 238.3, 0, (k) => dresser(k, 4.5, { lamp: true }));
   // ---- B: theater in the north room, playroom in the rec room, office in the east room
   lay('B', 782, 140, -90, (k) => projectionScreen(k, 110));
   lay('B', 782, 95, -90, (k) => towerSpeaker(k)); lay('B', 782, 185, -90, (k) => towerSpeaker(k));
-  for (const [x, h] of [[680, 0], [575, 0.8]]) for (const y of [100, 140, 180]) lay('B', x, y, -90, (k) => { if (h) k.box('col:#3a302a', -1.6, 0, -1.7, 1.6, h, 1.7); const kk = new Kit(k.bat, k.tag).at(k.ox, k.oz, k.oy + h, k.rot); kk.soft('col:#2c2c2e', -1.5, 0.3, -1.4, 1.5, 1.5, 1.5, 0.25); kk.soft('col:#2c2c2e', -1.25, 1.2, -1.6, 1.25, 3.4, -0.6, 0.35); for (const s of [-1, 1]) kk.soft('col:#2c2c2e', s * 1.5 - 0.3, 0.3, -1.4, s * 1.5 + 0.3, 2.3, 1.3, 0.2); kk.solid(-1.6, -1.6, 1.6, 1.5, 0, 3.2); if (h) k.solid(-1.6, -1.7, 1.6, 1.7, 0, h); });
+  for (const [x, h] of [[680, 0], [575, 0.8]]) for (const y of [100, 140, 180]) lay('B', x, y, -90, (k) => { // theater recliner: 35" wide incl. arms (seats on 3.1 ft centers), 38" deep, 40" high; back row on an 10" riser
+    if (h) k.box('col:#3a302a', -1.55, 0, -1.9, 1.55, h, 1.9); const kk = new Kit(k.bat, k.tag).at(k.ox, k.oz, k.oy + h, k.rot);
+    kk.soft('col:#2c2c2e', -1.1, 0.3, -1.4, 1.1, 1.5, 1.5, 0.25); kk.soft('col:#2c2c2e', -1.05, 1.2, -1.6, 1.05, 3.35, -0.6, 0.35);
+    for (const s of [-1, 1]) kk.soft('col:#2c2c2e', s * 1.27 - 0.18, 0.3, -1.4, s * 1.27 + 0.18, 2.2, 1.3, 0.15);
+    kk.solid(-1.45, -1.6, 1.45, 1.5, 0, 3.2); if (h) k.solid(-1.55, -1.9, 1.55, 1.9, 0, h); });
   lay('B', 457, 420, 0, (k) => rug(k, 10, 14, '#a9c4d6', '#3d6e8a'));
   lay('B', 420, 300, 0, (k) => { k.box(wood('#e8d9bf'), -1.5, 0, -1, 1.5, 1.8, 1); k.box('col:#d9452f', -1.4, 1.8, -0.9, -0.2, 2.6, 0.9); k.box('col:#2f6fbf', 0.2, 1.8, -0.9, 1.4, 2.4, 0.9); });
   lay('B', 348.3, 470, 90, (k) => { for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) k.box('col:' + ['#f2b632', '#3a9b4a', '#d9452f', '#2f6fbf'][(i + j) % 4], -2.6 + i * 1.8, 0.1 + j * 1.3, 0.1, -1.0 + i * 1.8, 1.2 + j * 1.3, 1.3); k.box(wood('#e8d9bf'), -2.8, 0, 0, 2.8, 2.7, 0.1); });
@@ -440,9 +452,10 @@ function buildBasement() {
   lay('C', 383, 570, 90, (k) => sofa(k, 9, { color: '#7d8a86', cushion: '#86938f', pillows: ['#c9a96e', '#e9e3d6'] }));
   lay('C', 455, 570, 90, (k) => coffeeTable(k, 4.5, 2.2, '#4b3426'));
   lay('C', 532.2, 570, -90, (k) => wallTV(k, 65));
-  lay('C', 457, 330, 90, (k) => { k.box('col:#1f4e7a', -4.5, 2.4, -2.5, 4.5, 2.5, 2.5); k.box('white', -0.03, 2.5, -2.5, 0.03, 2.55, 2.5); k.box('white', -4.5, 2.5, -0.02, 4.5, 2.52, 0.02); k.box('col:#f4f4f2', -0.02, 2.5, -2.6, 0.02, 3.0, 2.6); for (const [x, z] of [[-3.8, -2], [3.8, -2], [-3.8, 2], [3.8, 2]]) k.cbox('black', x, z, 0.25, 0.25, 0, 2.4); k.solid(-4.5, -2.5, 4.5, 2.5, 0, 2.5); });
-  lay('C', 662, 138, 0, (k) => rubberFloor(k, 17, 9.5));
-  lay('C', 543.3, 138, 90, (k) => powerRack(k)); lay('C', 745, 69.8, 0, (k) => dumbbellRack(k, 5.5)); lay('C', 700, 160, -90, (k) => treadmill(k));
+  // ping-pong: regulation 9 x 5 ft top at 30", ~6.5 ft of play room past each end
+  lay('C', 447, 380, 90, (k) => { k.box('col:#1f4e7a', -4.5, 2.4, -2.5, 4.5, 2.5, 2.5); for (const [x0, z0, x1, z1] of [[-4.5, -2.5, 4.5, -2.44], [-4.5, 2.44, 4.5, 2.5], [-4.5, -2.5, -4.44, 2.5], [4.44, -2.5, 4.5, 2.5]]) k.box('white', x0, 2.5, z0, x1, 2.505, z1); k.box('white', -4.5, 2.5, -0.02, 4.5, 2.52, 0.02); k.box('col:#f4f4f2', -0.02, 2.5, -2.6, 0.02, 3.0, 2.6); for (const [x, z] of [[-3.8, -2], [3.8, -2], [-3.8, 2], [3.8, 2]]) k.cbox('black', x, z, 0.25, 0.25, 0, 2.4); k.solid(-4.5, -2.5, 4.5, 2.5, 0, 2.5); });
+  lay('C', 652.5, 138, 0, (k) => rubberFloor(k, 17, 9.5));
+  lay('C', 543.3, 138, 90, (k) => powerRack(k)); lay('C', 620, 69.8, 0, (k) => dumbbellRack(k, 5.5)); lay('C', 700, 160, -90, (k) => treadmill(k));
   lay('C', 860, 310, 0, (k) => { k.box(wood('#e8d9bf'), -3, 2.9, -1.5, 3, 3.0, 1.5); for (const [x, z] of [[-2.8, -1.3], [2.8, -1.3], [-2.8, 1.3], [2.8, 1.3]]) k.cbox('col:#8a6b4e', x, z, 0.2, 0.2, 0, 2.9); k.solid(-3, -1.5, 3, 1.5, 0, 3); });
   lay('C', 930.7, 320, -90, (k) => shelving(k, 6, 1.5, 6.5));
 }
@@ -493,14 +506,14 @@ function buildOpenBasement() {
   // furniture: sectional + TV on the back wall, game table in the bay, play area in the old hall, gym in the north room
   const at = (x, y, rot = 0) => { const [lx, lz] = P(Lb, x, y); return new Kit(renoBat(rs, 'b'), rs).at(lx, lz, y0, rot); };
   wallTV(at(460, 238.3, 0), 75); mediaConsole(at(460, 238.3, 0), 6);
-  { const kk = at(460, 340, 180); sofa(kk, 10, { color: '#6d6458', cushion: '#766c60', pillows: ['#b48a5a', '#5d6b73'] }); }
-  { const kk = at(395, 300, 90); sofa(kk, 6.5, { color: '#6d6458', cushion: '#766c60', pillows: ['#b48a5a'] }); }
-  coffeeTable(at(460, 300, 0), 5, 2.4, '#4b3426'); rug(at(455, 300, 0), 10, 13, '#c9bda9', '#8a7d6c');
+  // 10 x 7.5 ft L sectional (back to the room, return along the west wall) facing the TV, coffee table between
+  sectional(at(515.5, 360, 180), 10, 7.5, { color: '#6d6458', cushion: '#766c60', pillows: ['#b48a5a', '#5d6b73'] });
+  coffeeTable(at(462, 287.5, 0), 4.5, 2.0, '#4b3426'); rug(at(458, 300, 0), 10, 13, '#c9bda9', '#8a7d6c');
   { const kk = at(455, 655, 0); for (const [cx, cz, r] of [[0, 2.7, 180], [0, -2.7, 0], [2.7, 0, -90], [-2.7, 0, 90]]) { const p = kk.P(cx, 0, cz); chair(new Kit(kk.bat, kk.tag).at(p.x, p.z, kk.oy, r), '#3e4a54', '#2b2b2b'); } kk.cyl(wood('#2f2219'), 0, 0, 2.0, 2.0, 2.4, 2.5, 20); kk.cyl(wood('#2f2219'), 0, 0, 0.2, 0.25, 0, 2.4, 8); kk.solid(-1.5, -1.5, 1.5, 1.5, 0, 2.5); }
   rug(at(595, 405, 0), 8, 10, '#a9c4d6', '#3d6e8a');
   { const kk = at(600, 390, 0); kk.box(wood('#e8d9bf'), -1.5, 0, -1, 1.5, 1.8, 1); kk.box('col:#d9452f', -1.4, 1.8, -0.9, -0.2, 2.6, 0.9); kk.box('col:#2f6fbf', 0.2, 1.8, -0.9, 1.4, 2.4, 0.9); kk.solid(-1.5, -1, 1.5, 1, 0, 2.6); }
   { const kk = at(634.2, 405, -90); for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) kk.box('col:' + ['#f2b632', '#3a9b4a', '#d9452f', '#2f6fbf'][(i + j) % 4], -2.6 + i * 1.8, 0.1 + j * 1.3, 0.1, -1.0 + i * 1.8, 1.2 + j * 1.3, 1.3); kk.box(wood('#e8d9bf'), -2.8, 0, 0, 2.8, 2.7, 0.1); kk.solid(-2.8, 0, 2.8, 1.3, 0, 2.7); }
-  rubberFloor(at(662, 138, 0), 17, 9.5); powerRack(at(543.3, 138, 90)); liftBench(at(625, 138, 90)); dumbbellRack(at(745, 69.8, 0), 5.5); pelotonBike(at(760, 175, -90));
+  rubberFloor(at(652.5, 138, 0), 17, 9.5); powerRack(at(543.3, 138, 90)); liftBench(at(625, 138, 90)); dumbbellRack(at(620, 69.8, 0), 5.5); pelotonBike(at(766, 148, 0));
   // east room as a guest room / office
   officeDesk(at(860, 238.3, 0), 5.5); officeChair(at(860, 272, 180)); sofa(at(930.7, 330, -90), 7, { color: '#8a7d6c' });
 }

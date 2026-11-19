@@ -41,6 +41,11 @@ const shade = (hex, f) => {
   return '#' + [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => Math.max(0, Math.min(255, Math.round(v * f))).toString(16).padStart(2, '0')).join('');
 };
 
+// stained-wood choices get a wood-grain texture (the photos show strong oak/cherry grain on the
+// doors, cabinets and mantel); painted colors stay flat
+const STAINED = new Set(['#8a3f1f', '#c49a62', '#a8682f', '#c9a879', '#b5743a', '#c9a06a', '#b07a45', '#a5652c']);
+const grain = (base, hex) => (STAINED.has(base) ? 'grain:' + hex : hex);
+
 export function applyStyle(v) {
   const wallFor = (cat, orig) => {
     const main = v.walls === O ? null : paint(v.walls);
@@ -55,7 +60,7 @@ export function applyStyle(v) {
   applyFinish('trim', trim);
   applyFinish('W:wainscot', v.wainscot === 'trim' ? trim : v.wainscot === 'walls' ? (v.walls === O ? '#efdba6' : v.walls) : v.wainscot);
   const door = v.doors === 'trim' ? trim : v.doors;
-  applyFinish('door', door); applyFinish('doorPanel', shade(door, door === '#2a2a2a' ? 1.25 : 1.06)); applyFinish('doorLine', shade(door, 0.6));
+  applyFinish('door', grain(door, shade(door, 1.08))); applyFinish('doorPanel', grain(door, shade(door, door === '#2a2a2a' ? 1.25 : 1.15))); applyFinish('doorLine', shade(door, 0.6));
   const wood = v.floors;
   applyFinish('F:wood', wood);
   applyFinish('F:carpetMain', v.carpetMain === 'match' ? wood : v.carpetMain);
@@ -65,12 +70,16 @@ export function applyStyle(v) {
   applyFinish('F:sun', v.sunFloor === 'match' ? wood : v.sunFloor);
   applyFinish('F:shower', v.bathTile === 'tileBeige' ? 'tile4' : v.bathTile);
   const cab = v.cabinets;
-  applyFinish('cab', shade(cab, 0.94)); applyFinish('cabDoor', cab); applyFinish('cabPanel', shade(cab, 1.07));
-  applyFinish('island', v.island === 'match' ? cab : v.island);
+  applyFinish('cab', grain(cab, shade(cab, 0.94))); applyFinish('cabDoor', grain(cab, cab)); applyFinish('cabPanel', grain(cab, shade(cab, 1.07)));
+  const isl = v.island === 'match' ? cab : v.island;
+  applyFinish('island', grain(isl, isl));
   applyFinish('counter', v.counters); applyFinish('vanityTop', v.counters === '#f1eee6' ? ORIGIN.vanityTop : v.counters);
   applyFinish('backsplash', v.backsplash);
   applyFinish('splashTrim', v.backsplash === 'backsplash' ? ORIGIN.splashTrim : v.backsplash.startsWith('subway') ? v.backsplash : '#e6e4df');
+  // the dated plaid / floral valances only belong to the as-listed look; restyled rooms get plain linen
+  applyFinish('curtain', v.kitchenWalls === O ? 'plaid' : '#e8e3d9');
+  applyFinish('curtain2', v.bedWalls === O ? 'floral' : '#e8e3d9');
   applyFinish('fpBrick', v.fireplace);
   const mantel = v.mantel === 'trim' ? trim : v.mantel;
-  applyFinish('mantel', mantel); applyFinish('mantelPanel', shade(mantel, 1.07));
+  applyFinish('mantel', grain(mantel, mantel)); applyFinish('mantelPanel', grain(mantel, shade(mantel, 1.07)));
 }

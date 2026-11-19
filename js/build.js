@@ -209,7 +209,8 @@ export function buildWall(L, w, bat) {
     const outSide = kp.outside ? 1 : kn.outside ? -1 : 0;
     // casing boards on each room face (oak inside, white outside)
     const casing = (side, k, withSill) => {
-      const key = fk(k), cw = k.outside ? 0.36 : 0.29, dep = k.outside ? 0.07 : 0.06;
+      // outside: the narrow white vinyl brickmould of the photos; inside: oak casing
+      const key = fk(k), cw = k.outside ? 0.22 : 0.29, dep = k.outside ? 0.08 : 0.06;
       strip(side, s - cw, s, sill, head + cw, dep, key);
       strip(side, e, e + cw, sill, head + cw, dep, key);
       strip(side, s - cw, e + cw, head, head + cw, dep, key);
@@ -234,16 +235,19 @@ export function buildWall(L, w, bat) {
     fbox(s, s + ft, sill, head); fbox(e - ft, e, sill, head); fbox(s, e, head - ft, head);
     if (type === 'w') {
       fbox(s, e, sill, sill + ft); windowSashes(op, s + ft, e - ft, sill + ft, head - ft, outSide);
-      if (oo.sh && outSide) { // dark green raised-panel shutters, outside the casing
-        const sw = Math.min(1.45, (e - s) * 0.46);
-        for (const [a0, a1] of [[s - 0.42 - sw, s - 0.42], [e + 0.42, e + 0.42 + sw]]) {
-          const o = at(a0, outSide, t / 2 + 0.07); o.y = sill - 0.05;
-          const U = u.clone().multiplyScalar(a1 - a0), H = head - sill + 0.15;
-          bat.box('shutter', o, U, V(0, H, 0), n.clone().multiplyScalar(outSide * 0.09));
-          for (const [f0, f1] of [[0.06, 0.47], [0.53, 0.94]]) {
-            const p2 = o.clone().addScaledVector(u, (a1 - a0) * 0.14).addScaledVector(n, outSide * 0.09); p2.y = o.y + H * f0;
-            bat.box('col:#1c382f', p2, u.clone().multiplyScalar((a1 - a0) * 0.72), V(0, H * (f1 - f0), 0), n.clone().multiplyScalar(outSide * 0.03));
-          }
+      if (oo.sh && outSide) { // dark green louvered vinyl shutters hugging the casing (two louver panels + center rail)
+        const sw = Math.min(1.45, (e - s) * 0.5 + 0.1), cw = 0.22;
+        const N = n.clone().multiplyScalar(outSide), off = t / 2 + 0.08;
+        for (const [a0, a1] of [[s - cw - 0.02 - sw, s - cw - 0.02], [e + cw + 0.02, e + cw + 0.02 + sw]]) {
+          const y0 = sill - 0.1, H = head + cw - y0, Wd = a1 - a0;
+          const P0 = (da, y, dz = 0) => { const p = at(a0 + da, outSide, off + dz); p.y = y; return p; };
+          const U = (w) => u.clone().multiplyScalar(w);
+          bat.box('shutterIn', P0(0, y0), U(Wd), V(0, H, 0), N.clone().multiplyScalar(0.04));                       // back panel
+          for (const [da, w] of [[0, 0.16], [Wd - 0.16, 0.16]]) bat.box('shutter', P0(da, y0, 0.04), U(w), V(0, H, 0), N.clone().multiplyScalar(0.07)); // stiles
+          const mid = y0 + H * 0.5;
+          for (const [ya, h] of [[y0, 0.22], [mid - 0.09, 0.18], [y0 + H - 0.22, 0.22]]) bat.box('shutter', P0(0.16, ya, 0.04), U(Wd - 0.32), V(0, h, 0), N.clone().multiplyScalar(0.07)); // rails
+          for (const [ya, yb] of [[y0 + 0.22, mid - 0.09], [mid + 0.09, y0 + H - 0.22]]) // louvers, tilted to shed water
+            for (let y = ya + 0.02; y < yb - 0.12; y += 0.15) bat.box('shutter', P0(0.16, y, 0.1), U(Wd - 0.32), V(0, 0.12, 0).addScaledVector(N, -0.05), N.clone().multiplyScalar(0.025));
         }
       }
       return;
@@ -258,7 +262,10 @@ export function buildWall(L, w, bat) {
         const style = type === 'x' ? oo.style || 'half' : 'panel6';
         const color = oo.color || 'door';
         const pid = L.id + ':' + w.slice(0, 2).join(',') + ':' + s.toFixed(1);
-        if (oo.pair) {
+        if (oo.storm && outSide) { // white aluminum storm door outside; opens together with the door
+          hang(s + ft, e - ft, hingeEnd, outSide, head - ft - 0.02, 'storm', 'white', 80, pid, false, t / 2 + 0.1);
+          hang(s + ft, e - ft, hingeEnd, swingSide, head - ft - 0.02, style, color, 80, pid, false);
+        } else if (oo.pair) {
           const mid = (s + e) / 2;
           hang(s + ft, mid, 's', swingSide, head - ft - 0.02, style, color, 85, pid, true);
           hang(mid, e - ft, 'e', swingSide, head - ft - 0.02, style, color, 85, pid, true);
@@ -277,7 +284,10 @@ export function buildWall(L, w, bat) {
           fbox(a0, a1, head - ft - 0.12, head - ft, 'cherry', 0.16);
         }
         fbox(s + ft + sl, s + ft + sl + 0.2, sill, head); fbox(e - ft - sl - 0.2, e - ft - sl, sill, head);
-        hang(s + ft + sl + 0.2, e - ft - sl - 0.2, hingeEnd, swingSide, head - ft - 0.02, 'panel6', CHERRY, 85, null, false);
+        const epid = L.id + ':entry:' + s.toFixed(1);
+        hang(s + ft + sl + 0.2, e - ft - sl - 0.2, hingeEnd, swingSide, head - ft - 0.02, 'panel6', CHERRY, 85, epid, false);
+        // full-view storm door (front photo), opens with the entry door
+        if (outSide) hang(s + ft + sl + 0.2, e - ft - sl - 0.2, hingeEnd, outSide, head - ft - 0.02, 'storm', 'white', 80, epid, false, t / 2 + 0.1);
         break;
       }
       case 'f': { // French door(s): oak, 15 lites
@@ -378,7 +388,9 @@ export function buildWall(L, w, bat) {
       rail(x0, x1, y0, y0 + b, zoff); rail(x0, x1, y1 - b, y1, zoff); rail(x0, x0 + b, y0, y1, zoff); rail(x1 - b, x1, y0, y1, zoff);
       return [x0 + b, x1 - b, y0 + b, y1 - b];
     };
-    const cols = op.oo.cols || 2, rows = op.oo.rows || 3;
+    // double-hungs are colonial 6-over-6 (3 x 2 lites per sash, front photo); casements 2 x 3
+    const dhs = style === 'dh' || style === 'dh2';
+    const cols = op.oo.cols || (dhs ? 3 : 2), rows = op.oo.rows || (dhs ? 2 : 3);
     const dh = (x0, x1) => {
       const mid = h0 + h / 2;
       const lo = sashFrame(x0, x1, h0, mid + 0.06, 0.06), hi = sashFrame(x0, x1, mid - 0.06, h1, -0.06);
@@ -394,10 +406,10 @@ export function buildWall(L, w, bat) {
   }
 
   // door leaf hinged at one end of [a0,a1], swung `ang` degrees toward `side`
-  function hang(a0, a1, hingeEnd, side, h, style, color, ang, pair, startOpen) {
+  function hang(a0, a1, hingeEnd, side, h, style, color, ang, pair, startOpen, off = t / 2 - 0.08) {
     const w = a1 - a0;
     const hingeS = hingeEnd === 's' ? a0 : a1;
-    const p = at(hingeS, side, t / 2 - 0.08);
+    const p = at(hingeS, side, off);
     const dirClosed = u.clone().multiplyScalar(hingeEnd === 's' ? 1 : -1);
     const r = (ang * Math.PI) / 180;
     const ld = dirClosed.clone().multiplyScalar(Math.cos(r)).addScaledVector(n, side * Math.sin(r));
@@ -428,6 +440,14 @@ export function buildWall(L, w, bat) {
     const key = color === 'door' || color === 'trim' ? color : 'wood:' + color, th = 0.15;
     if (style === 'panel6') {
       sixPanel(k, w, h, y0, key, 0);
+    } else if (style === 'storm') { // full-view storm door: white aluminum frame, kick plate, closer bar
+      const t2 = 0.05;
+      k.box('white', 0, y0, -t2, 0.2, y0 + h, t2); k.box('white', w - 0.2, y0, -t2, w, y0 + h, t2);
+      k.box('white', 0.2, y0 + h - 0.22, -t2, w - 0.2, y0 + h, t2); k.box('white', 0.2, y0, -t2, w - 0.2, y0 + 0.55, t2);
+      k.box('white', 0.2, y0 + 3.0, -t2, w - 0.2, y0 + 3.12, t2);
+      k.box('glass', 0.2, y0 + 0.55, -0.01, w - 0.2, y0 + h - 0.22, 0.01);
+      for (const s of [-1, 1]) k.box('brass', w - 0.32, y0 + 3.0, s * t2, w - 0.24, y0 + 3.25, s * (t2 + 0.08));
+      return;
     } else if (style === 'french' || style === 'full' || style === 'half') {
       const st = style === 'french' ? 0.32 : 0.38;
       k.box(key, 0, y0, -th / 2, st, y0 + h, th / 2); k.box(key, w - st, y0, -th / 2, w, y0 + h, th / 2);
@@ -603,7 +623,7 @@ function buildRailings(bats) {
 // ------------------------------------------------------------------ roofs
 export const ROOFT = 0.55; // visual roof thickness (shingle surface vs. soffit/ceiling)
 
-function slope(bat, pts, eaveDir, eavePt, p) {
+function slope(bat, pts, eaveDir, eavePt, p, gutter = true) {
   const k = Math.sqrt(1 + p * p);
   const perp = V(-eaveDir.z, 0, eaveDir.x);
   const uv = pts.map((q) => [q.dot(eaveDir), Math.abs(q.clone().sub(eavePt).dot(perp)) * k]);
@@ -616,14 +636,30 @@ function slope(bat, pts, eaveDir, eavePt, p) {
     const mid = a.clone().add(b).multiplyScalar(0.5);
     const out = mid.clone().sub(c).setY(0).normalize();
     const lowest = Math.abs(a.y - b.y) < 0.01 && a.y <= Math.min(...pts.map((q) => q.y)) + 0.01;
+    // gutter: true = fascia + gutter, false = fascia only, 'none' = an eave line that ends inside the
+    // house (against a wall or under another roof): no fascia or gutter at all
+    if (lowest && gutter === 'none') continue;
     if (lowest) {
+      let [a, b] = [pts[i], pts[(i + 1) % pts.length]];
+      if (gutter && gutter.maxZ !== undefined) { // eave that runs into a wall at z = maxZ: trim stops there
+        const cl = (q) => (q.z > gutter.maxZ ? q.clone().setZ(gutter.maxZ) : q);
+        a = cl(a); b = cl(b);
+        if (a.distanceTo(b) < 0.05) continue;
+      }
       bat.face('white', [a, b, b.clone().add(V(0, -ROOFT, 0)), a.clone().add(V(0, -ROOFT, 0))], out);
-      // gutter
-      const g = out.clone().multiplyScalar(0.25);
-      bat.face('white', [a.clone().add(g).add(V(0, -0.1, 0)), b.clone().add(g).add(V(0, -0.1, 0)), b.clone().add(g).add(V(0, -0.55, 0)), a.clone().add(g).add(V(0, -0.55, 0))], out);
+      // K-style gutter: a 5" trough proud of the fascia (front, bottom, closed ends)
+      if (gutter) {
+        const g = out.clone().multiplyScalar(0.42), g0 = out.clone().multiplyScalar(0.02), dn = V(0, -0.1, 0), lo = V(0, -0.5, 0);
+        bat.face('white', [a.clone().add(g).add(dn), b.clone().add(g).add(dn), b.clone().add(g).add(lo), a.clone().add(g).add(lo)], out);
+        bat.face('white', [a.clone().add(g0).add(lo), b.clone().add(g0).add(lo), b.clone().add(g).add(lo), a.clone().add(g).add(lo)], V(0, -1, 0));
+        bat.face('col:#e2e2dc', [a.clone().add(g0).add(dn), b.clone().add(g0).add(dn), b.clone().add(g).add(dn), a.clone().add(g).add(dn)], V(0, 1, 0));
+      }
     } else if (Math.abs(a.y - b.y) < 0.01 && a.y >= Math.max(...pts.map((q) => q.y)) - 0.01) {
       // ridge cap
       bat.face('col:#43474c', [a.clone().add(V(0, 0.08, 0)), b.clone().add(V(0, 0.08, 0)), b.clone().add(out.clone().multiplyScalar(-0.5)), a.clone().add(out.clone().multiplyScalar(-0.5))], V(0, 1, 0));
+    } else if (Math.abs(a.y - b.y) > 0.01) {
+      // rake / hip edge: white fascia closing the roof's thickness (hidden where it runs inside a roof)
+      bat.face('white', [a, b, b.clone().add(V(0, -ROOFT, 0)), a.clone().add(V(0, -ROOFT, 0))], out);
     }
   }
 }
@@ -646,15 +682,40 @@ function hipRoof(bat, { x0, x1, z0, z1, y, p, o }) {
   return yr;
 }
 
+// Side-gabled roof with its ridge along x (the main 2-story block: gable ends face north and south).
+// Where a cross gable projects from a wall (notches: [[xa, xb], ...] per side), that side's eave stops
+// at the wall line so it doesn't run through the projecting bay.
+function sideGableRoof(bat, { x0, x1, z0, z1, y, p, o, rake = 1.0, base = y, notch0 = [], notch1 = [] }) {
+  const zc = (z0 + z1) / 2, yr = y + ((z1 - z0) / 2) * p, ye = y - o * p;
+  const X0 = x0 - rake, X1 = x1 + rake, ex = V(1, 0, 0);
+  for (const [zw, notches] of [[z0, notch0], [z1, notch1]]) {
+    const d = Math.sign(zw - zc), Ze = zw + d * o;
+    const cuts = [X0, ...notches.flat(), X1];
+    for (let i = 0; i < cuts.length - 1; i++) {
+      const a = cuts[i], b = cuts[i + 1], inNotch = i % 2 === 1;
+      const zE = inNotch ? zw : Ze, yE = inNotch ? y : ye;
+      slope(bat, [V(a, yE, zE), V(b, yE, zE), V(b, yr, zc), V(a, yr, zc)], ex, V(a, yE, zE), p, inNotch ? 'none' : true);
+    }
+  }
+  for (const [x, s] of [[x0, -1], [x1, 1]]) {
+    gableTri(bat, [V(x, base, z0), V(x, base, z1), V(x, y, z1), V(x, yr, zc), V(x, y, z0)]);
+    for (const [za, zb] of [[z0 - o, z0 + 0.9], [z1 - 0.9, z1 + o]]) // cornice returns
+      bat.box({ def: 'white', pv: 'shingle' }, V(x, ye - ROOFT, za), V(0, 0, zb - za), V(0, ROOFT + 0.2, 0), V(s * rake, 0, 0));
+  }
+  return yr;
+}
+
 // ridge runs along z. rake: overhang at z0/z1; gable: build triangles; xLimE: east slope stops at this x
-export function gableRoof(bat, { x0, x1, z0, z1, y, p, o, rake = [o, o], gable = [true, true], xLimE, base = y }) {
-  const xc = (x0 + x1) / 2, yr = y + ((x1 - x0) / 2) * p, ye = y - o * p;
+// o0 / o1: eave overhang on the x0 / x1 side (default o); a side with no overhang ends against a wall or
+// under another roof, so it gets no fascia or gutter. The xLimE side always ends against a wall.
+export function gableRoof(bat, { x0, x1, z0, z1, y, p, o, o0 = o, o1 = o, rake = [o, o], gable = [true, true], xLimE, base = y, vent = false, returns = true }) {
+  const xc = (x0 + x1) / 2, yr = y + ((x1 - x0) / 2) * p, ye = y - o * p, ye0 = y - o0 * p, ye1 = y - o1 * p;
   const Z0 = z0 - rake[0], Z1 = z1 + rake[1];
   const ez = V(0, 0, 1);
-  slope(bat, [V(x0 - o, ye, Z0), V(x0 - o, ye, Z1), V(xc, yr, Z1), V(xc, yr, Z0)], ez, V(x0 - o, ye, Z0), p);
-  let east = [V(x1 + o, ye, Z0), V(x1 + o, ye, Z1)];
+  slope(bat, [V(x0 - o0, ye0, Z0), V(x0 - o0, ye0, Z1), V(xc, yr, Z1), V(xc, yr, Z0)], ez, V(x0 - o0, ye0, Z0), p, o0 > 0 ? true : 'none');
+  let east = [V(x1 + o1, ye1, Z0), V(x1 + o1, ye1, Z1)];
   if (xLimE !== undefined) { const yl = yr - (xLimE - xc) * p; east = [V(xLimE, yl, Z0), V(xLimE, yl, Z1)]; }
-  slope(bat, [east[0], east[1], V(xc, yr, Z1), V(xc, yr, Z0)], ez, east[0], p);
+  slope(bat, [east[0], east[1], V(xc, yr, Z1), V(xc, yr, Z0)], ez, east[0], p, xLimE === undefined && o1 > 0 ? true : 'none');
   [z0, z1].forEach((z, i) => {
     if (!gable[i]) return;
     if (xLimE !== undefined) {
@@ -662,25 +723,62 @@ export function gableRoof(bat, { x0, x1, z0, z1, y, p, o, rake = [o, o], gable =
       gableTri(bat, [V(x0, y, z), V(xLimE, y, z), V(xLimE, yl, z), V(xc, yr, z)]);
     } else if (base < y) gableTri(bat, [V(x0, base, z), V(x1, base, z), V(x1, y, z), V(xc, yr, z), V(x0, y, z)]);
     else gableTri(bat, [V(x0, y, z), V(x1, y, z), V(xc, yr, z)]);
-    // gable vent
-    const k = new Kit(bat, 'roof').at(xc, z + (i ? 0.03 : -0.03), 0, i ? 0 : 180);
-    k.box('white', -0.9, yr - 3.2, 0, 0.9, yr - 1.6, 0.08);
-    for (let j = 0; j < 5; j++) k.box('col:#d8d8d2', -0.75, yr - 3.05 + j * 0.28, 0.08, 0.75, yr - 2.95 + j * 0.28, 0.12);
+    const s = i ? 1 : -1, ro = rake[i];
+    // boxed cornice returns at the gable's eave corners (as on every gable in the photos)
+    if (returns && ro > 0.2) {
+      for (const [xa, xb, yE] of [[x0 - o0, x0 + 0.9, ye0], ...(xLimE === undefined ? [[x1 - 0.9, x1 + o1, ye1]] : [])]) {
+        bat.box({ def: 'white', pv: 'shingle' }, V(xa, yE - ROOFT, z), V(xb - xa, 0, 0), V(0, ROOFT + 0.2, 0), V(0, 0, s * ro));
+      }
+    }
+    // gable vent (none of this house's gables has one)
+    if (vent) {
+      const k = new Kit(bat, 'roof').at(xc, z + (i ? 0.03 : -0.03), 0, i ? 0 : 180);
+      k.box('white', -0.9, yr - 3.2, 0, 0.9, yr - 1.6, 0.08);
+      for (let j = 0; j < 5; j++) k.box('col:#d8d8d2', -0.75, yr - 3.05 + j * 0.28, 0.08, 0.75, yr - 2.95 + j * 0.28, 0.12);
+    }
   });
   return yr;
 }
 
 // single slope from a wall (zWall) down to an eave (zEave), optional hipped ends
-export function leanRoof(bat, { x0, x1, zWall, zEave, y, p, o, hip0 = true, hip1 = true }) {
+// hipStop0: z where the hip0 end's side eave meets a wall (its fascia + gutter stop there)
+export function leanRoof(bat, { x0, x1, zWall, zEave, y, p, o, hip0 = true, hip1 = true, hipStop0 }) {
   const dir = Math.sign(zEave - zWall), depth = Math.abs(zEave - zWall);
   const Ze = zEave + dir * o, ye = y - o * p, yt = y + depth * p;
   const Xa = x0 - (hip0 ? o : 0), Xb = x1 + (hip1 ? o : 0);
   const T0 = V(x0 + (hip0 ? depth : 0), yt, zWall), T1 = V(x1 - (hip1 ? depth : 0), yt, zWall);
   const E0 = V(Xa, ye, Ze), E1 = V(Xb, ye, Ze);
   slope(bat, [E0, E1, T1, T0], V(1, 0, 0), E0, p);
-  if (hip0) slope(bat, [E0, T0, V(Xa, ye, zWall)], V(0, 0, 1), E0, p);
+  if (hip0) slope(bat, [E0, T0, V(Xa, ye, zWall)], V(0, 0, 1), E0, p, hipStop0 === undefined ? true : { maxZ: hipStop0 });
   if (hip1) slope(bat, [E1, V(Xb, ye, zWall), T1], V(0, 0, 1), E1, p);
   return yt;
+}
+
+// curb-mounted skylight on a slope rising in +x from (xa, ya) to (xb, yb), between za and zb:
+// aluminum curb frame around dark glass
+export function skylight(bat, xa, xb, ya, yb, za, zb) {
+  const up = V(-(yb - ya), xb - xa, 0).normalize(), lift = (h) => up.clone().multiplyScalar(h);
+  const A = V(xa, ya, za), B = V(xb, yb, za), C = V(xb, yb, zb), D = V(xa, ya, zb);
+  bat.face('skylight', [A, B, C, D].map((p) => p.clone().add(lift(0.2))), up);
+  const fr = 'col:#b9bcbe', w = 0.12;
+  const along = B.clone().sub(A), alongN = along.clone().normalize();
+  bat.box(fr, A.clone().add(lift(-0.05)), along, lift(0.3), V(0, 0, w));
+  bat.box(fr, D.clone().add(lift(-0.05)).add(V(0, 0, -w)), along, lift(0.3), V(0, 0, w));
+  bat.box(fr, A.clone().add(lift(-0.05)), alongN.clone().multiplyScalar(w), lift(0.3), V(0, 0, zb - za));
+  bat.box(fr, B.clone().add(lift(-0.05)).addScaledVector(alongN, -w), alongN.clone().multiplyScalar(w), lift(0.3), V(0, 0, zb - za));
+}
+
+// Sun room roof (10:12 gable, ridge along z) from its west gable z0 back to the 2-story wall z1. Its south
+// eave is open to the patio only west of the breakfast nook: further east the nook roof (or the bump-out's
+// roof, which reaches z = 4.8) covers it, so that stretch has no overhang, fascia or gutter (they would
+// hang below the nook / family-room ceiling). The as-built nook leaves z 4.7..7.75 open; that piece of
+// eave goes away with the bump-out (offBump).
+export function sunRoomRoof(bat, offBump, x0, x1, z0, z1) {
+  const p = 10 / 12, zs = 4.7;
+  gableRoof(bat, { x0, x1, z0, z1: zs, y: 9, p, o: 1.0, rake: [1.0, 0], gable: [false, false] });
+  gableRoof(bat, { x0, x1, z0: zs, z1, y: 9, p, o: 1.0, o0: 0, rake: [0, 0], gable: [false, false] });
+  const ye = 9 - p;
+  slope(offBump, [V(x0 - 1, ye, zs), V(x0 - 1, ye, 7.75), V(x0, 9, 7.75), V(x0, 9, zs)], V(0, 0, 1), V(x0 - 1, ye, zs), p);
 }
 
 function buildRoofs(bats) {
@@ -689,31 +787,50 @@ function buildRoofs(bats) {
   const g2 = (x, y) => toFt(F2(x, y));
   const [mx0, mz0] = g2(270, 111.5), [mx1, mz1] = g2(1729, 1105);
   const RY = 17 + ROOFT; // roof surface at the wall line; its underside meets the 17 ft ceiling
-  hipRoof(bat, { x0: mx0, x1: mx1, z0: mz0, z1: mz1, y: RY, p: 7 / 12, o: 1.2 });
+  // Main block: side-gabled, 7:12, ridge running north-south (the listing photos show gable ends with
+  // cornice returns at both the north and south ends, not hips). Front and rear cross gables at 8:12 / 7:12.
   const [fx0] = g2(830, 0), [fx1, fz1] = g2(1303, 1178);
-  gableRoof(bat, { x0: fx0, x1: fx1, z0: 28, z1: mz1, y: RY, p: 1, o: 0, rake: [0, 0], gable: [false, false] });
-  gableRoof(bat, { x0: fx0, x1: fx1, z0: mz1, z1: fz1, y: RY, p: 1, o: 1.0, rake: [0, 1.0], gable: [false, true], base: 17 });
   const [rx0, rz0] = g2(375, 52.5), [rx1] = g2(682, 52.5);
-  gableRoof(bat, { x0: rx0, x1: rx1, z0: mz0, z1: 22, y: RY, p: 1, o: 0, rake: [0, 0], gable: [false, false] });
-  gableRoof(bat, { x0: rx0, x1: rx1, z0: rz0, z1: mz0, y: RY, p: 1, o: 1.0, rake: [1.0, 0], gable: [true, false], base: 17 });
+  const mainP = 7 / 12;
+  sideGableRoof(bat, { x0: mx0, x1: mx1, z0: mz0, z1: mz1, y: RY, p: mainP, o: 1.2, rake: 1.0, base: 17, notch0: [[rx0 - 1.0, rx1 + 1.0]], notch1: [[fx0 - 1.0, fx1 + 1.0]] });
+  const frontP = 8 / 12, rearP = 7 / 12;
+  gableRoof(bat, { x0: fx0, x1: fx1, z0: 31, z1: mz1, y: RY, p: frontP, o: 0, rake: [0, 0], gable: [false, false] });
+  gableRoof(bat, { x0: fx0, x1: fx1, z0: mz1, z1: fz1, y: RY, p: frontP, o: 1.0, rake: [0, 1.0], gable: [false, true], base: 17 });
+  gableRoof(bat, { x0: rx0, x1: rx1, z0: mz0, z1: 22, y: RY, p: rearP, o: 0, rake: [0, 0], gable: [false, false] });
+  gableRoof(bat, { x0: rx0, x1: rx1, z0: rz0, z1: mz0, y: RY, p: rearP, o: 1.0, rake: [1.0, 0], gable: [true, false], base: 17 });
+  const mzc = (mz0 + mz1) / 2, mainY = (z) => RY + ((mz1 - mz0) / 2 - Math.abs(z - mzc)) * mainP; // shingle height on the main roof
   const [gx0] = f(255, 0), [gx1] = f(847, 0), [, gzBack] = f(0, 392.5), [, gzFront] = f(0, 1181.5);
   gableRoof(bat, { x0: gx0, x1: gx1, z0: gzBack, z1: mz1, y: 9, p: 8 / 12, o: 1.0, rake: [0, 0], gable: [false, false], xLimE: mx0 });
   // its rear gable end + rake
   gableRoof(bat, { x0: gx0, x1: gx1, z0: gzBack, z1: gzBack + 0.01, y: 9, p: 8 / 12, o: 1.0, rake: [1.0, 0], gable: [true, false], xLimE: mx0 });
-  gableRoof(bat, { x0: gx0, x1: gx1, z0: mz1, z1: gzFront, y: 9, p: 8 / 12, o: 1.0, rake: [0, 1.0], gable: [false, true] });
+  // (its north eave would hang under the porch ceiling: that side dies into the porch roof instead)
+  gableRoof(bat, { x0: gx0, x1: gx1, z0: mz1, z1: gzFront, y: 9, p: 8 / 12, o: 1.0, o1: 0, rake: [0, 1.0], gable: [false, true] });
   const [sx0, sz0] = f(1420.5, 49.5), [sx1] = f(1703.5, 0);
   const sp = 10 / 12;
   // the sun room roof is replaced by the sun room extension, the nook lean-to by the breakfast bump-out
   const offA = renoBat('off:sunext', 'roof'), offA1 = renoBat('off:sunext', 'f1');
-  gableRoof(offA, { x0: sx0, x1: sx1, z0: sz0, z1: mz0, y: 9, p: sp, o: 1.0, rake: [1.0, 0], gable: [false, false] });
+  sunRoomRoof(offA, renoBat('off:bump', 'roof'), sx0, sx1, sz0, mz0);
   for (const [za, zb] of [[3.3, 5.6], [7.6, 9.9]]) {
     const xa = sx0 + 1.2, xb = sx0 + 3.6, ya = 9 + (xa - sx0) * sp + 0.06, yb = 9 + (xb - sx0) * sp + 0.06;
-    offA.face('skylight', [V(xa, ya, za), V(xb, yb, za), V(xb, yb, zb), V(xa, ya, zb)], V(-0.6, 1, 0));
+    skylight(offA, xa, xb, ya, yb, za, zb);
     // skylight shaft visible from inside the vaulted ceiling
     offA1.face('white', [V(xa, ya - ROOFT - 0.02, za), V(xb, yb - ROOFT - 0.02, za), V(xb, yb - ROOFT - 0.02, zb), V(xa, ya - ROOFT - 0.02, zb)], V(0.6, -1, 0));
   }
   const [nx0, nz0] = f(1054, 250), [nx1] = f(1420.5, 0);
-  leanRoof(renoBat('off:bump', 'roof'), { x0: nx0, x1: nx1, zWall: mz0, zEave: nz0, y: 9, p: 6 / 12, o: 1.0, hip0: true, hip1: false });
+  // (its south hip's side eave runs into the kitchen's back wall, which stands 1.6 ft proud of the 2nd floor)
+  leanRoof(renoBat('off:bump', 'roof'), { x0: nx0, x1: nx1, zWall: mz0, zEave: nz0, y: 9, p: 6 / 12, o: 1.0, hip0: true, hip1: false, hipStop0: toFt([0, 354.5])[1] - 0.25 });
+  // pent roof across the back at the floor line, from the garage roof to the nook roof, under the rear
+  // gable (rear photos show a continuous shingled skirt there, over the kitchen windows)
+  // (the garage's rear gable only spans the car bays + laundry, x < mx0; the half-bath window sits under this roof)
+  { const pp = 6 / 12, yE = 8.5;
+    for (const [xa, xb, zWall] of [[mx0, rx0, mz0], [rx0, nx0 - 1.0, rz0]]) {
+      const zw = zWall - 0.25, ze = zw - 1.4, yT = yE + (zw - ze) * pp;
+      slope(bat, [V(xa, yE, ze), V(xb, yE, ze), V(xb, yT, zw), V(xa, yT, zw)], V(1, 0, 0), V(xa, yE, ze), pp);
+    }
+    // short return where the deeper (kitchen) section steps back to the main wall
+    const zA = rz0 - 0.25 - 1.4, zB = mz0 - 0.25 - 1.4;
+    bat.face('white', [V(rx0, yE, zA), V(rx0, yE, zB), V(rx0, yE - ROOFT, zB), V(rx0, yE - ROOFT, zA)], V(-1, 0, 0));
+    bat.face('shingle', [V(rx0, yE, zA), V(rx0, yE + (rz0 - zA - 0.25) * pp, rz0 - 0.25), V(rx0, yE + (rz0 - zA - 0.25) * pp, zB), V(rx0, yE, zB)], V(-1, 0, 0)); }
   // infill between the sun room's vaulted ceiling and the family room's flat ceiling (above the 8 ft wall)
   {
     const z = toFt([0, 310.5])[1], xc = (sx0 + sx1) / 2, top = (x) => 9 + (Math.min(x, 2 * xc - x) - sx0) * sp - ROOFT - 0.02;
@@ -733,14 +850,25 @@ function buildRoofs(bats) {
   bat.aabox('white', px0, 7.68, pzE - 0.3, px3, 7.76, pzE - 0.12);
   // chimney
   const [cx0, cz0] = f(1703.5, 387), [cx1, cz1] = f(1745, 538);
-  bat.aabox({ def: 'siding', pv: 'cut' }, cx0, 9, cz0 + 0.3, cx1 + 0.1, 27.5, cz1 - 0.3);
-  bat.aabox('white', cx0 - 0.15, 27.2, cz0 + 0.15, cx1 + 0.25, 27.6, cz1 - 0.15);
-  bat.aabox('col:#3a3a3a', cx0 + 0.4, 27.6, cz0 + 1.2, cx1 - 0.2, 28.3, cz1 - 1.2);
+  // sided chase rising past the north gable's eave to ~3 ft above the ridge (rear photos), white corner
+  // boards, metal chase cover and flue cap
+  const CH = 28.4;
+  bat.aabox({ def: 'siding', pv: 'cut' }, cx0, 9, cz0 + 0.3, cx1 + 0.1, CH, cz1 - 0.3);
+  for (const x of [cx1 - 0.15]) for (const z of [cz0 + 0.3, cz1 - 0.6]) bat.aabox('white', x - 0.03, 9, z - 0.03, x + 0.28, CH, z + 0.33);
+  bat.aabox('col:#4a4c4f', cx0 - 0.12, CH, cz0 + 0.18, cx1 + 0.22, CH + 0.15, cz1 - 0.18);
+  { const k = new Kit(bat, 'roof').at((cx0 + cx1) / 2 + 0.05, (cz0 + cz1) / 2 - 0.8, CH + 0.15);
+    k.cyl('col:#8d8f91', 0, 0, 0.4, 0.4, 0, 0.7, 12); k.cbox('col:#5a5c5f', 0, 0, 1.1, 1.1, 0.7, 0.78); k.cbox('col:#5a5c5f', 0, 0, 0.6, 0.6, 0.78, 1.0); }
   bats.f1.aabox({ def: 'siding', pv: 'cut' }, cx0, -0.9, cz0, cx1, 9, cz1);
+  for (const z of [cz0, cz1 - 0.6]) bats.f1.aabox('white', cx1 - 0.18, -0.4, z - 0.05, cx1 + 0.1, 9, z + 0.65);
   addSolid(V(cx0, 0, cz0), V(cx1 - cx0, 0, 0), V(0, 0, cz1 - cz0), -0.9, 9, 'f1');
-  // plumbing vent & roof vents
-  bat.aabox('col:#9a9a96', 40, 22.6, 20, 40.4, 24.2, 20.4);
-  for (const [x, z] of [[33, 37], [50, 37]]) bat.aabox('col:#3a3d42', x, 22.2, z, x + 1.2, 22.6, z + 1.2);
+  // plumbing vent stack on the rear slope (center of photo 10) and two box vents beside it
+  { const z = 21.5, x = 39.5, y = mainY(z); new Kit(bat, 'roof').at(x, z, y - 0.3).cyl('col:#bdbdb8', 0, 0, 0.16, 0.16, 0, 1.6, 10).cyl('col:#bdbdb8', 0, 0, 0.3, 0.3, 1.5, 1.7, 10); }
+  for (const [x, z] of [[30, 19], [48, 19]]) { const y = mainY(z + 0.6); bat.aabox('col:#3a3d42', x, y - 0.2, z, x + 1.2, y + 0.3, z + 1.2); }
+  // furnace / water-heater B-vent through the garage roof's north slope (rear-right photos)
+  { const x = 21, z = 21.5, y = 9 + (gx1 - gx0) / 2 * (8 / 12) - (x - (gx0 + gx1) / 2) * (8 / 12);
+    const k = new Kit(bat, 'roof').at(x, z, y - 0.4);
+    k.cyl('col:#c9cbcc', 0, 0, 0.22, 0.22, 0, 4.2, 12); k.cyl('col:#c9cbcc', 0, 0, 0.36, 0.36, 4.2, 4.35, 12);
+    k.cyl('col:#b0b2b4', 0, 0, 0.33, 0.33, 4.35, 4.7, 12); k.cyl('col:#c9cbcc', 0, 0, 0.42, 0.05, 4.7, 4.95, 12); }
 }
 
 // The sun room's west gable wall, with the arched window
@@ -776,16 +904,29 @@ export function buildSunroomGable(group, yPlan = 49.5, tag = 'f1') {
   // four casements, each 2 x 5 lites, oak inside / white outside, plus oak casing & sunburst
   for (let i = 0; i < 4; i++) {
     const a = wx0 + ((wx1 - wx0) * i) / 4, b = wx0 + ((wx1 - wx0) * (i + 1)) / 4;
-    k.box('trim', a, sill, -0.1, a + 0.12, head, 0.1); k.box('trim', b - 0.12, sill, -0.1, b, head, 0.1);
-    k.box('trim', a, sill, -0.1, b, sill + 0.15, 0.1); k.box('trim', a, head - 0.15, -0.1, b, head, 0.1);
+    for (const [key, za, zb] of [['white', -0.1, 0], ['trim', 0, 0.1]]) { // white vinyl outside, oak inside
+      k.box(key, a, sill, za, a + 0.12, head, zb); k.box(key, b - 0.12, sill, za, b, head, zb);
+      k.box(key, a, sill, za, b, sill + 0.15, zb); k.box(key, a, head - 0.15, za, b, head, zb);
+    }
     grid(k, a + 0.12, b - 0.12, sill + 0.15, head - 0.15, 2, 5, 'trim', 0.06);
     grid(k, a + 0.12, b - 0.12, sill + 0.15, head - 0.15, 2, 5, 'white', -0.06);
   }
   for (let i = 1; i < 4; i++) {
     const ang = (i / 4) * Math.PI, c = Math.cos(ang), s = Math.sin(ang);
     const a = V(xc, head, z), b = V(xc + c * r, head + s * r, z);
-    bat.box('trim', a.clone().add(V(-0.04 * s, 0.04 * c, -0.06)), b.clone().sub(a), V(0.08 * s, -0.08 * c, 0), V(0, 0, 0.12));
+    bat.box('trim', a.clone().add(V(-0.04 * s, 0.04 * c, 0)), b.clone().sub(a), V(0.08 * s, -0.08 * c, 0), V(0, 0, 0.06));
+    bat.box('white', a.clone().add(V(-0.04 * s, 0.04 * c, -0.06)), b.clone().sub(a), V(0.08 * s, -0.08 * c, 0), V(0, 0, 0.06));
   }
+  // outside: narrow white brickmould around the whole unit, arch included, and a sill
+  { const zo = -0.25, d = 0.07, w = 0.22;
+    k.box('white', wx0 - w, sill - 0.05, zo - d, wx0, head, zo); k.box('white', wx1, sill - 0.05, zo - d, wx1 + w, head, zo);
+    k.box('white', wx0 - w - 0.05, sill - 0.15, zo - 0.14, wx1 + w + 0.05, sill, zo);
+    k.box('white', wx0 - w, head, zo - d, xc - r, head + w, zo); k.box('white', xc + r, head, zo - d, wx1 + w, head + w, zo);
+    for (let i = 0; i < 18; i++) {
+      const a0 = (i / 18) * Math.PI, a1 = ((i + 1) / 18) * Math.PI, zz = z + zo - d;
+      const P0 = (ang, rr) => V(xc + Math.cos(ang) * rr, head + Math.sin(ang) * rr, zz);
+      bat.face('white', [P0(a0, r), P0(a1, r), P0(a1, r + w), P0(a0, r + w)], V(0, 0, -1));
+    } }
   for (let i = 0; i < 18; i++) { // arched casing
     const a0 = (i / 18) * Math.PI, a1 = ((i + 1) / 18) * Math.PI;
     const p0 = V(xc + Math.cos(a0) * r, head + Math.sin(a0) * r, z + 0.25), p1 = V(xc + Math.cos(a1) * r, head + Math.sin(a1) * r, z + 0.25);
@@ -800,6 +941,7 @@ export function buildSunroomGable(group, yPlan = 49.5, tag = 'f1') {
 }
 
 // ------------------------------------------------------------------ porch & exterior trim
+const PORCH_EXTRA = []; // standalone meshes (house-number plaque) added to the 1st-floor group
 function buildPorch(bats) {
   const bat = bats.f1;
   const [px0, pzW] = toFt([847, 1028.5]), [px3] = toFt([1709, 0]), pzE = pzW + 7.5;
@@ -809,18 +951,35 @@ function buildPorch(bats) {
   bat.aabox({ pv: 'paving', def: 'foundation' }, doorX - 2.6, -1, pzE, doorX + 2.6, -0.65, pzE + 1.1);
   addFloorRect(doorX - 2.6, pzE, doorX + 2.6, pzE + 1.1, -0.65, 'site');
   const posts = [px0 + 0.4, px0 + 7.8, doorX - 2.9, doorX + 2.9, doorX + 10.3, px3 - 0.4];
+  // slender round (turned) columns on square plinths with neck rings, under fan spandrels (front photo)
+  const fan = (x, dir) => { // quarter-round fretwork bracket in the plane of the beam, on one side of a column
+    const kb = new Kit(bat, 'f1').at(x, pzE - 0.2, -0.3, dir > 0 ? 90 : -90), R = 1.1, cy = 7.97, cz = 0.22;
+    const arc = [...Array(9)].map((_, i) => { const a = (i / 8) * (Math.PI / 2); return [cz + Math.sin(a) * R, cy - Math.cos(a) * R]; });
+    for (let i = 0; i < 8; i++) { // web segments between the outer arc and the corner
+      const [z0, y0] = arc[i], [z1, y1] = arc[i + 1];
+      kb.prof('post', [[z0, y0], [z1, y1], [z1 + (cz - z1) * 0.1, y1 + (cy - y1) * 0.1], [z0 + (cz - z0) * 0.1, y0 + (cy - y0) * 0.1]], -0.04, 0.04);
+    }
+    for (let i = 1; i < 4; i++) { const [z1, y1] = arc[i * 2]; kb.prof('post', [[cz, cy], [cz, cy - 0.06], [z1, y1 - 0.04], [z1, y1 + 0.04]], -0.03, 0.03); }
+    kb.prof('post', [[cz, cy - R], [cz, cy], [cz + R, cy], [cz + R, cy - 0.08], [cz + 0.08, cy - 0.08], [cz + 0.08, cy - R]], -0.05, 0.05);
+  };
   for (const x of posts) {
     const k = new Kit(bat, 'f1').at(x, pzE - 0.2, -0.3);
-    k.cbox('post', 0, 0, 0.42, 0.42, 0, 8.4);
-    k.cbox('post', 0, 0, 0.6, 0.6, 0, 0.6);
-    k.cbox('post', 0, 0, 0.56, 0.56, 7.7, 7.95);
-    // scroll brackets
-    for (const [dx, dz] of [[1, 0], [-1, 0]]) {
-      const kb = new Kit(bat, 'f1').at(x, pzE - 0.2, -0.3, dx > 0 ? 90 : -90);
-      kb.prof('post', [[0.21, 6.9], [0.21, 7.75], [1.0, 7.75]], -0.05, 0.05);
-    }
+    k.cbox('post', 0, 0, 0.62, 0.62, 0, 0.75);                    // plinth
+    k.cyl('post', 0, 0, 0.27, 0.27, 0.75, 0.9, 14);
+    k.cyl('post', 0, 0, 0.22, 0.17, 0.9, 7.35, 14);                // tapered shaft
+    for (const y of [2.6, 2.75]) k.cyl('post', 0, 0, 0.23, 0.23, y, y + 0.08, 14);
+    k.cyl('post', 0, 0, 0.2, 0.26, 7.35, 7.6, 14);
+    k.cbox('post', 0, 0, 0.6, 0.6, 7.6, 8.4);                      // capital block under the beam
+    if (x > posts[0] + 0.1) fan(x, -1);
+    if (x < posts[posts.length - 1] - 0.1) fan(x, 1);
     addSolid(V(x - 0.3, 0, pzE - 0.5), V(0.6, 0, 0), V(0, 0, 0.6), -0.3, 8.4, 'f1');
   }
+  // house number on the siding between the left lantern and the door (front photo)
+  { const c = document.createElement('canvas'); c.width = 512; c.height = 96;
+    const g = c.getContext('2d'); g.fillStyle = '#1d1d1d'; g.font = '600 78px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('', 256, 52);
+    const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(1.45, 0.27), new THREE.MeshStandardMaterial({ map: tx, transparent: true, roughness: 0.6 }));
+    const [nx] = toFt([1171, 0]); m.position.set(nx, 5.9, pzW + 0.3); m.userData.measurable = true; PORCH_EXTRA.push(m); }
   const rz = pzE - 0.2;
   for (let i = 0; i < posts.length - 1; i++) {
     if (i === 2) continue; // stair opening at the front door
@@ -910,6 +1069,7 @@ export function buildHouse() {
     (groups[tag] || renoGroup(tag, 'f1')).add(im);
   }
   bats.roof.build(groups.roof);
+  groups.f1.add(...PORCH_EXTRA);
   for (const d of DOORS) (d.rs ? renoGroup(d.rs, d.level) : groups[d.level]).add(d.pivot);
   for (const [k, bat] of RENO_BATS) bat.build(RENO_GROUPS.get(k));
   const renos = [];

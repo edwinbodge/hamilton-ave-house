@@ -29,15 +29,88 @@ function floorLamp(k, x, z) {
   k.cyl('black', x, z, 0.05, 0.05, 0.08, 4.8, 6);
   k.cyl('shade', x, z, 0.65, 0.5, 4.6, 5.6, 14, 1, false);
 }
-function plant(k, x, z, h = 5.5) {
-  k.cyl('col:#d8d4cc', x, z, 0.55, 0.65, 0, 1.0, 12);
-  k.cyl('col:#5a4a36', x, z, 0.06, 0.06, 1.0, h * 0.55, 5);
-  for (let i = 0; i < 4; i++) {
-    const yy = h * (0.45 + i * 0.14), r = 1.1 - i * 0.18;
-    k.cyl(i % 2 ? 'col:#4f7a3a' : 'col:#3f6a31', x + (i % 2 ? 0.2 : -0.15), z + (i % 2 ? -0.1 : 0.15), r, r * 0.3, yy, yy + h * 0.2, 7);
+function plant(k, x, z, h = 5.5) { // potted tree (fiddle-leaf / ficus): pot, trunk, clusters of leaves
+  const s = Math.min(1, h / 5.5), pr = 0.45 + 0.15 * s;
+  k.cyl('col:#d8d4cc', x, z, pr * 0.85, pr, 0, 0.6 + 0.5 * s, 14);
+  k.cyl('col:#4a3b2c', x, z, pr * 0.8, pr * 0.8, 0.55 + 0.5 * s, 0.58 + 0.5 * s, 14);
+  k.cyl('col:#5a4a36', x, z, 0.05, 0.04, 0.6 + 0.5 * s, h * 0.8, 5);
+  let r = 7;
+  const rnd = () => ((r = (r * 16807) % 2147483647) / 2147483647);
+  const n = Math.round(10 + 12 * s);
+  for (let i = 0; i < n; i++) { // leaf clusters on a rough cone, wider low, narrower at the top
+    const t = i / n, yy = h * (0.42 + 0.55 * t), rad = (1.05 - 0.6 * t) * s * (0.55 + 0.45 * rnd()), a = i * 2.4;
+    const lx = x + Math.cos(a) * rad, lz = z + Math.sin(a) * rad, ls = (0.45 + 0.25 * rnd()) * Math.max(0.6, s);
+    k.soft(rnd() < 0.5 ? 'col:#3f6a31' : 'col:#4f7a3a', lx - ls, yy - ls * 0.45, lz - ls, lx + ls, yy + ls * 0.45, lz + ls, ls * 0.6);
   }
 }
-
+// ------------------------------------------------------------------ wall & floor details (back at z = 0)
+function wallArt(k, w, h, yc, o = {}) { // framed print with a mat, centered at height yc
+  const fr = o.frame || 'col:#d9cfbf';
+  k.box(fr, -w / 2, yc - h / 2, 0, w / 2, yc + h / 2, 0.08);
+  k.box('col:#f5f2ea', -w / 2 + 0.08, yc - h / 2 + 0.08, 0.08, w / 2 - 0.08, yc + h / 2 - 0.08, 0.085);
+  const iw = w - 0.5, ih = h - 0.5;
+  k.box(o.art || 'col:#c9a6a0', -iw / 2, yc - ih / 2, 0.085, iw / 2, yc + ih / 2, 0.09);
+  if (o.motif) for (let i = 0; i < 7; i++) { // a few soft botanical shapes
+    const x = (((i * 37) % 11) / 11 - 0.5) * iw * 0.8, y = yc + (((i * 53) % 13) / 13 - 0.5) * ih * 0.8;
+    k.box(o.motif, x - 0.07, y - 0.12, 0.09, x + 0.07, y + 0.12, 0.093);
+  }
+}
+function outlet(k, y = 1.25, double = false) { // duplex receptacle (or switch) cover plate
+  k.box('col:#f1eee6', -0.115 * (double ? 2 : 1), y - 0.19, 0, 0.115 * (double ? 2 : 1), y + 0.19, 0.02);
+  for (const dx of double ? [-0.12, 0.12] : [0]) for (const dy of [-0.07, 0.07]) k.box('col:#d8d3c6', dx - 0.05, y + dy - 0.035, 0.02, dx + 0.05, y + dy + 0.035, 0.026);
+}
+function switchPlate(k, y = 4.0, n = 1, brass = false) {
+  const w = 0.115 + (n - 1) * 0.08;
+  k.box(brass ? 'brass' : 'col:#f1eee6', -w, y - 0.19, 0, w, y + 0.19, 0.02);
+  for (let i = 0; i < n; i++) { const x = -w + 0.115 + i * 0.16; k.box('col:#e9e5da', x - 0.025, y - 0.05, 0.02, x + 0.025, y + 0.05, 0.05); }
+}
+function floorRegister(k, w = 1.0, d = 0.4) { // centered floor grille (forced-air heat, as in the photos)
+  k.box('col:#cdbfa7', -w / 2, 0.012, -d / 2, w / 2, 0.03, d / 2);
+  for (let x = -w / 2 + 0.07; x < w / 2 - 0.05; x += 0.07) k.box('col:#5d5246', x, 0.025, -d / 2 + 0.05, x + 0.03, 0.031, d / 2 - 0.05);
+}
+function wallRegister(k, y = 7.2, w = 1.1, h = 0.45) { // high-wall return grille
+  k.box('col:#ece8df', -w / 2, y - h / 2, 0, w / 2, y + h / 2, 0.03);
+  for (let yy = y - h / 2 + 0.06; yy < y + h / 2 - 0.05; yy += 0.06) k.box('col:#8f8a80', -w / 2 + 0.06, yy, 0.03, w / 2 - 0.06, yy + 0.025, 0.035);
+}
+function valance(k, w, y0, y1, key, o = {}) { // window valance mounted over the casing; back at z = 0
+  const d = o.depth || 0.35;
+  if (o.scallop) { // gathered swags with a scalloped hem
+    k.soft(key, -w / 2, y0 + 0.35, 0.03, w / 2, y1, d, 0.08);
+    const n = Math.max(2, Math.round(w / 1.3)), sw = w / n;
+    for (let i = 0; i < n; i++) k.soft(key, -w / 2 + i * sw, y0, 0.05, -w / 2 + (i + 1) * sw, y0 + 0.6, d + 0.04, 0.22);
+  } else { // flat roman / box valance
+    k.soft(key, -w / 2, y0, 0.02, w / 2, y1, d, 0.04);
+  }
+}
+function rollerShade(k, w, y) { // white cassette for a rolled-up shade, under the window head
+  k.soft('col:#f4f3ef', -w / 2, y - 0.28, 0.02, w / 2, y, 0.3, 0.06);
+}
+function spindleChair(k, o = {}) { // white upholstered armchair with turned (bobbin) wood arms, centered, faces +z
+  const w = 2.35, d = 2.55, c = fab(o.color || '#efece4'), wd = wood(o.wood || '#5a3423');
+  for (const x of [-w / 2 + 0.1, w / 2 - 0.1]) {
+    for (const z of [-d / 2 + 0.12, d / 2 - 0.12]) for (let y = 0; y < 2.0; y += 0.13) k.cyl(wd, x, z, 0.065, 0.065, y, y + 0.13, 8, 1, false), k.cyl(wd, x, z, 0.085, 0.085, y + 0.03, y + 0.1, 8);
+    for (let z = -d / 2 + 0.12; z < d / 2 - 0.1; z += 0.13) k.cyl(wd, x, z, 0.075, 0.075, 1.93, 2.07, 8); // bobbin arm rail
+  }
+  k.box(wd, -w / 2 + 0.1, 0.3, -d / 2 + 0.1, w / 2 - 0.1, 0.42, d / 2 - 0.1);
+  k.soft(c, -w / 2 + 0.17, 0.42, -d / 2 + 0.15, w / 2 - 0.17, 1.5, d / 2, 0.14);                 // seat (18")
+  k.soft(c, -w / 2 + 0.17, 1.2, -d / 2, w / 2 - 0.17, 2.9, -d / 2 + 0.55, 0.22);                 // back
+  if (o.pillow) k.soft(fab(o.pillow), -0.62, 1.45, -d / 2 + 0.55, 0.62, 2.45, -d / 2 + 0.88, 0.2);
+  k.solid(-w / 2, -d / 2, w / 2, d / 2, 0, 2.9);
+}
+function potPlant(k, x, z, y, s = 1) { // small trailing plant in a pot (counters, shelves, vanities)
+  k.cyl('col:#d9c6a8', x, z, 0.2 * s, 0.15 * s, y, y + 0.32 * s, 10);
+  for (let i = 0; i < 6; i++) { const a = i * 1.05, r = 0.16 * s; k.soft(i % 2 ? 'col:#4f7a3a' : 'col:#6b8f4e', x + Math.cos(a) * r - 0.13 * s, y + 0.28 * s, z + Math.sin(a) * r - 0.13 * s, x + Math.cos(a) * r + 0.13 * s, y + (0.5 + (i % 3) * 0.08) * s, z + Math.sin(a) * r + 0.13 * s, 0.08 * s); }
+}
+function texRug(k, w, d, key) { // rug with a printed pattern
+  k.box(key, -w / 2, 0.003, -d / 2, w / 2, 0.03, d / 2);
+}
+function wallClock(k, y, r = 0.36) { // round kitchen clock, back at z = 0, z0 = offset from the wall
+  const p = k.P(0, 0, 0), sub = new Kit(k.bat, k.tag).at(p.x, p.z, k.oy, k.rot + 90); // sub local x = -z
+  disc(sub, -0.05, y, 0, r, 0.1, 'black', 24);
+  disc(sub, -0.105, y, 0, r - 0.05, 0.01, 'col:#f4f1e8', 24);
+  sub.box('black', -0.12, y - 0.01, -0.02, -0.11, y + 0.2, 0.02);
+  sub.box('black', -0.12, y - 0.015, -0.02, -0.11, y + 0.015, 0.24);
+}
 
 // darken/lighten a #hex color by factor f (e.g. 0.85 = 15% darker)
 function shadeHex(hex, f) {
@@ -137,15 +210,16 @@ function desk(k, w = 4) {
 function sofa(k, len, o = {}) {
   const d = 3.15, base = fab(o.color || '#dcd3c6'), cush = fab(o.cushion || o.color || '#e3dbcf'), arm = 0.62;
   for (const x of [-len / 2 + 0.3, len / 2 - 0.3]) for (const z of [0.3, d - 0.3]) taperLeg(k, DARKWOOD, x, z, 0.4, 0.05, 0.08);
-  k.soft(base, -len / 2, 0.38, 0.05, len / 2, 1.15, d, 0.12);                      // base
+  // 38" deep, 18" seat, 25" arms, 33" back
+  k.soft(base, -len / 2, 0.38, 0.05, len / 2, 1.08, d, 0.12);                      // base
   k.soft(base, -len / 2 + 0.05, 0.9, 0, len / 2 - 0.05, 2.75, 0.85, 0.24);          // back frame
-  k.soft(base, -len / 2, 0.9, 0.05, -len / 2 + arm, 2.12, d, 0.26);                 // rolled arms
-  k.soft(base, len / 2 - arm, 0.9, 0.05, len / 2, 2.12, d, 0.26);
+  k.soft(base, -len / 2, 0.9, 0.05, -len / 2 + arm, 2.08, d, 0.2);                  // track arms
+  k.soft(base, len / 2 - arm, 0.9, 0.05, len / 2, 2.08, d, 0.2);
   const seats = len > 6.5 ? 3 : 2, sw = (len - 2 * arm) / seats;
   for (let i = 0; i < seats; i++) {
     const x = -len / 2 + arm + i * sw;
-    k.soft(cush, x + 0.02, 1.05, 0.72, x + sw - 0.02, 1.58, d + 0.03, 0.16);       // seat cushion
-    k.soft(cush, x + 0.04, 1.45, 0.6, x + sw - 0.04, 2.72, 1.25, 0.28);            // back cushion
+    k.soft(cush, x + 0.02, 1.0, 0.72, x + sw - 0.02, 1.5, d + 0.03, 0.16);         // seat cushion
+    k.soft(cush, x + 0.04, 1.4, 0.6, x + sw - 0.04, 2.72, 1.25, 0.28);             // back cushion
   }
   const pc = o.pillows || ['#a77b6b', '#c9b49a', '#8d6e5d'];
   for (let i = 0; i < 2; i++) {
@@ -159,12 +233,16 @@ function sofa(k, len, o = {}) {
 function armchair(k, o = {}) { // centered, faces +z
   const w = 2.7, d = 2.9, c = fab(o.color || '#ebe6dc');
   for (const x of [-w / 2 + 0.22, w / 2 - 0.22]) for (const z of [-d / 2 + 0.22, d / 2 - 0.22]) taperLeg(k, DARKWOOD, x, z, 0.5, 0.05, 0.08);
-  k.soft(c, -w / 2, 0.48, -d / 2, w / 2, 1.2, d / 2, 0.12);
+  k.soft(c, -w / 2, 0.48, -d / 2, w / 2, 1.1, d / 2, 0.12);
   k.soft(c, -w / 2 + 0.05, 1.0, -d / 2, w / 2 - 0.05, 2.85, -d / 2 + 0.6, 0.24);
-  k.soft(c, -w / 2, 1.0, -d / 2, -w / 2 + 0.45, 2.2, d / 2, 0.2);
-  k.soft(c, w / 2 - 0.45, 1.0, -d / 2, w / 2, 2.2, d / 2, 0.2);
-  k.soft(c, -w / 2 + 0.43, 1.1, -d / 2 + 0.5, w / 2 - 0.43, 1.6, d / 2 + 0.02, 0.15);
-  if (o.pillow) k.soft(fab(o.pillow), -0.6, 1.55, -d / 2 + 0.58, 0.6, 2.62, -d / 2 + 0.92, 0.2);
+  k.soft(c, -w / 2, 1.0, -d / 2, -w / 2 + 0.45, 2.1, d / 2, 0.2);
+  k.soft(c, w / 2 - 0.45, 1.0, -d / 2, w / 2, 2.1, d / 2, 0.2);
+  k.soft(c, -w / 2 + 0.43, 1.02, -d / 2 + 0.5, w / 2 - 0.43, 1.5, d / 2 + 0.02, 0.15); // 18" seat
+  if (o.pillow) k.soft(fab(o.pillow), -0.6, 1.47, -d / 2 + 0.58, 0.6, 2.55, -d / 2 + 0.92, 0.2);
+  if (o.throw) { // throw blanket folded over one arm
+    k.soft(fab(o.throw), w / 2 - 0.55, 1.2, -d / 2 + 0.3, w / 2 + 0.04, 2.16, d / 2 - 0.5, 0.06);
+    k.soft(fab(o.throw), -w / 2 + 0.45, 1.45, -d / 2 + 0.55, w / 2 - 0.45, 1.53, 0.2, 0.03);
+  }
   k.solid(-w / 2, -d / 2, w / 2, d / 2, 0, 2.8);
 }
 
@@ -191,10 +269,22 @@ function rug(k, w, d, field, border) {
   k.box(fab(field), -w / 2 + 0.5, 0.004, -d / 2 + 0.5, w / 2 - 0.5, 0.028, d / 2 - 0.5);
 }
 function chair(k, color = '#a59f94', woodc = '#6b4a33') { // dining chair, centered, faces +z
+  // 18.5" W x 20" D, 18" seat, 34" back; splayed wood legs, curved wood back on two posts
   const w = 1.55, d = 1.65;
-  for (const x of [-w / 2 + 0.12, w / 2 - 0.12]) for (const z of [-d / 2 + 0.12, d / 2 - 0.12]) taperLeg(k, wood(woodc), x, z, 1.48, 0.05, 0.07);
-  k.soft(fab(color), -w / 2, 1.42, -d / 2, w / 2, 1.72, d / 2, 0.1);
-  k.soft(fab(color), -w / 2 + 0.04, 1.65, -d / 2 - 0.02, w / 2 - 0.04, 3.15, -d / 2 + 0.26, 0.11);
+  for (const x of [-w / 2 + 0.12, w / 2 - 0.12]) for (const z of [-d / 2 + 0.12, d / 2 - 0.12]) taperLeg(k, wood(woodc), x, z, 1.3, 0.045, 0.065);
+  k.box(wood(woodc), -w / 2 + 0.06, 1.18, -d / 2 + 0.08, w / 2 - 0.06, 1.3, d / 2 - 0.08);
+  k.soft(fab(color), -w / 2, 1.28, -d / 2, w / 2, 1.5, d / 2, 0.09);
+  for (const x of [-w / 2 + 0.1, w / 2 - 0.1]) k.box(wood(woodc), x - 0.05, 1.45, -d / 2 + 0.02, x + 0.05, 2.75, -d / 2 + 0.14);
+  k.soft(wood(woodc), -w / 2 + 0.02, 2.15, -d / 2 - 0.04, w / 2 - 0.02, 2.85, -d / 2 + 0.12, 0.06);
+}
+// white molded "tulip" side chair (nook), centered, faces +z
+function tulipChair(k, color = '#f1f0ec') {
+  const c = 'col:' + color;
+  k.cyl(c, 0, 0, 0.62, 0.55, 0, 0.06, 18); k.cyl(c, 0, 0, 0.09, 0.09, 0.06, 1.25, 10);
+  k.soft(c, -0.82, 1.22, -0.8, 0.82, 1.52, 0.82, 0.3);
+  k.soft(c, -0.8, 1.4, -0.92, 0.8, 2.75, -0.55, 0.35);
+  k.soft('fab:#e6e2da', -0.66, 1.48, -0.6, 0.66, 1.58, 0.7, 0.25);
+  k.solid(-0.8, -0.9, 0.8, 0.8, 0, 2.75);
 }
 
 function diningTable(k, w, d, o = {}) { // centered; long side along local x
@@ -215,8 +305,9 @@ function diningTable(k, w, d, o = {}) { // centered; long side along local x
 function roundTable(k, r, o = {}) {
   const top = wood(o.color || '#f1efea');
   k.cyl(top, 0, 0, r, r, 2.4, 2.5, 24);
-  k.cyl(o.base ? wood(o.base) : top, 0, 0, 0.12, 0.12, 0.1, 2.4, 10);
-  k.cyl(o.base ? wood(o.base) : top, 0, 0, 0.9, 0.7, 0, 0.1, 16);
+  const b = o.base ? wood(o.base) : top; // tulip pedestal: flared foot, slim stem, flared head
+  k.cyl(b, 0, 0, 0.85, 0.82, 0, 0.06, 20); k.cyl(b, 0, 0, 0.82, 0.14, 0.06, 0.85, 20);
+  k.cyl(b, 0, 0, 0.14, 0.14, 0.85, 2.15, 12); k.cyl(b, 0, 0, 0.14, 0.55, 2.15, 2.4, 16);
   k.solid(-r * 0.75, -r * 0.75, r * 0.75, r * 0.75, 0, 2.5);
   return [0, 90, 180, 270].map((a) => [Math.sin((a * Math.PI) / 180) * (r + 0.45), Math.cos((a * Math.PI) / 180) * (r + 0.45), a + 180]);
 }
@@ -290,17 +381,22 @@ function rubberFloor(k, w, d) {
   for (let x = -w / 2 + 4; x < w / 2; x += 4) k.box('col:#151516', x - 0.015, 0.045, -d / 2, x + 0.015, 0.047, d / 2);
   for (let z = -d / 2 + 4; z < d / 2; z += 4) k.box('col:#151516', -w / 2, 0.045, z - 0.015, w / 2, 0.047, z + 0.015);
 }
-function powerRack(k) { // back against the wall at z = 0; 4 ft wide, 4 ft deep, 7.5 ft tall
+// Power rack, back against the wall at z = 0: 49" wide x 48" deep. A "short" 81" (6.75 ft) rack,
+// since the basement drop ceiling is only 7'5" (a standard 90" rack would not fit).
+function powerRack(k, H = 6.75) {
   for (const x of [-1.85, 1.85]) {
-    for (const z of [0.35, 3.75]) k.cbox(IRON, x, z, 0.25, 0.25, 0, 7.5);
+    for (const z of [0.35, 3.75]) {
+      k.cbox(IRON, x, z, 0.25, 0.25, 0, H);
+      for (let y = 1.0; y < H - 0.3; y += 0.18) k.cbox('col:#3a3a3d', x, z + 0.126, 0.07, 0.004, y, y + 0.06); // hole pattern
+    }
     k.box(IRON, x - 0.13, 0, 0.1, x + 0.13, 0.25, 4.0);                 // foot
-    k.box(IRON, x - 0.13, 7.25, 0.35, x + 0.13, 7.5, 3.75);             // top side rail
+    k.box(IRON, x - 0.13, H - 0.25, 0.35, x + 0.13, H, 3.75);           // top side rail
     k.box('chrome', x - 0.08, 2.2, 0.5, x + 0.08, 2.35, 3.9);           // safety arm
     k.box(IRON, x - 0.1, 4.35, 3.75, x + 0.1, 4.45, 4.05);               // J-hook
     k.box(IRON, x - 0.1, 4.45, 3.95, x + 0.1, 4.62, 4.05);
   }
-  k.box(IRON, -1.85, 7.25, 0.22, 1.85, 7.5, 0.48);
-  bar(k, -1.85, 1.85, 7.05, 3.85, 0.05, IRON);                             // pull-up bar
+  k.box(IRON, -1.85, H - 0.25, 0.22, 1.85, H, 0.48);
+  bar(k, -1.85, 1.85, H - 0.35, 3.85, 0.05, IRON);                          // pull-up bar
   bar(k, -3.6, 3.6, 4.55, 3.95, 0.05);                                     // 7.2 ft Olympic bar
   for (const sx of [-1, 1]) {
     bar(k, sx * 2.15, sx * 3.6, 4.55, 3.95, 0.085);
@@ -312,16 +408,18 @@ function powerRack(k) { // back against the wall at z = 0; 4 ft wide, 4 ft deep,
     bar(k, sx * 1.98, sx * 2.6, 3.1, 0.35, 0.07, IRON);
     for (let i = 0; i < 2; i++) disc(k, sx * (2.1 + i * 0.15), 3.1, 0.35, 0.37, 0.12);
   }
-  k.solid(-2.6, 0, 2.6, 4.05, 0, 7.5);
+  k.solid(-2.6, 0, 2.6, 4.05, 0, H);
 }
-function liftBench(k) { // centered, adjustable FID bench: 4.3 ft long (z), 1.6 ft wide
+// Adjustable FID bench, centered: 52" long (z) x 25" wide feet, pads 11" wide, pad top 17.5" (flat)
+function liftBench(k) {
   k.box(IRON, -0.12, 0, -2.1, 0.12, 0.2, 2.1);
-  k.box(IRON, -0.8, 0, -2.0, 0.8, 0.15, -1.75); k.box(IRON, -0.8, 0, 1.75, 0.8, 0.15, 2.0);
-  k.box(IRON, -0.1, 0.2, -1.6, 0.1, 1.35, -1.4); k.box(IRON, -0.1, 0.2, 1.4, 0.1, 1.35, 1.6);
-  k.box(IRON, -0.15, 1.3, -1.9, 0.15, 1.42, 1.9);
-  k.box('col:#151515', -0.48, 1.42, -1.95, 0.48, 1.68, -0.85);  // seat pad
-  k.box('col:#151515', -0.48, 1.42, -0.75, 0.48, 1.68, 1.95);   // back pad
-  k.solid(-0.8, -2.1, 0.8, 2.1, 0, 1.7);
+  k.soft(IRON, -1.0, 0, -2.15, 1.0, 0.16, -1.85, 0.05); k.soft(IRON, -1.0, 0, 1.85, 1.0, 0.16, 2.15, 0.05);
+  k.box(IRON, -0.1, 0.2, -1.6, 0.1, 1.12, -1.4); k.box(IRON, -0.1, 0.2, 1.4, 0.1, 1.12, 1.6);
+  k.box(IRON, -0.15, 1.08, -1.9, 0.15, 1.2, 1.9);
+  k.soft('col:#151515', -0.46, 1.18, -1.95, 0.46, 1.46, -0.88, 0.07);  // seat pad
+  k.soft('col:#151515', -0.46, 1.18, -0.8, 0.46, 1.46, 1.95, 0.07);    // back pad
+  k.cyl(IRON, 0, 2.05, 0.12, 0.12, 0.05, 0.2, 10);                       // transport wheel / handle end
+  k.solid(-1.0, -2.15, 1.0, 2.15, 0, 1.46);
 }
 function dumbbellRack(k, len = 5.5) { // back at z = 0; two angled tiers of hex dumbbells, 5-50 lb
   for (const x of [-len / 2 + 0.1, 0, len / 2 - 0.1]) {
@@ -330,7 +428,7 @@ function dumbbellRack(k, len = 5.5) { // back at z = 0; two angled tiers of hex 
     k.prof(IRON, [[1.5, 0.15], [1.7, 0.15], [1.7, 1.75], [1.5, 1.75]], x - 0.08, x + 0.08);
   }
   for (const [y, z] of [[2.6, 0.4], [1.65, 1.6]]) k.box(IRON, -len / 2, y, z - 0.35, len / 2, y + 0.1, z + 0.35);
-  const n = 5;
+  const n = Math.min(5, Math.max(3, Math.floor(len / 1.1))); // pairs per tier
   for (let tier = 0; tier < 2; tier++) {
     const [y, z] = tier ? [2.7, 0.4] : [1.75, 1.6];
     for (let i = 0; i < n * 2; i++) {
@@ -348,25 +446,54 @@ function dumbbellRack(k, len = 5.5) { // back at z = 0; two angled tiers of hex 
   }
   k.solid(-len / 2, 0, len / 2, 1.9, 0, 2.9);
 }
-function pelotonBike(k) { // centered; 4 ft long (front +z), 2 ft wide, screen at the front
-  k.box(IRON, -0.95, 0, -1.75, 0.95, 0.15, -1.45); k.box(IRON, -0.95, 0, 1.45, 0.95, 0.15, 1.75);
-  k.prof(IRON, [[-1.55, 0.15], [-1.25, 0.15], [0.9, 2.3], [0.6, 2.4]], -0.1, 0.1);   // main frame
-  k.prof(IRON, [[1.45, 0.15], [1.75, 0.15], [0.9, 2.3], [0.7, 2.1]], -0.1, 0.1);
-  k.box(IRON, -0.06, 2.0, -1.0, 0.06, 3.0, -0.85);                                      // seat post
-  k.prof('col:#111111', [[-1.4, 3.0], [-0.55, 3.0], [-0.8, 3.18], [-1.4, 3.15]], -0.32, 0.32); // saddle
-  k.box(IRON, -0.06, 2.3, 0.9, 0.06, 3.7, 1.05);                                        // handlebar post
-  k.box(IRON, -0.75, 3.6, 0.85, 0.75, 3.72, 1.15);                                      // handlebar
-  disc(k, 0, 1.25, 1.0, 0.68, 0.2, 'col:#2b2b2d');                                      // flywheel (with red guard)
-  disc(k, 0, 1.25, 1.0, 0.72, 0.12, 'col:#c42a2a');
-  k.box(IRON, -0.05, 3.7, 1.25, 0.05, 4.1, 1.35);
-  k.box('black', -0.9, 4.05, 1.3, 0.9, 5.15, 1.42);                                     // 22" touchscreen
-  k.box('col:#1a2735', -0.82, 4.12, 1.42, 0.82, 5.08, 1.43);
-  for (const s of [-1, 1]) k.box(IRON, s * 0.45, 1.1, 0.35, s * 0.45 + s * 0.35, 1.18, 0.6);           // pedals
-  k.solid(-1, -1.75, 1, 1.75, 0, 4);
+// Peloton Bike: 59" L x 23" W x 53" H, 135 lb. Centered; the rider sits at -z facing +z, the
+// flywheel is at the front (+z) and the 21.5" touchscreen sits on a post above the handlebars,
+// its display facing back toward the rider.
+function pelotonBike(k) {
+  const L = 2.46, W = 0.96;                                                              // half length / half width
+  k.soft(IRON, -W, 0, L - 0.32, W, 0.2, L, 0.06);                                        // front stabilizer
+  k.soft(IRON, -W, 0, -L, W, 0.2, -L + 0.32, 0.06);                                      // rear stabilizer
+  for (const s of [-1, 1]) for (const z of [L - 0.16, -L + 0.16]) k.cyl('blackMatte', s * (W - 0.1), z, 0.08, 0.08, -0.001, 0.04, 8);
+  // main frame: one swept beam from the rear foot up to the steering head at the front
+  k.prof(IRON, [[-L + 0.15, 0.18], [-L + 0.75, 0.18], [-0.2, 1.05], [1.05, 2.3], [1.32, 2.72], [1.0, 2.82], [0.62, 2.35], [-0.5, 1.45], [-L + 0.15, 0.55]], -0.12, 0.12);
+  // front leg from the steering head down to the front stabilizer, behind the flywheel
+  k.prof(IRON, [[1.62, 0.18], [L - 0.12, 0.18], [1.52, 1.6], [1.25, 1.6]], -0.1, 0.1);
+  disc(k, 0, 1.0, 1.42, 0.66, 0.16, 'col:#2b2b2d');                                     // flywheel, at the front
+  disc(k, 0, 1.0, 1.42, 0.2, 0.22, 'steel');
+  k.prof('col:#3a3a3c', [[0.95, 0.55], [1.45, 0.35], [2.1, 0.8], [2.1, 1.25], [1.5, 1.55]], -0.13, 0.13); // flywheel guard
+  // seat post (angled back) and saddle, ~38" saddle height
+  k.prof(IRON, [[-0.62, 1.2], [-0.42, 1.2], [-0.98, 3.0], [-1.18, 3.0]], -0.07, 0.07);
+  k.prof(IRON, [[-1.35, 2.98], [-0.9, 2.98], [-0.9, 3.06], [-1.35, 3.06]], -0.06, 0.06); // seat rail
+  k.soft('col:#141414', -0.32, 3.04, -1.55, 0.32, 3.24, -0.95, 0.07);                  // saddle (rear, wide)
+  k.soft('col:#141414', -0.13, 3.06, -1.05, 0.13, 3.2, -0.5, 0.05);                    // saddle nose
+  // handlebar post, bars (~20" wide, ~44" high) and resistance knob
+  k.prof(IRON, [[1.0, 2.7], [1.2, 2.7], [0.98, 3.62], [0.8, 3.62]], -0.07, 0.07);
+  for (const s of [-1, 1]) {
+    k.box(IRON, s * 0.82 - 0.05, 3.56, 0.35, s * 0.82 + 0.05, 3.66, 1.0);                 // side grips
+    k.box('blackMatte', s * 0.82 - 0.06, 3.55, 0.2, s * 0.82 + 0.06, 3.67, 0.55);
+  }
+  k.box(IRON, -0.82, 3.56, 0.9, 0.82, 3.66, 1.0);                                        // crossbar
+  k.cyl('col:#b02a2a', 0, 1.02, 0.07, 0.06, 2.75, 2.85, 10);                             // red resistance knob
+  // 21.5" touchscreen (19" x 11") on a short post, display toward the rider
+  k.box(IRON, -0.05, 3.62, 0.95, 0.05, 3.85, 1.05);
+  const sk = new Kit(k.bat, k.tag); const sp = k.P(0, 0, 0.98); sk.at(sp.x, sp.z, k.oy, k.rot);
+  sk.box('black', -0.8, 3.75, -0.05, 0.8, 4.42, 0.05);
+  sk.box('col:#1a2735', -0.74, 3.8, -0.055, 0.74, 4.37, -0.05);
+  // cranks and pedals (with Delta cleats)
+  for (const s of [-1, 1]) { // crank arms 180 degrees apart, pedals at their ends
+    const [za, zb] = s > 0 ? [0.28, 0.82] : [-0.26, 0.28];
+    k.box(IRON, Math.min(s * 0.16, s * 0.21), 0.9, za, Math.max(s * 0.16, s * 0.21), 1.0, zb);
+    const zp = s > 0 ? 0.72 : -0.16;
+    k.box('blackMatte', Math.min(s * 0.21, s * 0.55), 0.89, zp - 0.15, Math.max(s * 0.21, s * 0.55), 0.99, zp + 0.15);
+  }
+  disc(k, 0, 0.95, 0.28, 0.2, 0.3, IRON, 14);                                            // crank housing
+  k.solid(-W, -L, W, L, 0, 4.42);
 }
 function bodyPumpArea(k) { // centered: mat, step with risers, BodyPump bar with color plates, plate rack
   k.box('col:#3a3d40', -3.2, 0.045, -2.0, 3.2, 0.09, 2.0);
-  k.box('col:#3d3f42', -1.8, 0.09, -1.75, 1.8, 0.5, -1.0); k.box('col:#7b8287', -1.75, 0.5, -1.72, 1.75, 0.62, -1.03); // step
+  // aerobic step, 43" x 16", on two risers (8" high)
+  for (const sx of [-1.2, 1.2]) k.box('col:#3d3f42', sx - 0.5, 0.09, -1.85, sx + 0.5, 0.5, -0.57);
+  k.soft('col:#7b8287', -1.8, 0.5, -1.9, 1.8, 0.67, -0.55, 0.05);
   bar(k, -2.3, 2.3, 0.55, 0.6, 0.05);                                                      // 4.6 ft bar on the floor
   for (const sx of [-1, 1]) {
     disc(k, sx * 1.8, 0.55, 0.6, 0.52, 0.12, 'col:#c33b2e');
@@ -381,7 +508,7 @@ function bodyPumpArea(k) { // centered: mat, step with risers, BodyPump bar with
     bar(k, 2.4, 2.8, y, 1.3, 0.04, IRON);
     disc(k, 2.42, y, 1.3, r, 0.1, 'col:' + c); disc(k, 2.78, y, 1.3, r, 0.1, 'col:' + c);
   }
-  k.solid(-1.8, -1.75, 1.8, -1.0, 0, 0.62);
+  k.solid(-1.8, -1.9, 1.8, -0.55, 0, 0.67);
   k.solid(2.1, 0.8, 3.1, 1.8, 0, 2.6);
 }
 
@@ -407,7 +534,7 @@ function treadmill(k) { // centered, 6.5 ft long (z), 2.8 ft wide
 }
 // ------------------------------------------------------------------ TV & office
 function wallTV(k, inches = 65) { // back at z = 0
-  const w = inches * 0.0727, h = inches * 0.0409, y0 = 3.3;
+  const w = inches * 0.0727, h = inches * 0.0409, y0 = 3.0;
   k.box('black', -0.6, y0 + h / 2 - 0.4, 0, 0.6, y0 + h / 2 + 0.4, 0.12);
   k.box('black', -w / 2, y0, 0.12, w / 2, y0 + h, 0.27);
   k.box('col:#10161d', -w / 2 + 0.06, y0 + 0.06, 0.27, w / 2 - 0.06, y0 + h - 0.06, 0.275);
@@ -441,12 +568,13 @@ function officeChair(k) { // centered, faces +z
     sub.box('black', -0.05, 0.15, 0, 0.05, 0.28, 1.15);
     sub.cyl('black', 0, 1.1, 0.1, 0.1, 0, 0.15, 8);
   }
-  k.cyl('chrome', 0, 0, 0.08, 0.08, 0.28, 1.45, 8);
-  k.soft('col:#2b2b2b', -0.85, 1.42, -0.8, 0.85, 1.8, 0.85, 0.14);
-  k.soft('col:#2b2b2b', -0.8, 1.9, -0.98, 0.8, 3.75, -0.72, 0.16);
-  k.box('black', -0.08, 1.6, -0.9, 0.08, 2.0, -0.75);
-  for (const s of [-1, 1]) { k.box('black', s * 0.85 - 0.06, 1.75, -0.4, s * 0.85 + 0.06, 2.4, -0.3); k.box('black', s * 0.85 - 0.12, 2.4, -0.5, s * 0.85 + 0.12, 2.48, 0.35); }
-  k.solid(-1, -1, 1, 1, 0, 3.7);
+  // 19" seat, 44" back, arms at 26"
+  k.cyl('chrome', 0, 0, 0.08, 0.08, 0.28, 1.3, 8);
+  k.soft('col:#2b2b2b', -0.85, 1.27, -0.8, 0.85, 1.6, 0.85, 0.14);
+  k.soft('col:#2b2b2b', -0.8, 1.75, -0.98, 0.8, 3.65, -0.72, 0.16);
+  k.box('black', -0.08, 1.45, -0.9, 0.08, 1.85, -0.75);
+  for (const s of [-1, 1]) { k.box('black', s * 0.85 - 0.06, 1.55, -0.4, s * 0.85 + 0.06, 2.12, -0.3); k.box('black', s * 0.85 - 0.12, 2.12, -0.5, s * 0.85 + 0.12, 2.2, 0.35); }
+  k.solid(-1, -1, 1, 1, 0, 3.65);
 }
 function bookcase(k, w = 2.8, h = 6.5, seed = 3) { // back at z = 0
   const d = 1.05, c = wood('#5a3a26');
@@ -521,13 +649,14 @@ function firePit(k) { // centered, 3.5 ft stone fire pit
 function adirondack(k, color = '#1f2d4d') { // centered, faces +z: slanted seat, fanned back, wide arms
   const c = 'wood:' + color;
   for (const s of [-1, 1]) {
-    k.prof(c, [[1.25, 0], [1.25, 1.35], [1.05, 1.35], [1.05, 0]], s * 1.05 - 0.08, s * 1.05 + 0.08);   // front legs
-    k.prof(c, [[-1.3, 0], [-1.0, 0], [1.2, 1.15], [1.2, 1.35]], s * 1.05 - 0.06, s * 1.05 + 0.06);     // side stringer
-    k.box(c, s * 1.05 - 0.25, 2.0, -0.75, s * 1.05 + 0.25, 2.1, 1.45);                                // arm
+    // real size: ~31" W x 35" D x 38" H, seat front ~14", arms ~23" (was 44" tall with a 17" seat)
+    k.prof(c, [[1.25, 0], [1.25, 1.85], [1.05, 1.85], [1.05, 0]], s * 1.05 - 0.08, s * 1.05 + 0.08);   // front legs up to the arms
+    k.prof(c, [[-1.3, 0], [-1.0, 0], [1.2, 0.98], [1.2, 1.12]], s * 1.05 - 0.06, s * 1.05 + 0.06);     // side stringer
+    k.box(c, s * 1.05 - 0.25, 1.85, -0.75, s * 1.05 + 0.25, 1.95, 1.45);                              // arm
   }
-  k.prof(c, [[1.15, 1.3], [1.15, 1.45], [-0.6, 1.0], [-0.6, 0.85]], -0.95, 0.95);                     // seat
-  for (let i = 0; i < 5; i++) { const x = -0.8 + i * 0.4; k.prof(c, [[-0.55, 0.9], [-0.35, 0.95], [-1.25, 3.3 + (2 - Math.abs(i - 2)) * 0.18], [-1.45, 3.2 + (2 - Math.abs(i - 2)) * 0.18]], x - 0.16, x + 0.16); }
-  k.solid(-1.3, -1.3, 1.3, 1.45, 0, 3.3);
+  k.prof(c, [[1.15, 1.06], [1.15, 1.18], [-0.6, 0.72], [-0.6, 0.6]], -0.95, 0.95);                    // seat
+  for (let i = 0; i < 5; i++) { const x = -0.8 + i * 0.4; k.prof(c, [[-0.55, 0.62], [-0.35, 0.68], [-1.25, 2.82 + (2 - Math.abs(i - 2)) * 0.18], [-1.45, 2.72 + (2 - Math.abs(i - 2)) * 0.18]], x - 0.16, x + 0.16); }
+  k.solid(-1.3, -1.3, 1.3, 1.45, 0, 3.2);
 }
 function patioDining(k) { // centered: 48" round table, umbrella, four chairs
   k.cyl('glass', 0, 0, 2.0, 2.0, 2.38, 2.45, 24);
@@ -553,7 +682,9 @@ function ceilingFan(k, ceilY, o = {}) {
   k.cyl(o.body || 'col:#6c6c6a', 0, 0, 0.42, 0.42, y, y + 0.35, 14);
   for (let i = 0; i < 5; i++) {
     const kb = new Kit(k.bat, k.tag).at(k.ox, k.oz, k.oy, k.rot + i * 72 + 15);
-    kb.box(o.blade || wood('#6e4b32'), 0.45, y + 0.1, -0.24, 2.35, y + 0.14, 0.24);
+    const span = o.span || 2.35; // blade tip radius (2.35 = 56" fan)
+    kb.box(o.body || 'col:#6c6c6a', 0.3, y + 0.14, -0.06, 0.62, y + 0.18, 0.06);       // blade iron
+    kb.soft(o.blade || wood('#6e4b32'), 0.5, y + 0.1, -0.25, span, y + 0.145, 0.25, 0.02);
   }
   if (o.lights !== false) {
     k.cyl(o.body || 'col:#6c6c6a', 0, 0, 0.2, 0.25, y - 0.25, y, 10);
@@ -603,9 +734,14 @@ function sconce(k, y) { // wall-mounted, back at z = 0
   k.cyl('brass', 0, 0.45, 0.1, 0.12, y - 0.25, y - 0.1, 8);
   k.cyl('bulb', 0, 0.45, 0.035, 0.035, y - 0.1, y + 0.2, 6);
 }
-function lightBar(k, w, y, n, finish = 'brass') { // vanity light, back at z = 0
+function lightBar(k, w, y, n, finish = 'brass', globes = false) { // vanity light, back at z = 0
+  if (globes) { // "Hollywood" strip: a long brass plate with round globe bulbs (primary bath, photo 39)
+    k.soft(finish, -w / 2, y - 0.12, 0, w / 2, y + 0.12, 0.12, 0.04);
+    for (let i = 0; i < n; i++) { const x = -w / 2 + (w / n) * (i + 0.5); k.cyl(finish, x, 0.16, 0.05, 0.05, y - 0.04, y + 0.04, 8); k.soft('shade', x - 0.21, y - 0.21, 0.14, x + 0.21, y + 0.21, 0.56, 0.21); }
+    return;
+  }
   k.box(finish, -w / 2, y - 0.1, 0, w / 2, y + 0.1, 0.18);
-  for (let i = 0; i < n; i++) { const x = -w / 2 + (w / n) * (i + 0.5); k.cyl('shade', x, 0.35, 0.2, 0.25, y - 0.45, y + 0.05, 10); }
+  for (let i = 0; i < n; i++) { const x = -w / 2 + (w / n) * (i + 0.5); k.box(finish, x - 0.03, y - 0.03, 0.18, x + 0.03, y + 0.03, 0.35); k.cyl('shade', x, 0.38, 0.1, 0.24, y + 0.02, y + 0.42, 12); } // tulip shades, opening up
 }
 function exteriorLantern(k, y) { // wall lantern, back at z = 0
   k.box('black', -0.15, y - 0.5, 0, 0.15, y + 0.2, 0.08);
@@ -690,7 +826,7 @@ function range(k, x0, x1) {
   return xc;
 }
 function fridge(k, x0, x1) {
-  const d = 2.55, h = 5.85, xm = (x0 + x1) / 2 - 0.15;
+  const d = 2.75, h = 5.85, xm = (x0 + x1) / 2 - 0.15; // 36" side-by-side, 33" deep (standard depth), 70" tall
   k.box('steel', x0, 0, 0, x1, h, d);
   k.box('black', xm - 0.01, 0.1, d, xm + 0.01, h - 0.05, d + 0.01);
   for (const x of [xm - 0.15, xm + 0.15]) k.box('chrome', x - 0.04, 2.2, d + 0.05, x + 0.04, 5.0, d + 0.2);
@@ -712,6 +848,12 @@ function buildKitchen(bat, tag) {
     baseCab(k, 0, 2.0); baseCab(k, 2.0, 2.9, { drawers: true }); baseCab(k, 2.9, 4.95); baseCab(k, 4.95, 6.95, { dw: true }); baseCab(k, 6.95, 8.72);
     counter(k, 0, 8.72, { splash: [[0, 2.1, 4.55], [2.1, 5.75, 3.48], [5.75, 8.72, 4.55]] });
     sink(k, 3.92);
+    // plaid box valance inside the window head, round clock above it, a few things on the counter (photos 26-28)
+    { const s2 = new Kit(bat, tag); const p = k.P(3.92, 0, 0); s2.at(p.x, p.z, 0, k.rot); valance(s2, 3.4, 6.15, 6.88, 'curtain', { depth: 0.14 }); wallClock(s2, 7.42, 0.27); }
+    k.cyl('col:#f4f1ea', 1.2, 1.3, 0.38, 0.25, 3.05, 3.3, 14); // fruit bowl
+    for (const [ax, az] of [[1.08, 1.22], [1.3, 1.35], [1.18, 1.45]]) k.cyl('col:#a3161c', ax, az, 0.12, 0.12, 3.22, 3.42, 8);
+    potPlant(k, 6.3, 1.4, 3.05);
+    k.cyl('col:#f1eee6', 7.6, 1.0, 0.45, 0.3, 3.05, 3.3, 16); // white serving bowl
     upperCab(k, 0, 2.1); upperCab(k, 5.75, 7.4);
     k.box('col:#7b2f2f', 5.85, 6.0, 1.09, 6.0, 6.85, 1.14); // plate rack accent
     k.solid(0, 0, 8.72, 2.08, 0, 3.05);
@@ -813,14 +955,18 @@ function pedestalSink(k) {
   k.box('wood:#7c2a1e', -0.9, 3.6, 0, 0.9, 5.7, 0.08); k.box('mirror', -0.75, 3.75, 0.08, 0.75, 5.55, 0.1);
   k.solid(-0.9, 0, 0.9, 1.7, 0, 2.85);
 }
-function washerDryer(k) { // pair side by side, back at z = 0, 5.6 ft wide
-  for (const [x, top] of [[-1.4, true], [1.4, false]]) {
-    k.box('porcelain', x - 1.35, 0, 0.1, x + 1.35, 3.0, 2.45);
-    k.box('porcelain', x - 1.35, 3.0, 0.1, x + 1.35, 3.6, 0.55);
-    for (let i = 0; i < 3; i++) k.cyl('col:#9aa0a6', x + 0.5 + i * 0.25, 0.4, 0.07, 0.07, 3.6, 3.65, 8);
-    if (!top) k.box('col:#d9dcdf', x - 1.0, 1.9, 2.45, x + 1.0, 2.6, 2.47);
+// top-load washer + matching dryer (as in the laundry photo): each 27.5" W x 28" D, 36" top, 43" console
+function washerDryer(k) { // pair side by side, back at z = 0
+  for (const [x, washer] of [[-1.2, false], [1.2, true]]) {
+    k.soft('porcelain', x - 1.14, 0.05, 0.1, x + 1.14, 3.0, 2.45, 0.05);
+    k.box('blackMatte', x - 1.05, 0, 0.2, x + 1.05, 0.06, 2.3);
+    k.soft('porcelain', x - 1.14, 2.95, 0.1, x + 1.14, 3.6, 0.6, 0.06);                  // control console
+    k.box('col:#c9ccd0', x - 0.8, 3.15, 0.6, x + 0.8, 3.45, 0.61);
+    for (let i = 0; i < 3; i++) k.cyl('col:#9aa0a6', x - 0.55 + i * 0.55, 0.62, 0.09, 0.09, 3.2, 3.38, 10);
+    if (washer) { k.box('col:#f2f2ef', x - 0.95, 3.0, 0.75, x + 0.95, 3.03, 2.3); k.box('col:#c9ccd0', x - 0.3, 3.03, 2.15, x + 0.3, 3.05, 2.28); } // lid
+    else { k.box('col:#e2e4e6', x - 0.95, 1.2, 2.45, x + 0.95, 2.75, 2.48); k.box('col:#b8bcc0', x - 0.4, 2.55, 2.48, x + 0.4, 2.62, 2.55); } // dryer door
   }
-  k.solid(-2.75, 0, 2.75, 2.45, 0, 3.6);
+  k.solid(-2.35, 0, 2.35, 2.45, 0, 3.6);
 }
 function laundrySink(k) {
   k.box('col:#e7e2d4', -1.0, 0, 0.1, 1.0, 3.0, 1.9);
@@ -860,6 +1006,20 @@ export function buildFixtures(bats) {
   toilet(at('f1', 717.1, 432, 90));
   pedestalSink(at('f1', 717.1, 515, 90));
   lightBar(at('f1', 717.1, 515, 90), 1.9, 6.1, 3);
+  { // photo 30: red-stained wall cabinet with an open shelf over the toilet, towel ring, paper holder, brass switch plate
+    const c = at('f1', 717.1, 432, 90), red = wood('#7c2a1e');
+    c.box(red, -0.9, 4.75, 0, 0.9, 6.75, 0.62);
+    raisedPanel(c, -0.85, 0.05, 4.82, 6.68, 0.62, red, wood('#8a3324')); knob(c, -0.05, 5.6, 0.71);
+    c.box(wood('#5e1f16'), 0.12, 4.82, 0.05, 0.85, 6.68, 0.58);
+    for (const y of [5.35, 6.0]) c.box(red, 0.1, y, 0.03, 0.88, y + 0.05, 0.6);
+    c.box('col:#efe9dc', 0.25, 5.4, 0.15, 0.7, 5.75, 0.5); // folded towels
+    const r = at('f1', 717.1, 474, 90); r.box('brass', -0.05, 4.25, 0, 0.05, 4.45, 0.12); r.cyl('brass', 0, 0.2, 0.25, 0.25, 4.0, 4.04, 14, 1, false);
+    r.box('fab:#a8665c', -0.18, 3.35, 0.15, 0.18, 4.1, 0.25);
+    const t = at('f1', 790, 398.4, 0); for (const s of [-1, 1]) t.box('brass', s * 0.25 - 0.03, 2.0, 0, s * 0.25 + 0.03, 2.12, 0.32);
+    disc(t, 0, 2.05, 0.28, 0.19, 0.42, 'col:#f6f4ef', 14);
+    switchPlate(at('f1', 838.4, 560, -90), 4.0, 2, true);
+    floorRegister(at('f1', 800, 560, 0), 0.9, 0.35);
+  }
   // ---- laundry: dryer, washer, sink on the right wall (face at x 708.9)
   washerDryer(at('f1', 708.9, 462, -90));
   laundrySink(at('f1', 708.9, 552, -90));
@@ -873,13 +1033,13 @@ export function buildFixtures(bats) {
   // oak column at the end of the nook rail
   { const [cx, cz] = P('f1', 1312, 368); const k = new Kit(bats.f1, 'f1').at(cx, cz, 0); k.cbox('trim', 0, 0, 0.55, 0.55, 0, 8); k.cbox('trim', 0, 0, 0.75, 0.75, 7.55, 8); k.cbox('trim', 0, 0, 0.7, 0.7, 0, 0.5); }
   // ---- lights, 1st floor
-  chandelier(at('f1', 988, 866), 8, 2.6);
+  chandelier(at('f1', 988, 866), 8, 2.0); // office now: hung higher (bottom at 6 ft) since there's no table under it
   sconce(at('f1', 845.1, 770, 90), 5.7); sconce(at('f1', 845.1, 962, 90), 5.7);
   { const [lx, lz] = P('f1', 1185, 335); globePendant(new Kit(renoBat('off:bump', 'f1'), 'off:bump').at(lx, lz, 0), 8, 2.3); } // replaced by the bump-out's pendants
   for (const [x, y] of [[905, 440], [995, 440], [905, 560], [995, 600], [1110, 600], [1230, 470]]) recessed(at('f1', x, y), 8);
   flushDome(at('f1', 1450, 440), 8); flushDome(at('f1', 1590, 440), 8);
   flushDome(at('f1', 600, 615), 8); flushDome(at('f1', 760, 615), 8);
-  flushDome(at('f1', 1560, 830), 8);
+  // (the living room has no ceiling fixture in the photos: lamps only)
   lantern(at('f1', 1268, 885), 17, 6.2);
   { // sun room: oak ridge beam + white fan
     const [x0] = P('f1', 1420.5, 0), [x1, z1] = P('f1', 1703.5, 310.5), [, z0] = P('f1', 0, 49.5);
@@ -888,12 +1048,46 @@ export function buildFixtures(bats) {
     k.box('trim', xc - 0.3, ridge - 0.8, z0, xc + 0.3, ridge, z1);
     ceilingFan(new Kit(bats.f1, 'f1').at(xc, (z0 + z1) / 2 - 1.5, 0), ridge - 0.8, { body: 'white', blade: 'white', drop: 1.6 });
   }
+  { // sun room (photos 22-23): oak display shelf on scrolled brackets along the north wall, white
+    // roller-shade cassettes over the big window and the patio slider
+    const s = at('f1', 1697.6, 200, -90);
+    s.box('trim', -4.0, 6.05, 0, 4.0, 6.13, 0.8); s.box('trim', -4.0, 5.95, 0, 4.0, 6.05, 0.08);
+    for (const x of [-3.6, 0, 3.6]) s.prof('trim', [[0, 5.2], [0.08, 5.2], [0.72, 6.0], [0.72, 6.05], [0, 6.05]], x - 0.05, x + 0.05);
+    const [wx] = P('f1', 1577, 0);
+    rollerShade(new Kit(renoBat('off:sunext', 'f1'), 'off:sunext').at(wx, P('f1', 0, 55.4)[1], 0, 0), 8.6, 7.6);
+    const [sx, sz] = P('f1', 1426.4, 184.5);
+    rollerShade(new Kit(renoBat('off:bump', 'f1'), 'off:bump').at(sx, sz, 0, 90), 5.9, 7.5);
+  }
+  { // plaid valances on the breakfast-bay windows (photos 24-25)
+    const NB = renoBat('off:bump', 'f1'), f = (x, y) => P('f1', x, y);
+    const v1 = runKit(NB, 'off:bump', f(1125, 255.9), f(1238, 255.9), [0, 1]);
+    valance(new Kit(NB, 'off:bump').at(...(() => { const p = v1.k.P(v1.len / 2, 0, 0); return [p.x, p.z]; })(), 0, v1.k.rot), v1.len - 0.1, 6.3, 6.98, 'curtain', { depth: 0.14 });
+    const n = [-0.72, 0.69], A = f(1259.6 - 4.26, 260 + 4.07), Bp = f(1297.9 - 4.26, 300 + 4.07);
+    const v2 = runKit(NB, 'off:bump', A, Bp, n);
+    valance(new Kit(NB, 'off:bump').at(...(() => { const p = v2.k.P(v2.len / 2, 0, 0); return [p.x, p.z]; })(), 0, v2.k.rot), v2.len - 0.1, 6.3, 6.98, 'curtain', { depth: 0.14 });
+  }
+  // gathered floral valances over the two front windows of the primary bedroom (photos 36-37)
+  for (const x of [523, 729]) valance(at('f2', x, 1095.8, 180), 3.6, 6.55, 7.4, 'curtain2', { scallop: true, depth: 0.42 });
+  // forced-air floor registers under the windows and wall outlets / switches (as in the photos)
+  for (const [lv, x, y, r] of [
+    ['f1', 1496, 1015, 0], ['f1', 1636, 1015, 0], ['f1', 1690, 941, 90], ['f1', 910, 1015, 0], ['f1', 1050, 1015, 0], ['f1', 1350, 330, 0],
+    ['f1', 1440, 600, 0], ['f1', 1560, 296, 0], ['f1', 1440, 296, 0], ['f1', 1180, 1015, 0],
+    ['f2', 523, 1085, 0], ['f2', 729, 1085, 0], ['f2', 1409, 1085, 0], ['f2', 1712, 956, 90], ['f2', 1712, 515, 90], ['f2', 1386, 128, 0], ['f2', 1040, 1160, 0],
+  ]) floorRegister(at(lv, x, y, r));
+  for (const [lv, x, y, r, h, dbl] of [
+    ['f1', 1697.6, 690, -90], ['f1', 1697.6, 980, -90], ['f1', 1426.1, 690, 90], ['f1', 1555, 1022.6, 180], ['f1', 1640, 630.6, 0, 4.0, 1],
+    ['f1', 1697.6, 590, -90], ['f1', 1697.6, 348, -90, 4.0, 1],
+    ['f1', 1130.4, 760, -90], ['f1', 845.1, 760, 90], ['f1', 1000, 1022.6, 180],
+    ['f2', 279.2, 690, 90], ['f2', 279.2, 960, 90], ['f2', 620, 1095.8, 180], ['f2', 835.6, 900, -90], ['f2', 835.6, 612, -90, 4.0, 1],
+    ['f2', 1298.4, 900, 90], ['f2', 1719.8, 680, -90], ['f2', 1690, 1095.8, 180], ['f2', 1440, 672.4, 0, 4.0, 1],
+    ['f2', 1719.8, 250, -90], ['f2', 1700, 120.7, 0], ['f2', 1690, 573.6, 180],
+  ]) (h === 4.0 ? switchPlate(at(lv, x, y, r), 4.0, dbl ? 2 : 1) : outlet(at(lv, x, y, r)));
   // ---- 2nd floor: primary bath as built (replaced by the bath remodel)
   const PB = renoBat('off:pbath', 'f2');
   const atPB = (x, y, rot = 0) => { const [lx, lz] = P('f2', x, y); return new Kit(PB, 'off:pbath').at(lx, lz, 9, rot); };
   // ---- 2nd floor: primary bath
   vanity(atPB(279.2, 361, 90), 5.4, 2, { mirrorTop: 7.0 });
-  lightBar(atPB(279.2, 361, 90), 5.0, 7.35, 6);
+  lightBar(atPB(279.2, 361, 90), 5.0, 7.3, 8, 'brass', true);
   toilet(atPB(279.2, 160, 90));
   { // corner whirlpool on a tiled platform, with two steps
     const plat = [[384, 62], [664, 62], [664, 236], [505, 236], [384, 128]].map(([x, y]) => P('f2', x, y));
@@ -936,14 +1130,14 @@ export function buildFixtures(bats) {
   lightBar(at('f2', 949.4, 345, 90), 2.8, 7.2, 3, 'chrome');
   toilet(at('f2', 949.4, 165, 90));
   { // alcove tub with curtain
-    const [x0, z0] = P('f2', 1125, 117), [x1, z1] = P('f2', 1215, 294);
+    const [x0, z0] = P('f2', 1121.5, 114), [x1, z1] = P('f2', 1218.5, 297.5); // 60" x 32" alcove tub, wall to wall
     const k = new Kit(bats.f2, 'f2').at(0, 0, 9, 0);
-    k.box('porcelain', x0, 0, z0, x1, 1.5, z1);
-    k.box('col:#eef1f2', x0 + 0.3, 1.5, z0 + 0.3, x1 - 0.3, 1.505, z1 - 0.3);
+    k.box('porcelain', x0, 0, z0, x1, 1.25, z1);                                     // 15" apron height
+    k.soft('col:#eef1f2', x0 + 0.25, 1.0, z0 + 0.3, x1 - 0.25, 1.255, z1 - 0.3, 0.2); // basin
     k.box('chrome', x0 - 0.05, 6.6, z0, x0 + 0.05, 6.68, z1);
     k.box('fab:#f4f2ec', x0 + 0.05, 1.6, z0, x0 + 0.1, 6.55, z0 + (z1 - z0) * 0.45);
     k.box('chrome', (x0 + x1) / 2 - 0.05, 3.0, z0, (x0 + x1) / 2 + 0.05, 3.1, z0 + 0.5);
-    k.solid(x0, z0, x1, z1, 0, 1.5);
+    k.solid(x0, z0, x1, z1, 0, 1.25);
   }
   // ---- walk-in closet and lights, 2nd floor
   { const { k, len } = runKit(bats.f2, 'f2', P('f2', 679.4, 121), P('f2', 679.4, 470), [1, 0], 9); wicRun(k, len); hangingClothes(k, len, 11, 0.05); }
@@ -957,8 +1151,10 @@ export function buildFixtures(bats) {
   { const { k, len } = runKit(renoBat('off:pbath', 'f2'), 'off:pbath', P('f2', 666.6, 246.4), P('f2', 666.6, 325.6), [-1, 0], 9); linenShelves(k, len, 19); }
   flushDome(at('f2', 808, 290), 8);
   ceilingFan(at('f2', 556, 820), 8, { body: 'brass', blade: wood('#9b6a3c') });
-  ceilingFan(at('f2', 1510, 885), 8, { body: 'col:#8c8f91', blade: wood('#c0844a') });
-  ceilingFan(at('f2', 1520, 340), 8, { body: 'col:#5f6163', blade: wood('#5a3524') });
+  // bedroom fans (photos 32-35): the cream 11'6" room has a 42" hugger fan with dark walnut blades,
+  // the 10'10" room (crown molding) a pewter fan with light oak blades
+  ceilingFan(at('f2', 1510, 885), 8, { body: 'col:#8c8f91', blade: wood('#4a2c1e'), drop: 0.55, span: 1.75 });
+  ceilingFan(at('f2', 1520, 340), 8, { body: 'col:#8c8f91', blade: wood('#c58d52'), span: 2.1 });
   for (const [x, y] of [[1050, 540], [1210, 1110], [1000, 1110]]) recessed(at('f2', x, y), 8);
   // ---- basement
   // drop-ceiling bulkhead over the main beam, ~2 ft off the stair wall; posts sit under it near the walls
@@ -992,7 +1188,7 @@ export function buildFixtures(bats) {
   }
   for (const [x, y] of [[900, 1040], [1350, 1040], [1500, 780]]) { const [lx, lz] = P('b', x, y); new Kit(bats.b, 'b').at(lx, lz, -9).cyl('bulb', 0, 0, 0.12, 0.12, 6.9, 7.1, 8); }
   // ---- exterior lights
-  for (const x of [1178, 1350]) exteriorLantern(at('f1', x, 1034.4, 0), 6.0);
+  for (const x of [1143, 1386]) exteriorLantern(at('f1', x, 1034.4, 0), 6.0); // ~2'4" either side of the entry (front photo)
   // by the laundry door (moves with the mudroom option) and the nook door (goes with the bump-out)
   for (const [x, y, r, rs] of [[560, 386.6, 180, 'off:mud'], [1048.1, 334, -90, 'off:bump']]) { const [lx, lz] = P('f1', x, y); exteriorLantern(new Kit(renoBat(rs, 'f1'), rs).at(lx, lz, 0, r), 6.6); }
   exteriorLantern(at('f1', 254.6, 530, -90), 6.6);
@@ -1010,21 +1206,29 @@ function pip2(pts, x, z) {
 export function buildFurniture(bats) {
   const at = (lv, x, y, rot = 0) => { const [lx, lz] = P(lv, x, y); return new Kit(bats[lv + 'F'], lv + 'F').at(lx, lz, LV[lv].floor, rot); };
   const place = (lv, x, y, rot, fn) => fn(at(lv, x, y, rot));
-  // ---- living room (staged like the listing photos)
-  place('f1', 1563, 828, 0, (k) => rug(k, 8, 10, '#e2ddd3', '#b9b0a2'));
-  place('f1', 1697.6, 800, -90, (k) => sofa(k, 7.5, { color: '#ddd5c8', pillows: ['#9d6e64', '#cdb79c', '#7a5c4e'] }));
-  place('f1', 1580, 800, 90, (k) => coffeeTable(k, 4, 2));
-  place('f1', 1478, 735, 90, (k) => armchair(k, { color: '#ece7dd', pillow: '#d8cdbd' }));
-  place('f1', 1478, 872, 90, (k) => armchair(k, { color: '#ece7dd', pillow: '#d8cdbd' }));
-  place('f1', 1676, 686, 0, (k) => sideTable(k));
-  place('f1', 1676, 918, 0, (k) => floorLamp(k, 0, 0));
-  place('f1', 1452, 995, 0, (k) => plant(k, 0, 0, 6));
-  // ---- family room, facing the fireplace
-  place('f1', 1548, 466, 90, (k) => rug(k, 8, 10, '#d9d6cf', '#a7a196'));
-  place('f1', 1350, 466, 90, (k) => sofa(k, 7.5, { color: '#cfc1ab', cushion: '#d8cbb5' }));
-  place('f1', 1490, 466, 90, (k) => coffeeTable(k, 4, 2, '#6b4a33'));
-  place('f1', 1590, 368, 0, (k) => armchair(k, { color: '#eeeae2', pillow: '#7d6656' }));
-  place('f1', 1590, 562, 180, (k) => armchair(k, { color: '#eeeae2', pillow: '#7d6656' }));
+  // ---- living room, staged as in the listing photos (6-8, 14-17): 7'6" sofa on the north wall
+  // under two prints, waterfall coffee table, one spindle armchair angled in the front (south-east)
+  // corner, floor lamps at the sofa's west end and by the chair, a side table + lamp by the north
+  // window, a tall plant in the north-east corner. Bare carpet (no rug in the photos).
+  place('f1', 1697.6, 795, -90, (k) => sofa(k, 7.5, { color: '#ddd5c8', pillows: ['#9d6e64', '#cdb79c', '#7a5c4e'] }));
+  place('f1', 1572, 795, 90, (k) => coffeeTable(k, 4, 2));
+  { const [ax, az] = P('f1', 1478, 960), [bx, bz] = P('f1', 1660, 800); place('f1', 1478, 960, (Math.atan2(bx - ax, bz - az) * 180) / Math.PI, (k) => spindleChair(k, { pillow: '#e4ddd0' })); }
+  place('f1', 1683, 692, 0, (k) => floorLamp(k, 0, 0));
+  place('f1', 1440, 1008, 0, (k) => floorLamp(k, 0, 0));
+  place('f1', 1680, 897, 0, (k) => sideTable(k, 1.5));
+  place('f1', 1676, 1004, 0, (k) => plant(k, 0, 0, 6));
+  place('f1', 1697.6, 760, -90, (k) => wallArt(k, 1.8, 2.3, 5.3, { art: 'col:#e7d7cd', motif: 'col:#b27f78' }));
+  place('f1', 1697.6, 840, -90, (k) => wallArt(k, 1.8, 2.3, 5.5, { art: 'col:#ece6dc', motif: 'col:#6d6f7a' }));
+  place('f1', 1566, 1022.6, 180, (k) => wallArt(k, 1.4, 1.8, 5.0, { art: 'col:#ece2d7', motif: 'col:#a77468' }));
+  // ---- family room, staged as in photos 9 and 18-21: a gray spotted rug in front of the fireplace
+  // with two chairs angled toward it (a white armchair with a plaid throw, a tufted track-arm chair)
+  place('f1', 1548, 462, 90, (k) => texRug(k, 10, 7.6, 'spotRug'));
+  { const [ax, az] = P('f1', 1560, 395), [bx, bz] = P('f1', 1660, 500); place('f1', 1560, 395, (Math.atan2(bx - ax, bz - az) * 180) / Math.PI, (k) => armchair(k, { color: '#eeeae2', pillow: '#8a6a52', throw: '#9a8f86' })); }
+  { const [ax, az] = P('f1', 1622, 572), [bx, bz] = P('f1', 1500, 430); place('f1', 1622, 572, (Math.atan2(bx - ax, bz - az) * 180) / Math.PI, (k) => armchair(k, { color: '#e9e2d4', pillow: '#d9d2c4' })); }
+  { const k = at('f1', 1672, 515, 0); k.oy += 0.55; plant(k, 0, 0, 2.4); }    // small tree on the raised hearth
+  { const k = at('f1', 1672, 410, 0); k.oy += 0.55; k.cyl('col:#a07a4e', 0, 0, 0.5, 0.42, 0, 0.75, 12); k.cyl('col:#7a5a38', 0, 0, 0.44, 0.44, 0.7, 0.78, 12, 1, false); } // log basket
+  place('f1', 1697.6, 462, -90, (k) => wallArt(k, 3.4, 1.7, 6.35, { art: 'col:#d9b6a8', frame: 'col:#c9b28c' }));
+  place('f1', 1365, 316.5, 0, (k) => wallArt(k, 1.5, 1.8, 5.2, { frame: 'black', art: 'col:#ede9df', motif: 'col:#55574e' }));
   // ---- office (the listing's dining area): desk on the garage-side wall, bookcases, reading chair
   place('f1', 975, 866, 0, (k) => rug(k, 8, 10, '#c9c4bb', '#8d8a85'));
   place('f1', 845.1, 866, 90, (k) => officeDesk(k, 5.5));
@@ -1036,17 +1240,23 @@ export function buildFurniture(bats) {
   {
     // (in the 'off:bump' set: the bump-out option swaps it for a full dining table)
     const NB = renoBat('off:bump', 'f1'), [nx, nz] = P('f1', 1182, 335);
+    // photos 24-25: white tulip table on a blue-gray rug, two white tulip chairs and two walnut
+    // mid-century chairs with gray seats
     const k = new Kit(NB, 'off:bump').at(nx, nz, 0, 0);
-    for (const [cx, cz, r] of roundTable(k, 1.75, { base: '#d9d6cf' })) {
-      const p = k.P(cx, 0, cz);
-      chair(new Kit(NB, 'off:bump').at(p.x, p.z, 0, r), '#ece9e2', '#5c3d2a');
-    }
+    k.box('fab:#b9c0c4', -3.5, 0.003, -2.6, 3.5, 0.025, 2.6); k.box('fab:#d6d9d6', -3.1, 0.004, -2.2, 3.1, 0.028, 2.2);
+    roundTable(k, 1.75, { base: '#f1efea' }).forEach(([cx, cz, r], i) => {
+      const p = k.P(cx * 1.05, 0, cz * 1.05), ck = new Kit(NB, 'off:bump').at(p.x, p.z, 0, r);
+      if (i % 2) tulipChair(ck); else chair(ck, '#b9b5ad', '#5c3d2a');
+    });
   }
   // ---- sun room
-  place('f1', 1520, 165, 180, (k) => loungeChair(k, '#d9d2b8'));
-  place('f1', 1612, 165, 180, (k) => loungeChair(k, '#d9d2b8'));
-  place('f1', 1566, 150, 0, (k) => sideTable(k, 1.4));
-  place('f1', 1680, 285, 0, (k) => plant(k, 0, 0, 4.5));
+  // (empty in the listing photos; two chairs facing the big window. The sun room extension
+  // brings its own furniture, so these belong to the as-built set)
+  { const SB = renoBat('off:sunext', 'f1'), sp = (x, y, r, fn) => { const [lx, lz] = P('f1', x, y); fn(new Kit(SB, 'off:sunext').at(lx, lz, 0, r)); };
+    sp(1520, 165, 180, (k) => loungeChair(k, '#d9d2b8'));
+    sp(1612, 165, 180, (k) => loungeChair(k, '#d9d2b8'));
+    sp(1566, 150, 0, (k) => sideTable(k, 1.4));
+    sp(1680, 285, 0, (k) => plant(k, 0, 0, 4.5)); }
   // ---- garage: two cars and storage shelving
   place('f1', 470, 817, 90, (k) => car(k, '#6f7d8c'));
   place('f1', 470, 1070, 90, (k) => car(k, '#d9d9d4'));
@@ -1086,11 +1296,13 @@ export function buildFurniture(bats) {
   placeC(1044, 640, 180, (k) => sofa(k, 8, { color: '#5e5348', cushion: '#665a4e', pillows: ['#8b6f4e', '#a1886a'] }));
   placeC(1044, 515, 0, (k) => coffeeTable(k, 4, 2, '#4b3426'));
   placeC(772, 600, 0, (k) => rubberFloor(k, 8.6, 14.5));
-  placeC(653.8, 480, 90, (k) => powerRack(k));
-  placeC(830, 480, 90, (k) => liftBench(k));
-  placeC(653.8, 715, 90, (k) => dumbbellRack(k, 5.5));
-  placeC(820, 700, 0, (k) => pelotonBike(k));
-  placeC(772, 407.3, 0, (k) => k.box('mirror', -3.5, 0.6, 0, 3.5, 6.8, 0.06));
+  // keeps 3 ft clear in front of the electrical panel (west wall), the utility door and the walk from
+  // the stairs; nothing under the beam bulkhead; the mirror is beside the tall oak cabinet, not behind it
+  placeC(653.8, 695, 90, (k) => powerRack(k));
+  placeC(705, 695, 90, (k) => liftBench(k));                   // pulled into the rack for pressing
+  placeC(850, 409.3, 0, (k) => k.box('mirror', -1.7, 3.0, 0, 1.7, 6.8, 0.06));
+  placeC(850, 409.3, 0, (k) => dumbbellRack(k, 3.4));          // shorter rack under the mirror
+  placeC(800, 595, 180, (k) => pelotonBike(k));                // rider faces the mirror, 2.5 ft ahead of the bike
   placeA(1044, 289.8, 0, (k) => wallTV(k, 65));
   placeA(1044, 291, 0, (k) => mediaConsole(k, 5.5));
   placeA(1044, 452, 0, (k) => rug(k, 8, 10, '#bfb3a2', '#8a7d6c'));
@@ -1101,17 +1313,17 @@ export function buildFurniture(bats) {
   placeA(1638.2, 175, -90, (k) => powerRack(k));
   placeA(1455, 175, 90, (k) => liftBench(k));
   placeA(1560, 637.7, 180, (k) => dumbbellRack(k, 5.5));
-  placeA(1375, 95, 90, (k) => pelotonBike(k));
+  placeA(1410, 95, 90, (k) => pelotonBike(k)); // rider faces into the gym (toward the rack and mirror)
   placeA(1455, 470, 90, (k) => bodyPumpArea(k));
   placeA(1638.2, 470, -90, (k) => k.box('mirror', -3.6, 0.6, 0, 3.6, 6.8, 0.06));
   // ---- patio: fire pit with four Adirondack chairs, and a dining set by the family-room windows
   // (the fire pit group shifts over when the breakfast bump-out adds a patio door: see reno.js)
   const PATIO = renoBat('off:bump', 'f1');
   const patio = (x, z, rot, fn) => fn(new Kit(PATIO, 'off:bump').at(x, z, -0.62, rot));
-  patio(33, -1, 0, firePit);
+  patio(33, 0.4, 0, firePit); // (centered so the outer chairs stay on the slab, not hanging over the lawn)
   for (const [dx, dz] of [[-3.8, -3.8], [3.8, -3.8], [-3.8, 3.8], [3.8, 3.8]]) {
     const rot = (Math.atan2(-dx, -dz) * 180) / Math.PI;
-    patio(33 + dx, -1 + dz, rot, (k) => adirondack(k));
+    patio(33 + dx, 0.4 + dz, rot, (k) => adirondack(k));
   }
   {
     const PD = (x, z, rot = 0) => new Kit(bats.f1F, 'f1F').at(x, z, -0.62, rot);
@@ -1138,7 +1350,7 @@ export function buildFurniture(bats) {
   placeB(1000, 1173.7, 180, (k) => powerRack(k));
   placeB(1000, 990, 0, (k) => liftBench(k));
   placeB(780, 1173.7, 180, (k) => dumbbellRack(k, 5.5));
-  placeB(1250, 1100, 0, (k) => pelotonBike(k));
+  placeB(1250, 1045, 180, (k) => pelotonBike(k)); // rider's back to the south wall, facing into the room
   placeB(1430, 1080, 0, (k) => bodyPumpArea(k));
   placeB(1500, 760, 90, (k) => treadmill(k));
   placeB(1450, 1173.7, 180, (k) => k.box('mirror', -3.6, 0.6, 0, 3.6, 6.8, 0.06));
