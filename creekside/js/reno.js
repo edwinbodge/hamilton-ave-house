@@ -402,18 +402,23 @@ function buildBasement() {
   const ALL = 'lay:A|lay:B|lay:C|lay:D', bat = renoBat(ALL, 'b'), Lb = LV.b, y0 = H.basement;
   const rooms = Lb._rooms.filter((r) => !/Utility|^Closet$/.test(r.name));
   for (const r of rooms) bat.poly(/Bath/.test(r.name) ? 'tile:#cfcac1' : 'lvp:#b49b7d', r.pts, y0 + 0.025);
+  // the street-side closet off the bath comes out: its floor is bath tile now
+  bat.poly('tile:#cfcac1', [P(LV.b, 687.5, 571.5), P(LV.b, 784, 571.5), P(LV.b, 784, 601.5), P(LV.b, 687.5, 601.5)], y0 + 0.025);
   // the roughed-in bath, finished: toilet, vanity, 3 x 4 ft shower
   const at = (b, t, x, y, rot = 0) => { const [lx, lz] = P(LV.b, x, y); return new Kit(b, t).at(lx, lz, y0, rot); };
   swap(at(bat, ALL, 690, 525, 90), { glb: 'Toilet03', back: true }, toilet);
   { const k = at(bat, ALL, 762.5, 474.8, 0); vanity(k, 3.0, 1, { faucet: 'black', frame: 'black', mirrorTop: 6.8, top: 'rcounter' }); lightBar(k, 2.4, 7.0, 3, 'black'); }
   // the walk-mode readout and the plan label follow the finished bath (as listed it reads "Bath (roughed in)")
   {
-    const bathR = roleRoom(Lb, { name: 'Bath', dims: "7'1\" x 7'4\" · finished: toilet, vanity, 3' x 4' shower", floor: 'concrete', wall: 'paint:#efefec', poly: [[687.5, 472.5], [784, 472.5], [784, 571.5], [687.5, 571.5]] }, 0, 'bb');
+    const bathR = roleRoom(Lb, { name: 'Bath', dims: "7'1\" x 10'0\" · closet taken in: toilet, vanity, 3' x 4' shower", floor: 'concrete', wall: 'paint:#efefec', poly: [[687.5, 472.5], [784, 472.5], [784, 601.5], [687.5, 601.5]] }, 0, 'bb');
     RENO_ROOMS.push({ rs: ALL, level: 'b', room: bathR });
     RENO_LABELS.push(...buildLabels(Lb, renoGroup(ALL, 'b'), [bathR]).map((l) => ((l.userData.rs = ALL), l)));
   }
-  { const [x0, z0] = P(LV.b, 742, 520), [x1, z1] = P(LV.b, 782, 569); const k = new Kit(bat, ALL).at(0, 0, y0, 0);
-    k.box('tile:#ecebe7', x0, 0, z0, x1, 0.25, z1); k.box('showerGlass', x0 - 0.02, 0.25, z0, x0 + 0.02, 6.8, z1 - 1.6); k.box('black', x0 - 0.03, 6.8, z0, x0 + 0.03, 6.85, z1); k.solid(x0 - 0.05, z0, x0 + 0.05, z1 - 1.6, 0, 6.8); }
+  // shower in the old closet's corner against the street wall: glass along the side, door gap on the room end
+  { const [x0, z0] = P(LV.b, 742, 546), [x1, z1] = P(LV.b, 782, 596); const k = new Kit(bat, ALL).at(0, 0, y0, 0);
+    k.box('tile:#ecebe7', x0, 0, z0, x1, 0.25, z1);
+    k.box('showerGlass', x0 - 0.02, 0.25, z0 + 1.7, x0 + 0.02, 6.8, z1); k.box('black', x0 - 0.03, 6.8, z0, x0 + 0.03, 6.85, z1); k.solid(x0 - 0.05, z0 + 1.7, x0 + 0.05, z1, 0, 6.8);
+    k.box('showerGlass', x0, 0.25, z0 - 0.02, x1, 6.8, z0 + 0.02); k.box('black', x0, 6.8, z0 - 0.03, x1, 6.85, z0 + 0.03); k.solid(x0, z0 - 0.05, x1, z0 + 0.05, 0, 6.8); }
   const lay = (L, x, y, rot, fn) => { const t = 'lay:' + L; item(at(renoBat(t, 'b'), t, x, y, rot), fn); };
   // ---- A: TV on the brown accent wall with a sectional, game table in the bay, wet bar, gym in the north room, guest bedroom east
   lay('A', 532.2, 430, -90, (k) => wallTV(k, 75));

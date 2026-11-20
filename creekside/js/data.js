@@ -77,7 +77,7 @@ export const LEVELS = [
       [534, 601.5, 534, 702, 'e'],
       [380, 702, 419, 702, 'e'], [419, 702, 426, 721.5, 'e'], [426, 721.5, 494, 721.5, 'e'], [494, 721.5, 501, 702, 'e'], [501, 702, 534, 702, 'e'],
       // interior (all drywalled, per the photos; floors are bare concrete)
-      [541, 208.5, 784.5, 208.5, 'i', [[698, 742, 'o']]],
+      [541, 208.5, 784.5, 208.5, 'i', [[698, 742, 'o']], { reno: 'openGym' }], // back room | rec room (the "Open the gym" renovation takes it out)
       [784, 236, 784, 354.5, 'i', [[255, 325, 'f', { pair: true, into: '-x' }]]],
       [784, 354.5, 809.5, 354.5, 'i'], [809.5, 354.5, 809.5, 403.5, 'i'],
       // ('not:lay:D' = removed by the "Open plan" basement layout)
@@ -92,7 +92,8 @@ export const LEVELS = [
       [687.5, 330.5, 687.5, 458.5, 'i', [[403, 439, 'd', { hinge: 'lo', into: '+x', color: '#d9b98a' }]], { rs: 'not:lay:D' }],
       [687.5, 458.5, 687.5, 601.5, 'i'],
       [687.5, 472.5, 784, 472.5, 'i', [[705, 743, 'd', { hinge: 'lo', into: '+y', color: '#d9b98a' }]]],
-      [687.5, 571.5, 784, 571.5, 'i', [[712, 745, 'd', { hinge: 'hi', into: '-y', color: '#d9b98a' }]]],
+      // bath | street-side closet: any finished basement takes the closet into the bath
+      [687.5, 571.5, 784, 571.5, 'i', [[712, 745, 'd', { hinge: 'hi', into: '-y', color: '#d9b98a' }]], { rs: 'not:lay:A&not:lay:B&not:lay:C&not:lay:D' }],
       [346, 432, 380, 432, 'i', [], { rs: 'not:lay:D' }], [380, 374.5, 380, 432, 'i', [[380, 405, 'd', { hinge: 'lo', into: '+x', color: '#d9b98a' }]], { rs: 'not:lay:D' }],
       [380, 645, 411, 645, 'i', [], { rs: 'not:lay:D' }], [411, 645, 411, 702, 'i', [[652, 686, 'd', { hinge: 'lo', into: '+x', color: '#d9b98a' }]], { rs: 'not:lay:D' }],
     ],

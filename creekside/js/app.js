@@ -82,7 +82,7 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const state = {
   view: 'ext', labels: true, furniture: true, mode: 'orbit', layout: '0',
-  reno: { kitchen: false, openLiving: false, frontOffice: false, frontDining: false, refresh: false, pbath: false, mud: false, facade: false, classic: false, patio: false, play: false },
+  reno: { kitchen: false, openLiving: false, frontOffice: false, frontDining: false, refresh: false, pbath: false, mud: false, facade: false, classic: false, patio: false, play: false, openGym: false },
   style: { ...STYLE_PRESETS[DEFAULT_PRESET].values },
   ext: { ...EXT_PRESETS.listed.values },
 };
@@ -157,6 +157,7 @@ function applyReno() {
   document.querySelectorAll('[data-reno]').forEach((el) => { el.checked = !!state.reno[el.dataset.reno]; });
   document.querySelectorAll('[name=basement-layout]').forEach((r) => { r.checked = r.value === state.layout; });
   $('#suggested').checked = isSuggested();
+  editor && editor.setPlan(state.layout !== '0' || Object.values(state.reno).some(Boolean));
   applyView();
   saveOptions();
 }
@@ -172,7 +173,7 @@ document.querySelectorAll('[data-reno]').forEach((el) => el.addEventListener('ch
   applyReno();
 }));
 // one switch for the whole suggested plan (basement: open plan, layout D)
-const SUGGESTED = ['kitchen', 'frontOffice', 'refresh', 'pbath', 'mud', 'classic', 'patio', 'play'];
+const SUGGESTED = ['kitchen', 'frontOffice', 'refresh', 'pbath', 'mud', 'classic', 'patio', 'play', 'openGym'];
 const isSuggested = () => Object.keys(state.reno).every((k) => !!state.reno[k] === SUGGESTED.includes(k)) && state.layout === 'D';
 $('#suggested').addEventListener('change', (e) => {
   for (const k of Object.keys(state.reno)) state.reno[k] = e.target.checked && SUGGESTED.includes(k);
@@ -736,6 +737,8 @@ editor = initEditor({
   levelShown: (lvl) => groups[lvl].visible && state.furniture,
   ceilingShown: (lvl) => (lvl === 'b' ? groups.f1.visible : lvl === 'f1' ? groups.f2.visible : groups.roof.visible),
   reapplyStyle: () => applyStyle(state.style),
+  // our plan's furniture (plan.js) is part of the renovations: on whenever any renovation or a finished basement is
+  planOn: () => state.layout !== '0' || Object.values(state.reno).some(Boolean),
   onOpen: () => { document.body.classList.add('editing'); if (state.mode === 'walk') { walk.paused = true; if (plc.isLocked) plc.unlock(); } },
   onClose: (relock) => {
     document.body.classList.remove('editing');

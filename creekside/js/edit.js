@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { ITEMS, Kit, Batcher, loadGLB, placeModel, applyFinish, modelsShown, PHYS } from './geom.js';
 import { FAMILIES, LABEL_FAMILY, optionOf, familyOfGlb, thumbURL } from './catalog.js';
+import { PLAN } from './plan.js';
 
 const KEY = 'creekside-edits', POSKEY = 'creekside-edit-pos';
 const R = Math.PI / 180;
@@ -36,14 +37,61 @@ const LEGACY = { tv: ['tv', 'tv65'], sofa: ['sofa', 'Sofa08'], armchair: ['armch
 const STOP = new Set(['gray', 'black', 'white', 'brass', 'small', 'tall', 'round', 'dark', 'light', 'green', 'navy', 'blue', 'brown', 'olive', 'charcoal', 'long', 'metal', 'wood', 'walnut', 'oak', 'pine', 'red', 'fan,', 'glass', 'opal', 'large', 'pair', 'medium']);
 const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
+const clone = (o) => JSON.parse(JSON.stringify(o));
+// (a missing field = 0 / off; positions within ~1/100 inch are the same, so a rounded plan matches what it came from)
+const same = (a, b) => { a = a ?? 0; b = b ?? 0; if (a === false) a = 0; if (b === false) b = 0; return typeof a === 'number' && typeof b === 'number' ? Math.abs(a - b) < 2e-3 : JSON.stringify(a) === JSON.stringify(b); };
+// base + my edits -> what's shown. In my edits: items[id] = changed fields (null = field back to as listed,
+// items[id] = null: the piece back to as listed), added = my own additions, dropped = base additions I removed.
+// Copies whose original is gone are dropped (they're built from it).
+function compose(B, M) {
+  const items = clone(B.items), paint = { ...B.paint };
+  for (const [id, f] of Object.entries(M.items || {})) {
+    if (f === null) { delete items[id]; continue; }
+    const s = { ...(items[id] || {}) };
+    for (const [k, v] of Object.entries(f)) { if (v === null) delete s[k]; else s[k] = v; }
+    if (Object.keys(s).length) items[id] = s; else delete items[id];
+  }
+  for (const [k, v] of Object.entries(M.paint || {})) { if (v === null) delete paint[k]; else paint[k] = v; }
+  const drop = new Set(M.dropped || []), all = [...B.added.filter((a) => !drop.has(a.id)), ...(M.added || []).filter((a) => !B.added.some((b) => b.id === a.id))].map(clone);
+  const ids = new Set(all.map((a) => a.id)), added = all.filter((a) => !(a.kind === 'copy' && typeof a.src === 'string' && !ids.has(a.src)));
+  for (const id of Object.keys(items)) if (id[0] === 'a' && !added.some((a) => a.id === id)) delete items[id];
+  return { items, paint, added };
+}
+function diff(B, E) {
+  const items = {}, paint = {};
+  for (const id of new Set([...Object.keys(B.items), ...Object.keys(E.items)])) {
+    const b = B.items[id], e = E.items[id];
+    if (!e) { if (b) items[id] = null; continue; }
+    const f = {};
+    for (const k of new Set([...Object.keys(b || {}), ...Object.keys(e)])) if (!same(b?.[k], e[k])) f[k] = e[k] === undefined ? null : e[k];
+    if (Object.keys(f).length) items[id] = f;
+  }
+  for (const k of new Set([...Object.keys(B.paint), ...Object.keys(E.paint)])) if (B.paint[k] !== E.paint[k]) paint[k] = E.paint[k] ?? null;
+  const added = E.added.filter((a) => !B.added.some((b) => b.id === a.id)), dropped = B.added.filter((b) => !E.added.some((a) => a.id === b.id)).map((b) => b.id);
+  return { items, paint, added, dropped };
+}
+
 export function initEditor(env) {
   const { scene, camera, renderer, house, site, gfx, isVisible, roomName, reapplyStyle, onOpen, onClose } = env;
-  let E = { items: {}, paint: {}, added: [] };
-  try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s && s.items) E = { items: s.items, paint: s.paint || {}, added: s.added || [] }; } catch {}
+  // Two layers: the base (our renovation plan's furniture, plan.js, whenever renovations are on; nothing as listed)
+  // and this browser's own edits on top. E is the two combined (what the scene shows and every action edits);
+  // what gets saved is only the difference from the base, so the plan can change underneath without clobbering it.
+  const EMPTY = { items: {}, paint: {}, added: [] };
+  let base = env.planOn && env.planOn() ? PLAN : EMPTY;
+  let U = EMPTY;
+  try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s && s.items) U = { items: s.items, paint: s.paint || {}, added: s.added || [], dropped: s.dropped || [] }; } catch {}
+  let E = compose(base, U);
   const undo = [];
   const addedGroup = new THREE.Group(); addedGroup.name = 'added items'; scene.add(addedGroup);
   const ADDED = new Map(); // id -> item
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(E)); } catch {} updateCount(); };
+  // on the local server, every save is also written to creekside/edits-capture.json (to bake into the defaults)
+  const LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  const save = () => {
+    U = diff(base, E);
+    try { localStorage.setItem(KEY, JSON.stringify({ v: 2, ...U })); } catch {}
+    if (LOCAL) fetch('/__creekside-edits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...E, planOn: base === PLAN }) }).catch(() => {});
+    updateCount();
+  };
   const snapshot = () => { undo.push(JSON.stringify(E)); if (undo.length > 60) undo.shift(); };
   const itemById = (id) => (typeof id === 'string' && id[0] === 'a' ? ADDED.get(id) : ITEMS[id]);
   const st = (id) => (E.items[id] = E.items[id] || {});
@@ -80,7 +128,7 @@ export function initEditor(env) {
     });
   }
   function applyItem(it) {
-    const s = (comparing ? null : E.items[it.id]) || {}, g = it.group;
+    const s = (comparing ? base.items[it.id] : E.items[it.id]) || {}, g = it.group;
     if (!g) return;
     g.visible = !s.removed && shown(it);
     g.scale.set(s.sx || 1, s.sy || 1, s.sz || 1);
@@ -115,7 +163,7 @@ export function initEditor(env) {
   function shown(it) {
     if (!env.levelShown) return true;
     const lvl = levelOf(it);
-    if (it.added && (comparing || !env.levelShown(lvl))) return false;
+    if (it.added && ((comparing && !base.added.some((a) => a.id === it.id)) || !env.levelShown(lvl))) return false;
     if (isCeilingItem(it) && !env.ceilingShown(lvl)) return false;
     return true;
   }
@@ -404,7 +452,8 @@ export function initEditor(env) {
     return w;
   }
   function say(t) { const m = pop.querySelector('.ep-msg'); if (m) m.textContent = t; requestAnimationFrame(clamp); }
-  const countText = () => { const n = Object.keys(E.items).length + Object.keys(E.paint).length + E.added.length; return n ? `${n} edit${n > 1 ? 's' : ''} saved in this browser` : ''; };
+  const nDiff = (D) => Object.keys(D.items).filter((id) => !D.added.some((a) => a.id === id)).length + Object.keys(D.paint).length + D.added.length + D.dropped.length;
+  const countText = () => { const n = nDiff(diff(base, E)); return n ? `${n} edit${n > 1 ? 's' : ''} saved in this browser${base === PLAN ? ' (on top of our plan)' : ''}` : ''; };
   function updateCount() {
     const el = document.querySelector('#edit-count'); if (el) el.textContent = countText() || 'No edits yet.';
     renderList();
@@ -427,17 +476,24 @@ export function initEditor(env) {
   function renderList() {
     if (!listEl) return;
     listEl.innerHTML = '';
-    const rows = [];
-    for (const [id, s] of Object.entries(E.items)) {
+    const rows = [], D = diff(base, E);
+    const back = (id) => { if (base.items[id]) E.items[id] = clone(base.items[id]); else delete E.items[id]; };
+    for (const id of Object.keys(D.items)) {
       const it = itemById(isNaN(+id) ? id : +id); if (!it) continue;
-      if (it.added) continue;
-      rows.push({ label: `${cap(nameOf(it))}: ${describe(it, s).toLowerCase()}`, where: roomName(posOf(it), new THREE.Vector3(0, 1, 0)), at: () => posOf(it), undo: () => { delete E.items[it.id]; applyItem(it); } });
+      if (D.added.some((a) => a.id === id)) continue;
+      const s = E.items[id];
+      rows.push({ label: `${cap(nameOf(it))}: ${s ? describe(it, s).toLowerCase() : 'back to as listed'}`, where: roomName(posOf(it), new THREE.Vector3(0, 1, 0)), at: () => posOf(it), undo: () => { back(it.id); applyItem(it); } });
     }
-    for (const a of E.added) {
+    for (const id of D.dropped) {
+      const a = base.added.find((x) => x.id === id); if (!a) continue;
+      const f = a.fam || (itemById(a.src) && famOf(itemById(a.src)));
+      rows.push({ label: `Removed the ${SINGULAR[f] || 'piece'} from our plan`, where: '', at: null, undo: () => { const i = base.added.indexOf(a); E.added.splice(Math.min(i, E.added.length), 0, clone(a)); back(id); syncAdded().then(() => { applyAll(); gfx.dirty(); }); } });
+    }
+    for (const a of D.added) {
       const it = ADDED.get(a.id); if (!it) continue;
       rows.push({ label: `Added ${a.kind === 'copy' ? 'a copy of the ' + nameOf(it) : NAMED.has(it.fam) ? nameOf(it) : 'a ' + nameOf(it)}`, where: roomName(posOf(it), new THREE.Vector3(0, 1, 0)), at: () => posOf(it), undo: () => { E.added = E.added.filter((x) => x.id !== a.id); delete E.items[a.id]; syncAdded(); } });
     }
-    for (const k of Object.keys(E.paint)) rows.push({ label: 'Painted the walls', where: env.wallRoom ? env.wallRoom(k) : '', swatch: E.paint[k], at: null, undo: () => { delete E.paint[k]; reapplyStyle(); reapplyPaint(); } });
+    for (const k of Object.keys(D.paint)) rows.push({ label: E.paint[k] ? 'Painted the walls' : 'Walls back to as listed', where: env.wallRoom ? env.wallRoom(k) : '', swatch: E.paint[k], at: null, undo: () => { if (base.paint[k]) E.paint[k] = base.paint[k]; else delete E.paint[k]; reapplyStyle(); reapplyPaint(); } });
     for (const r of rows) {
       const li = document.createElement('div'); li.className = 'edit-row';
       const b = document.createElement('button'); b.className = 'edit-go';
@@ -458,9 +514,9 @@ export function initEditor(env) {
     if (!list.length) return;
     if (!quiet) snapshot();
     for (const it of list) {
-      if (op === 'reset') { delete E.items[it.id]; if (it.added) E.added = E.added.filter((a) => a.id !== it.id); applyItem(it); continue; }
+      if (op === 'reset') { if (base.items[it.id]) E.items[it.id] = clone(base.items[it.id]); else delete E.items[it.id]; if (it.added && !base.added.some((a) => a.id === it.id)) E.added = E.added.filter((a) => a.id !== it.id); applyItem(it); continue; }
       const s = st(it.id);
-      if (op === 'remove') { if (it.added) { E.added = E.added.filter((a) => a.id !== it.id); delete E.items[it.id]; } else s.removed = true; }
+      if (op === 'remove') { if (it.added && !E.added.some((a) => a.kind === 'copy' && a.src === it.id)) { E.added = E.added.filter((a) => a.id !== it.id); delete E.items[it.id]; } else s.removed = true; }
       if (op === 'color') { if (arg) s.color = arg; else delete s.color; }
       if (op === 'spin') s.spin = (arg % 90 ? (s.spin || 0) + arg : Math.round((it.rot + (s.spin || 0) + arg) / 90) * 90 - it.rot) % 360; // turns land square to the house
       if (op === 'opt') { delete s.glb; if (arg && arg !== baseOpt(it)) s.opt = arg; else delete s.opt; }
@@ -706,7 +762,17 @@ export function initEditor(env) {
     applyItem(it);
   }
   async function doUndo() { if (!undo.length) return; await restore(undo.pop()); if (cur) { render(); say('Undone.'); highlight(targets()); } }
-  async function resetAll() { snapshot(); await restore(JSON.stringify({ items: {}, paint: {}, added: [] })); }
+  async function resetAll() { snapshot(); await restore(JSON.stringify(base)); }
+  // renovations on/off: our plan's furniture comes and goes underneath this browser's own edits
+  async function setPlan(on) {
+    const b = on ? PLAN : EMPTY;
+    if (b === base) return;
+    if (pending) cancelMove();
+    if (!pop.hidden) close(false);
+    const mine = diff(base, E);
+    base = b; undo.length = 0;
+    await restore(JSON.stringify(compose(base, mine)));
+  }
 
   // ---------------------------------------------------------------- typed commands (a small rule-based parser)
   function command(text) {
@@ -790,10 +856,11 @@ export function initEditor(env) {
   function compare(on) {
     if (on === comparing || pending) return;
     comparing = on;
-    if (on) { close(false); reapplyStyle(); showHint('The house as listed · let go to see your edits'); }
+    if (on) { close(false); reapplyStyle(); showHint(base === PLAN ? 'Our plan, without your edits · let go to see them' : 'The house as listed · let go to see your edits'); }
     else { reapplyPaint(); hint.hidden = true; }
     for (const it of ITEMS) if (it.group && (E.items[it.id] || it.altGroup)) applyItem(it);
     for (const it of ADDED.values()) applyItem(it);
+    if (!on) reapplyPaint(); else for (const [k, hex] of Object.entries(base.paint)) applyFinish(k, 'paint:' + hex);
     gfx.dirty();
   }
   addEventListener('keyup', (e) => { if (e.code === 'KeyC') compare(false); });
@@ -805,7 +872,7 @@ export function initEditor(env) {
   const unb64u = (t) => Uint8Array.from(atob(t.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
   async function shareLink() {
     if (!countText()) return toast('Make an edit first, then share it.', 2500);
-    const buf = await new Response(new Blob([JSON.stringify(E)]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer();
+    const buf = await new Response(new Blob([JSON.stringify({ ...E, n: nDiff(diff(base, E)) })]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer();
     const url = location.origin + location.pathname + '#edits=' + b64u(buf);
     try { await navigator.clipboard.writeText(url); toast('Link copied. Whoever opens it sees the house with your edits.', 4000); }
     catch { window.prompt('Copy this link to share your edits:', url); }
@@ -817,7 +884,7 @@ export function initEditor(env) {
     try { shared = JSON.parse(await new Response(new Blob([unb64u(m[1])]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text()); } catch { return; }
     history.replaceState(null, '', location.pathname + location.search);
     if (!shared || !shared.items) return;
-    const n = Object.keys(shared.items).length + Object.keys(shared.paint || {}).length + (shared.added || []).length;
+    const n = shared.n ?? Object.keys(shared.items).length + Object.keys(shared.paint || {}).length + (shared.added || []).length;
     const bar = document.createElement('div'); bar.id = 'edit-share';
     bar.innerHTML = `<span>Someone shared ${n} edit${n === 1 ? '' : 's'} to this house.</span><button class="primary">Show them</button><button>Not now</button>`;
     document.body.appendChild(bar);
@@ -840,5 +907,5 @@ export function initEditor(env) {
   (async () => { await syncAdded(); applyAll(); updateCount(); readShared(); })();
   // walk-through: the moving piece follows the crosshair
   function tick() { if (pending && env.walking()) preview(pickAt(new THREE.Vector2(0, 0))); }
-  return { clickAt, aim, openAhead, applyLevels, tick, isComparing: () => comparing, isOpen: () => !pop.hidden, isPending: () => !!pending, close, refresh: () => { rebuildCopies(); applyAll(); }, reapplyPaint, command: (s) => command(s), open, pickAt, E: () => E, toast };
+  return { clickAt, aim, openAhead, applyLevels, tick, isComparing: () => comparing, isOpen: () => !pop.hidden, isPending: () => !!pending, close, refresh: () => { rebuildCopies(); applyAll(); }, reapplyPaint, command: (s) => command(s), open, pickAt, E: () => E, toast, setPlan };
 }
