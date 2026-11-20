@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Susan Ln House</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f6f2; --panel: rgba(250, 249, 246, 0.94); --ink: #22231f; --muted: #6c6b64;
+    --line: #dddad1; --accent: #2f5d50; --accent-ink: #ffffff; --chip: #ecebe5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17181a; --panel: rgba(30, 31, 33, 0.94); --ink: #ecebe6; --muted: #a3a29a;
+      --line: #3a3b3d; --accent: #7fbfa8; --accent-ink: #10201b; --chip: #2a2b2d;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17181a; --panel: rgba(30, 31, 33, 0.94); --ink: #ecebe6; --muted: #a3a29a;
+    --line: #3a3b3d; --accent: #7fbfa8; --accent-ink: #10201b; --chip: #2a2b2d;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink);
+    font: 13px/1.45 Inter, system-ui, -apple-system, sans-serif; }
+  #app, #app canvas { position: fixed; inset: 0; }
+  .labels { position: fixed !important; inset: 0; pointer-events: none; }
+  body.measuring #app canvas { cursor: crosshair; }
+
+  .room-label { text-align: center; color: #1f2420; background: rgba(255,255,255,.82); border-radius: 6px;
+    padding: 2px 7px; font-size: 11px; line-height: 1.25; box-shadow: 0 1px 3px rgba(0,0,0,.15); white-space: nowrap; }
+  .room-label b { display: block; font-weight: 600; font-size: 11.5px; }
+  .room-label span { color: #5d625c; }
+  .measure-label { background: #e0412b; color: #fff; font-weight: 600; padding: 2px 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; }
+  .north { color: #fff; font-weight: 700; font-size: 18px; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
+  .street { color: #fff; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; font-size: 11px; text-shadow: 0 1px 3px rgba(0,0,0,.7); }
+
+  #panel { position: fixed; top: 12px; left: 12px; bottom: 12px; width: 312px; background: var(--panel);
+    backdrop-filter: blur(10px); border: 1px solid var(--line); border-radius: 14px; display: flex; flex-direction: column;
+    box-shadow: 0 8px 30px rgba(0,0,0,.12); transition: transform .25s ease; z-index: 5; }
+  body.collapsed #panel { transform: translateX(calc(-100% - 20px)); }
+  #panel header { padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
+  #house-pick { font: inherit; font-size: 15px; font-weight: 600; color: inherit; background: transparent; border: 1px solid transparent; border-radius: 8px; padding: 2px 22px 2px 4px; margin-left: -5px; cursor: pointer; appearance: none; -webkit-appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%); background-position: calc(100% - 10px) 55%, calc(100% - 5px) 55%; background-size: 5px 5px; background-repeat: no-repeat; }
+  #house-pick:hover, #house-pick:focus { border-color: var(--line); outline: none; }
+  #panel h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  #panel header p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+  .scroll { overflow-y: auto; padding: 4px 16px 16px; flex: 1; }
+  section { padding: 12px 0; border-bottom: 1px solid var(--line); }
+  section:last-child { border-bottom: 0; }
+  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 0 0 8px; font-weight: 600; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  .views { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; background: var(--chip); padding: 3px; border-radius: 9px; }
+  .views button { border: 0; background: transparent; padding: 7px 0; border-radius: 7px; font-weight: 500; font-size: 12px; }
+  .views button.on { background: var(--panel); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+  .btn { width: 100%; border: 1px solid var(--line); background: var(--panel); border-radius: 9px; padding: 8px 10px; font-weight: 500; text-align: left; }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; text-align: center; }
+  .btn.on { outline: 2px solid #e0412b; }
+  .row { display: flex; gap: 6px; }
+  .toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+  .toggles label { display: flex; align-items: center; gap: 6px; }
+  .muted { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  select, input[type=text], input[type=number] { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 5px 7px; width: 100%; }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .chips button { border: 1px solid var(--line); background: var(--chip); border-radius: 999px; padding: 4px 10px; font-size: 12px; }
+  #add-list { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+  .add-row { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 6px 8px; text-align: left; }
+  .add-row.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .add-row i { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+  .add-row span { flex: 1; }
+  .add-row small { color: var(--muted); }
+  #add-editor { margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+  #add-editor .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 6px 0; }
+  #add-editor label { font-size: 11px; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
+  .add-stats { font-size: 12px; margin: 6px 0 8px; }
+  details summary { cursor: pointer; font-weight: 500; }
+  details ul { padding-left: 18px; margin: 8px 0 0; color: var(--muted); font-size: 12px; }
+  details li { margin-bottom: 4px; }
+  kbd { font: 11px ui-monospace, monospace; background: var(--chip); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+
+  #panel-toggle { position: fixed; top: 12px; left: 336px; z-index: 6; border: 1px solid var(--line); background: var(--panel);
+    border-radius: 9px; width: 34px; height: 34px; transition: left .25s ease; }
+  body.collapsed #panel-toggle { left: 12px; }
+
+  #hud { position: fixed; inset: 0; pointer-events: none; display: none; z-index: 4; }
+  body.walking #hud { display: block; }
+  body.walking #panel, body.walking #panel-toggle { display: none; }
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: rgba(255,255,255,.9); box-shadow: 0 0 0 1px rgba(0,0,0,.4); }
+  #hud-room { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); background: rgba(20,20,20,.6); color: #fff; padding: 5px 12px; border-radius: 999px; font-weight: 500; }
+  #hud-help { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); background: rgba(20,20,20,.55); color: #fff; padding: 5px 12px; border-radius: 999px; font-size: 12px; }
+  #hud-door { position: absolute; top: 56%; left: 50%; transform: translateX(-50%); background: rgba(20,20,20,.6); color: #fff; padding: 4px 10px; border-radius: 999px; font-size: 12px; }
+  #hud-door[hidden] { display: none; }
+  #hud-options { position: absolute; top: 12px; left: 12px; pointer-events: auto; border: 0; background: rgba(20,20,20,.6); color: #fff; padding: 6px 12px; border-radius: 999px; font-weight: 500; }
+  body.walking.walk-panel #panel { display: flex; z-index: 8; }
+  body.walking.walk-panel #hud-options { left: 336px; }
+  .style-grid { display: grid; gap: 6px; margin-top: 8px; }
+  .style-grid label { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--muted); }
+  .chips button.on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+  .reno-list { display: grid; gap: 8px; }
+  .edwin { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; margin-bottom: 10px; border-radius: 10px; background: var(--chip); border: 1px solid var(--line); cursor: pointer; }
+  .edwin input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--accent); }
+  .edwin b { font-size: 14px; }
+  .edwin span { display: flex; flex-direction: column; gap: 2px; }
+  .edwin small { color: var(--muted); font-size: 11.5px; }
+  .edwin:has(input:checked) { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+  .edwin:has(input:checked) small { color: var(--accent-ink); opacity: .85; }
+  .reno-list label { display: flex; gap: 8px; align-items: flex-start; }
+  .reno-list input { margin-top: 3px; }
+  .reno-list span { display: flex; flex-direction: column; gap: 2px; }
+  .reno-list small { color: var(--muted); font-size: 11.5px; line-height: 1.35; }
+  .reno-list select { margin-top: 4px; }
+  #hud-exit { position: absolute; top: 12px; right: 12px; pointer-events: auto; border: 0; background: rgba(20,20,20,.6); color: #fff; padding: 6px 12px; border-radius: 999px; font-weight: 500; }
+  .draghelp { display: none; }
+  body.draglook .draghelp { display: inline; }
+  body.draglook .lockhelp { display: none; }
+  body.draglook #crosshair { display: none; }
+  body.draglook #app canvas { cursor: grab; }
+  #walk-paused { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.35); z-index: 7; }
+  #walk-paused[hidden] { display: none; }
+  #walk-paused div { background: var(--panel); padding: 18px; border-radius: 14px; width: 280px; text-align: center; display: grid; gap: 8px; }
+
+  @media (max-width: 640px) {
+    #panel { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; height: 46vh; }
+    body.collapsed #panel { transform: translateY(calc(100% + 20px)); }
+    #panel-toggle { left: auto; right: 8px; top: 8px; }
+    body.collapsed #panel-toggle { left: auto; }
+  }
+  /* point-and-click edit menu */
+  #edit-pop { position: fixed; z-index: 40; width: 316px; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.22); padding: 10px 12px 8px; font-size: 13px; backdrop-filter: blur(8px); }
+  #edit-pop[hidden], #edit-hint[hidden] { display: none; }
+  #edit-pop .ep-head { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+  #edit-pop .ep-head b { flex: 1; font-size: 14px; line-height: 1.25; }
+  #edit-pop .ep-head small { display: block; font-weight: 400; color: var(--muted); font-size: 11.5px; }
+  #edit-pop .ep-x { border: 0; background: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; padding: 0 2px; }
+  #edit-pop .ep-all { display: flex; gap: 6px; align-items: center; margin: -2px 0 8px; color: var(--muted); font-size: 12px; }
+  #edit-pop .ep-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  #edit-pop .ep-row button { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 4px; border-radius: 10px; border: 1px solid var(--line); background: var(--chip); color: var(--ink); font: inherit; font-size: 12px; cursor: pointer; }
+  #edit-pop .ep-row button .ic { font-size: 17px; line-height: 1; }
+  #edit-pop .ep-row button:hover, #edit-pop .ep-row button.on { border-color: var(--accent); }
+  #edit-pop .ep-row.four { grid-template-columns: repeat(4, 1fr); }
+  #edit-pop .ep-row.n1 { grid-template-columns: 1fr; }
+  #edit-pop .ep-row.n2 { grid-template-columns: repeat(2, 1fr); }
+  #edit-pop .ep-head { cursor: grab; user-select: none; }
+  #edit-pop .ep-grip { color: var(--muted); margin-right: 2px; font-size: 13px; line-height: 1.3; }
+  #edit-pop .ep-link { border: 0; background: none; color: var(--accent); font: inherit; font-size: 12px; cursor: pointer; padding: 6px 0 0; }
+  #edit-pop .ep-cap { margin: 0 0 6px; font-size: 11.5px; }
+  #edit-pop .ep-div { height: 1px; background: var(--line); margin: 8px 0; }
+  #edit-share { position: fixed; z-index: 45; left: 50%; top: 16px; transform: translateX(-50%); display: flex; gap: 8px; align-items: center; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 6px 6px 6px 14px; box-shadow: 0 8px 24px rgba(0,0,0,.18); font-size: 13px; max-width: calc(100vw - 32px); }
+  #edit-share button { border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 999px; padding: 5px 12px; font: inherit; cursor: pointer; }
+  #edit-share button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  #edit-compare:active { background: var(--accent); color: var(--accent-ink); }
+  #edit-list { display: flex; flex-direction: column; gap: 2px; max-height: 220px; overflow-y: auto; }
+  #edit-list .edit-row { display: flex; align-items: center; gap: 4px; }
+  #edit-list .edit-go { flex: 1; display: flex; align-items: baseline; gap: 6px; text-align: left; border: 0; background: none; color: var(--ink); font: inherit; font-size: 12.5px; padding: 4px 6px; border-radius: 8px; cursor: pointer; min-width: 0; }
+  #edit-list .edit-go:hover:not(:disabled) { background: var(--chip); }
+  #edit-list .edit-go:disabled { cursor: default; }
+  #edit-list .edit-go span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #edit-list .edit-go small { color: var(--muted); white-space: nowrap; margin-left: auto; }
+  #edit-list .edit-go i { width: 10px; height: 10px; border-radius: 50%; flex: none; border: 1px solid rgba(0,0,0,.2); align-self: center; }
+  #edit-list .edit-x { border: 0; background: none; color: var(--muted); font-size: 16px; cursor: pointer; padding: 0 6px; }
+  #edit-pop .ep-sub { margin-top: 8px; }
+  #edit-pop .ep-nudge { display: flex; align-items: center; gap: 4px; margin-top: 6px; font-size: 11.5px; }
+  #edit-pop .ep-nudge span { margin-right: 4px; }
+  #edit-pop .ep-nudge button { width: 30px; height: 26px; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 8px; cursor: pointer; font: inherit; }
+  #edit-pop .ep-nudge .ic:empty, #edit-pop .ep-more .ic:empty { display: none; }
+  #edit-pop .ep-thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-height: 300px; overflow-y: auto; }
+  #edit-pop .ep-thumbs button { display: flex; flex-direction: column; align-items: stretch; border: 1px solid var(--line); border-radius: 9px; background: #e9e7e1; padding: 3px 3px 4px; cursor: pointer; color: #3a3a36; }
+  #edit-pop .ep-thumbs button span { font-size: 10.5px; line-height: 1.2; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
+  #edit-pop .ep-thumbs button.on { border: 2px solid var(--accent); }
+  #edit-pop .ep-thumbs img { width: 100%; aspect-ratio: 1; object-fit: contain; display: block; }
+  #hud-edit { position: absolute; top: calc(56% + 30px); left: 50%; transform: translateX(-50%); background: rgba(20,20,20,.6); color: #fff; padding: 4px 10px; border-radius: 999px; font-size: 12px; white-space: nowrap; }
+  #hud-edit[hidden] { display: none; }
+  body.editing #hud-edit, body.editing #hud-door { display: none; }
+  #edit-pop .ep-more { display: flex; gap: 4px; flex-wrap: wrap; }
+  #edit-pop .ep-more button, #edit-pop .ep-grid button, #edit-pop .ep-foot button { border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+  #edit-pop .ep-more .ic { margin-right: 4px; color: var(--muted); }
+  #edit-pop .ep-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+  #edit-pop .ep-grid .ic:empty { display: none; }
+  #edit-pop .ep-sw { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+  #edit-pop .ep-sw button { width: 24px; height: 24px; border-radius: 50%; border: 1px solid rgba(0,0,0,.2); cursor: pointer; padding: 0; }
+  #edit-pop .ep-sw button.none { width: auto; border-radius: 999px; padding: 0 8px; background: transparent; color: var(--ink); font: inherit; font-size: 11.5px; }
+  #edit-pop .ep-sw input[type=color] { width: 28px; height: 26px; border: 0; padding: 0; background: none; cursor: pointer; }
+  #edit-pop .ep-cmd input { width: 100%; box-sizing: border-box; margin-top: 9px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; }
+  #edit-pop .ep-msg { min-height: 0; color: var(--accent); font-size: 12px; margin-top: 6px; }
+  #edit-pop .ep-msg:empty { display: none; }
+  #edit-pop .ep-foot { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 11.5px; }
+  #edit-pop .ep-foot button:disabled { opacity: .4; cursor: default; }
+  #edit-hint { position: fixed; z-index: 40; left: 50%; bottom: 84px; transform: translateX(-50%); background: rgba(20,20,20,.75); color: #fff; padding: 7px 14px; border-radius: 999px; font-size: 13px; max-width: calc(100vw - 32px); }
+  @media (max-width: 520px) { #edit-pop { width: calc(100vw - 32px); left: 16px !important; } }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="app"></div>
+
+<button id="panel-toggle" title="Show / hide panel" aria-label="Toggle panel">&#9776;</button>
+<aside id="panel">
+  <header>
+    <h1><select id="house-pick" aria-label="Choose a house" onchange="location.href=this.value">
+      <option value="/">Harrison Ave house</option>
+      <option value="/creekside/">Creekside Ln house</option>
+      <option value="/hamilton-rd/">Hamilton Rd house</option>
+      <option value="/susan-ln/" selected>Susan Ln house</option>
+    </select></h1>
+    <p>3 bed · 3.5 bath · 2,619 sq ft + 900 finished below · 0.41 acre · Cedarburg · built 2017</p>
+  </header>
+  <div class="scroll">
+    <section>
+      <h2>View</h2>
+      <div class="views">
+        <button data-view="ext">Outside</button>
+        <button data-view="f2">2nd</button>
+        <button data-view="f1">1st</button>
+        <button data-view="b">Base&shy;ment</button>
+      </div>
+      <p class="muted">Drag to orbit · right-drag to pan · scroll to zoom · keys <kbd>1</kbd>–<kbd>4</kbd></p>
+    </section>
+
+    <section>
+      <h2>Walk through</h2>
+      <button class="btn primary" id="btn-walk">Walk through at eye level</button>
+      <p class="muted">Starts on the front walk. <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to move, mouse to look, <kbd>Shift</kbd> to hurry, <kbd>E</kbd> to open or close the door in front of you, <kbd>Esc</kbd> to pause. Stairs work.</p>
+    </section>
+
+    <section>
+      <h2>Interior style</h2>
+      <div class="chips" id="style-presets"></div>
+      <details style="margin-top:8px">
+        <summary>Fine-tune finishes</summary>
+        <div id="style-controls" class="style-grid"></div>
+      </details>
+    </section>
+
+    <section>
+      <h2>Exterior style</h2>
+      <div class="chips" id="ext-presets"></div>
+      <details style="margin-top:8px">
+        <summary>Fine-tune finishes</summary>
+        <div id="ext-controls" class="style-grid"></div>
+      </details>
+      <p class="muted" style="margin-top:6px">Colors and materials only.</p>
+    </section>
+
+    <section hidden>
+      <h2>Renovation ideas</h2>
+      <label class="edwin"><input type="checkbox" id="suggested"><span><b>The whole suggested plan</b><small>Kitchen opened to the family room, front living room as a home office, cosmetic refresh, primary bath, laundry/mudroom, classic refresh exterior, bigger patio, playground, finished open-plan basement with the gym opened up, plus our furniture picks.</small></span></label>
+      <div class="reno-list">
+        <label><input type="checkbox" data-reno="kitchen"><span><b>Open the kitchen to the family room</b><small>Kitchen and dining swap: the new kitchen sits on the family-room opening with a 9 ft island facing it. The stub wall and pier come out (beam stays), the sunken family room is leveled. Old kitchen becomes the dining area with a banquette in the bump; fridge/pantry wall stays on the hall side.</small></span></label>
+        <label><input type="checkbox" data-reno="openLiving"><span><b>Open kitchen to living room</b><small>The 3 ft doorway becomes an 11 ft cased opening on a flush beam, so the living room joins the kitchen/dining wing. (With the as-built kitchen the range run stays as a peninsula.)</small></span></label>
+        <label><input type="checkbox" data-reno="frontOffice"><span><b>Front room → home office</b><small>The front living room under the tray ceiling becomes an office: desk floating in front of the bay so you face the foyer (no window glare on the screen), bookcases flanking the side window, credenza on the tower wall, a reading chair. Glass French doors on the foyer opening would close it off for calls.</small></span></label>
+        <label><input type="checkbox" data-reno="frontDining"><span><b>Front room → formal dining</b><small>A 60" round pedestal table for six centered under the tray ceiling, a chandelier, and a buffet on the tower wall. Steps from the kitchen doorway. The alternative to the office: turning one on turns the other off.</small></span></label>
+        <label><input type="checkbox" data-reno="refresh"><span><b>Cosmetic refresh</b><small>Limewash fireplace breast with a floating oak mantel (black marble goes), black iron stair spindles, modern foyer and dining lights. Pair it with a style preset above for paint, floors and cabinets (Warm modern is a good match).</small></span></label>
+        <label><input type="checkbox" data-reno="pbath"><span><b>Primary bath remodel</b><small>Whirlpool and small shower out: 5'4" × 5'6" walk-in shower in the corner, freestanding tub under the window, 6 ft floating double vanity + linen tower. Same room, water closet stays.</small></span></label>
+        <label><input type="checkbox" data-reno="mud"><span><b>Laundry → laundry/mudroom</b><small>Washer and dryer stack into the existing closet niche; four lockers with a bench go on the stair wall; slate-look tile. It is already the garage entry, and no garage space is lost.</small></span></label>
+        <label><input type="checkbox" data-reno="facade"><span><b>Modern facade</b><small>Charcoal board-and-batten, limewashed brick, black windows, trim and gutters, charcoal roof, cedar garage doors with a glass band, cedar accent wall and a black steel canopy at the entry.</small></span></label>
+        <label><input type="checkbox" data-reno="classic"><span><b>Classic refresh (exterior)</b><small>Keeps the brick and roof. Siding and bay panels repainted warm greige, black window casings and sashes with black grids, black glass-panel double front door with coach lanterns, black gutters, white hydrangeas and evergreens in the front beds, a small ornamental tree at the garage corner, warm path lights. The alternative to Modern facade: turning one on turns the other off.</small></span></label>
+        <label><input type="checkbox" data-reno="patio"><span><b>Backyard: bigger patio</b><small>~900 sq ft paver patio off the dining slider and behind the family room: wide steps, dining under a cedar pergola with string lights, sectional + fire pit lounge, grill counter.</small></span></label>
+        <label><input type="checkbox" data-reno="play"><span><b>Backyard: playground</b><small>Cedar play fort with slide, two swings and a glider, plus a sandbox, on a bordered mulch bed in the back corner on the driveway side.</small></span></label>
+      </div>
+      <p class="muted">Options carry into the walk-through: press <kbd>O</kbd> or tap Options while walking.</p>
+    </section>
+
+    <section hidden>
+      <h2>Basement</h2>
+      <div class="reno-list">
+        <label><input type="radio" name="basement-layout" value="0" checked><span><b>As listed</b><small>Drywall done, bare concrete floors, bath roughed in (stub-outs only), empty rooms.</small></span></label>
+        <label><input type="radio" name="basement-layout" value="A"><span><b>Finished: rec room + guest suite</b><small>LVP floors, finished bath with a shower. TV on the brown accent wall with a sectional, game table in the bay, wet bar in the rec room, gym in the back room, guest bedroom in the side room (needs an egress window to count as a bedroom).</small></span></label>
+        <label><input type="radio" name="basement-layout" value="B"><span><b>Finished: theater + playroom + office</b><small>Theater with a 110" screen and two rows of recliners in the back room, kids' playroom in the rec room, office in the side room.</small></span></label>
+        <label><input type="radio" name="basement-layout" value="C"><span><b>Finished: open rec + gym + craft room</b><small>Sectional and TV at the bay end, ping-pong table in the rec room, gym in the back room, craft room in the side room.</small></span></label>
+        <label><input type="radio" name="basement-layout" value="D"><span><b>Finished: open plan</b><small>The odd closets and stub walls come out (rec-room partition and its closets, the closet/corridor boxes, the stair-hall walls, the bump and bay closets) for one big room: sectional + 75" TV, game table in the bay, play area, gym in the back room, side room as office/guest. Kept: stair walls, bath, utility closet, back and side rooms. The main beam and its posts are shown as a dropped soffit with wrapped square columns along the old partition line (the brown "pilasters" in the listing photo) and a second line along the stair wall. Beam and post locations are an assumption to confirm on site.</small></span></label>
+      </div>
+      <div class="reno-list">
+        <label><input type="checkbox" data-reno="openGym"><span><b>Open the gym to the rec room</b><small>The wall between the back room (the gym) and the rec room comes out, so the gym is part of the main space.</small></span></label>
+      </div>
+      <p class="muted">Every finished layout also takes the street-side closet into the basement bath (10 ft long now) and moves the shower into that corner.</p>
+    </section>
+
+    <section>
+      <h2>Doors</h2>
+      <div class="row">
+        <button class="btn" id="doors-open">Open all</button>
+        <button class="btn" id="doors-close">Close all</button>
+      </div>
+      <p class="muted">Click any door, including closet bypass doors and the patio slider, to open or close it. Outside doors and closets start closed.</p>
+    </section>
+
+    <section>
+      <h2>Show</h2>
+      <div class="toggles">
+        <label><input type="checkbox" id="tgl-furn" checked> Furniture</label>
+        <label title="Detailed 3D furniture models from a furniture asset pack (loads after the house); off shows the simpler built-in furniture"><input type="checkbox" id="tgl-models" checked> Realistic furniture <span id="models-status" class="muted"></span></label>
+        <label><input type="checkbox" id="tgl-labels" checked> Room labels</label>
+        <label><input type="checkbox" id="tgl-trees" checked> Trees</label>
+        <label><input type="checkbox" id="tgl-lot" checked> Lot lines</label>
+      </div>
+    </section>
+
+    <section>
+      <h2>Sun &amp; shadows</h2>
+      <select id="sun-month">
+        <option value="0">January</option><option value="1">February</option><option value="2">March</option>
+        <option value="3">April</option><option value="4">May</option><option value="5">June</option>
+        <option value="6">July</option><option value="7">August</option><option value="8">September</option>
+        <option value="9">October</option><option value="10">November</option><option value="11">December</option>
+      </select>
+      <input type="range" id="sun-hour" min="5" max="21" step="0.25" value="14">
+      <p class="muted" id="sun-label"></p>
+    </section>
+
+    <section>
+      <h2>Point &amp; click edits</h2>
+      <p class="muted">Click any piece, wall, floor or ceiling (in the walk-through, walk up to it and press F) to swap, recolor, resize, move or remove it, repaint a room, or add something. Drag a selected piece to move it. Hold <kbd>C</kbd> to compare with the house as listed.</p>
+      <div class="row">
+        <button class="btn" id="edit-compare" style="width:auto" title="Hold to see the house as listed">Hold to compare</button>
+        <button class="btn" id="edit-share-btn" style="width:auto" title="Copy a link that opens the house with your edits">Share link</button>
+      </div>
+      <div class="row">
+        <button class="btn" id="edit-undo" style="width:auto">Undo</button>
+        <button class="btn" id="edit-reset" style="width:auto">Reset all edits</button>
+      </div>
+      <p class="muted" id="edit-count"></p>
+      <div id="edit-list"></div>
+    </section>
+    <section>
+      <h2>Measure</h2>
+      <div class="row">
+        <button class="btn" id="btn-measure">Measure (<kbd>M</kbd>)</button>
+        <button class="btn" id="btn-measure-clear" style="width:auto">Clear</button>
+      </div>
+      <p class="muted" id="measure-hint"></p>
+    </section>
+
+    <section>
+      <h2>Try an addition</h2>
+      <div class="chips">
+        <button data-add="room">Bump-out room</button>
+        <button data-add="deck">Deck</button>
+        <button data-add="screen">Screen porch</button>
+        <button data-add="overGarage">Bonus over garage</button>
+        <button data-add="shed">Shed</button>
+        <button data-add="box">Blank box</button>
+      </div>
+      <div id="add-list"></div>
+      <div id="add-editor" hidden>
+        <input type="text" name="name" aria-label="Name">
+        <div class="grid">
+          <label>Front to back (ft)<input type="number" name="w" step="0.5"></label>
+          <label>Side to side (ft)<input type="number" name="d" step="0.5"></label>
+          <label>Height (ft)<input type="number" name="h" step="0.5"></label>
+          <label>Base elev.<input type="number" name="y" step="0.5"></label>
+          <label>Rotate °<input type="number" name="rot" step="5"></label>
+          <label>Color<input type="color" name="color"></label>
+        </div>
+        <div class="add-stats"></div>
+        <div class="row">
+          <button class="btn" id="add-dup">Duplicate</button>
+          <button class="btn" id="add-delete">Delete</button>
+        </div>
+        <p class="muted">Drag the arrows to move it. Base elevation: −1 = ground, 0 = 1st floor, 9 = 2nd floor. Anything 3 ft tall or less is walkable (decks).</p>
+      </div>
+    </section>
+
+    <section>
+      <details>
+        <summary>How this model was made</summary>
+        <ul>
+          <li>Walls, doors, windows and rooms come from the listing's Zillow 3D-tour floor map, which is drawn to scale in meters from the 3D scan, so walls are within a few inches. Each floor's map has its own origin; the 2nd floor was aligned on the living room it opens over (back wall, west edge and the chimney chase) and the stair, the basement on its side walls and the dining bump.</li>
+          <li>The 2nd floor reaches about 4½ ft past the 1st floor's front wall, over the porch, with a short pent roof below it (the front photos show the same).</li>
+          <li>Heights are assumed: 9 ft main-floor ceilings, 10 ft floor to floor (16 stair risers), 8 ft upstairs, basement floor 9.4 ft down with 8.4 ft ceilings, garage slab 6" below the house.</li>
+          <li>The stair is a U: up from the living room toward the front, a landing over the mudroom, and back up to the loft; the basement stair runs under it. The listing's "stairs" labels on the 1st floor are swapped relative to where the other two floors put them, so this follows the floors above and below.</li>
+          <li>Roofs are read from the photos and the satellite view: a side-gabled main roof (10/12) whose back slope comes down over the vaulted living room and kitchen, a dormer at the back, a front gable over bedroom 3, a hipped primary suite, a gabled dining bump, and stepped garage gables (7/12).</li>
+          <li>Compass: the house faces north onto Susan Ln, the garage is on the east, and the back yard faces south. The lot is drawn as about 82 × 216 ft (0.41 ac) from the satellite view. Get the plat of survey before planning near a lot line.</li>
+          <li>Finishes follow the listing photos: brown LVP, taupe walls, blue primary bedroom, white shaker cabinets and doors, black granite, stacked-stone fireplace, tan fiber-cement siding with shakes in the gables and a stone wainscot.</li>
+        </ul>
+      </details>
+    </section>
+  </div>
+</aside>
+
+<div id="hud">
+  <div id="crosshair"></div>
+  <div id="hud-room"></div>
+  <div id="hud-door" hidden></div>
+  <div id="hud-edit" hidden></div>
+  <div id="hud-help"><span class="lockhelp">WASD move · mouse look · E: doors · F or click: edit what the dot is on · hold C: compare · Ctrl+Z undo · Esc pause</span><span class="draghelp">WASD / arrows move · drag to look · tap or F: edit · E: doors · Esc exits</span></div>
+  <button id="hud-exit">Exit walk-through</button>
+  <button id="hud-options">Options (O)</button>
+</div>
+<div id="walk-paused" hidden>
+  <div>
+    <b>Walk-through paused</b>
+    <button class="btn primary" id="walk-resume">Keep walking</button>
+    <button class="btn" id="walk-exit">Back to overview</button>
+  </div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -1,12 +1,16 @@
-# House models: Harrison Ave, Creekside Ln and Hamilton Rd
+# House models: Harrison Ave, Creekside Ln, Hamilton Rd and Susan Ln
 
-Three walkable 3D house models; pick between them from the dropdown in the panel header. Harrison Ave is at `/`, Creekside Ln at `/creekside/` and Hamilton Rd at `/hamilton-rd/`, each with its own copy of the engine (`js`, `creekside/js`, `hamilton-rd/js`). Garages hold a true-size Rivian R2 and Acura MDX plus bikes, golf bags and tennis rackets, and the sectional garage doors open like the other doors (`E` in walk mode).
+Four walkable 3D house models; pick between them from the dropdown in the panel header. Harrison Ave is at `/`, Creekside Ln at `/creekside/`, Hamilton Rd at `/hamilton-rd/` and Susan Ln at `/susan-ln/`, each with its own copy of the engine (`js`, `creekside/js`, `hamilton-rd/js`, `susan-ln/js`). Garages hold a true-size Rivian R2 and Acura MDX plus bikes, golf bags and tennis rackets, and the sectional garage doors open like the other doors (`E` in walk mode).
 
 ## Point & click edits (Creekside Ln)
 
 Click any piece of furniture, wall or floor (in the walk-through, walk up to it and press F or click when the prompt shows) and a small menu opens next to it: recolor, change to another model, resize, move, nudge, turn, copy or remove a piece (or all matching pieces), repaint a room, hang a TV or art, or add a sofa, plant, bed and more. TVs and art move along walls. What a piece can turn into comes from `creekside/js/catalog.js`: each family (sofas, beds, dining chairs, cars, ceiling lights, lamps, wall lights, TVs, art, rugs, plants, bookcases...) lists its options, either an asset-pack model or a hand-built generator, and "Change" shows them with thumbnails (rendered in the browser for the hand-built ones). Cars repaint by rebuilding the body in the new color. The menu can be dragged by its header and stays where you leave it; Esc closes it. Move makes a piece follow the pointer (or the walk-through crosshair) live on a 3" grid, showing the clear space around it, and a selected piece can be dragged directly in the floor views. Hold C (or the panel button) to compare with the house as listed, and "Share link" copies a link that carries your edits (compressed in the URL) to whoever opens it. There's also a box to type requests like "make these chairs white" or "add a lamp", handled by a small rule-based parser in `creekside/js/edit.js`. Edits are saved in the viewer's browser and can be undone or reset from the panel.
 
 Our own furniture plan is baked in the same way: `creekside/js/plan.js` holds edits made by walking the house, and they apply underneath each viewer's own edits whenever any renovation (or a finished basement) is on. To redo it, run `serve.py`, edit on `localhost:8742/creekside/` with the renovations on, and every save lands in `creekside/edits-capture.json` (local only, not committed), which gets turned into `plan.js`.
+
+## Susan Ln
+
+2017 3 bed / 3.5 bath in Cedarburg with a main-floor primary suite, a vaulted living room open to a loft, a finished lower level with a bar, and a 4-car garage with stairs down to the workshop. Built from the listing's Zillow 3D-tour floor map (vector plans to scale, one per floor, aligned to each other) and photos, on the Creekside engine including point-and-click edits. No renovation options yet.
 
 ## Hamilton Rd
 
