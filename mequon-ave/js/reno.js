@@ -1,7 +1,7 @@
 // Renovation options for the Mequon Ave house. Each adds geometry to a tagged set; the as-built parts it replaces
 // carry the opposite tag (data.js walls, build.js deck, site.js old garage + drive + beds, furnish.js laundry).
 // Tags may combine: 'a&b' = both, 'a|b' = either, 'not:a'. Tags used here:
-//   gar:0 | gar:A | gar:B | gar:C   which garage: the existing one, or one of three new 3-car garages with a rec room above
+//   gar:0 | gar:A | gar:B | gar:C | gar:D   which garage: the existing one, or one of three new 3-car garages with a rec room above
 //                                   (A east-facing at the end of the drive, B south-facing along the north line,
 //                                   C a smaller south-facing one tucked in the rear corner). Each brings its own apron.
 //   on:mud / off:mud                mudroom addition where the rear deck is (the deck goes; the laundry wall opens to it)
@@ -156,6 +156,7 @@ export const GAR = {
   A: { x0: 3.5, x1: 27.5, y0: 26.5, y1: 62.5, face: 'E', label: 'A · faces east, at the end of the drive', dims: "36' x 24'" },
   B: { x0: 8, x1: 44, y0: 3.5, y1: 29.5, face: 'S', label: 'B · faces south, along the north line', dims: "36' x 26'" },
   C: { x0: 3.5, x1: 35.5, y0: 3.5, y1: 27.5, face: 'S', label: 'C · faces south, compact, rear corner', dims: "32' x 24'" },
+  D: { x0: 17, x1: 53, y0: 3.5, y1: 29.5, face: 'S', label: 'D · like B, 9 ft closer to the house', dims: "36' x 26'" },
 };
 const garageGeom = (id) => {
   const g = GAR[id], S = g.face === 'S';
@@ -189,7 +190,9 @@ function buildGarage(id) {
   W(L1, rooms1, 0, D, Lw, D, [0, 1, 2].map((i) => [gap + i * (9.5 + gap), gap + i * (9.5 + gap) + 9.5, 'g', { sill: 0, head: 7.5 }]));
   W(L1, rooms1, Lw, 0, 0, 0, [[Lw * 0.28 - 1.2, Lw * 0.28 + 1.2, 'w', { g: 'dh', red: true }], [Lw * 0.72 - 1.2, Lw * 0.72 + 1.2, 'w', { g: 'dh', red: true }]]);
   W(L1, rooms1, 0, 0, 0, D, [[D - 6.8, D - 4.2, 'w', win]]);
-  W(L1, rooms1, Lw, D, Lw, 0, [[3.2, 6.0, 'x', { hinge: 'lo', into: into(-1, 0), style: 'half', color: RED }], [D / 2 + 1, D / 2 + 3.6, 'w', win]]);
+  W(L1, rooms1, Lw, D, Lw, 0, [[3.2, 6.0, 'x', { hinge: 'lo', into: into(-1, 0), style: 'half', color: RED }], [D / 2 + 1, D / 2 + 3.6, 'w', win]], { rs: `${tag}&not:ndoor` });
+  // north walkway / mudroom hallway: the side door moves to 10 ft from the back wall (y = 13.5), a window takes its old place
+  W(L1, rooms1, Lw, D, Lw, 0, [[3.3, 5.9, 'w', win], [D - 11.4, D - 8.6, 'x', { hinge: 'lo', into: into(-1, 0), style: 'half', color: RED }]], { rs: `${tag}&ndoor` });
   b1.prism({ top: 'floor:concrete', side: 'foundation' }, rect, H.grade - 0.3, GF);
   addFloorPoly(rect, [], GF, tag);
   // ---- stair: up the far side wall from the back toward the ridge
@@ -265,7 +268,7 @@ function buildGarage(id) {
     item(av(near ? gy + 2.4 : gy - 3.2, D / 2 + 2, 180), (k) => pelotonBike(k));
     item(av(gy + (near ? 0.4 : 0.6), 6.5), (k) => liftBench(k));
   }
-  item(at1(Lw - 0.5, D / 2 - 3, -90), (k) => dumbbellRack(k, 5));
+  item(at1(Lw - 0.5, D / 2 + 2.5, -90), (k) => dumbbellRack(k, 5));
   item(at1(bay(1), 0.45), (k) => shelving(k, 7, 1.6, 6.5));
   // bikes hung on the gym bay's back wall, a mower-and-bins corner
   for (const du of [-4.2, -2.9]) { const k = at1(bay(2) + du, 0.5); k.box('col:#2f3d52', -0.08, 2.2, 0, 0.08, 5.6, 0.12); for (const y of [2.5, 5.0]) k.cyl('black', 0, 1.2, 1.1, 1.1, y - 0.06, y + 0.06, 16); k.box('col:#b33a2f', -0.05, 3.4, 0.6, 0.05, 4.2, 1.8); }
@@ -312,36 +315,47 @@ function buildGarage(id) {
 // ------------------------------------------------------------------ mudroom addition (where the rear deck is)
 // One story, 11 x 12'6", floor at grade like the back entry (three steps up into the laundry through a new opening
 // where the washer and dryer are). Doors to the driveway (south) and toward the garage (west).
+// Three shapes: mudA (the one above, centered on the laundry), mudN (10 x 12'5" pushed north to line up with the house's
+// north wall: it covers the bath window, comes in at the laundry's north-west corner and leaves the washer wall alone), and
+// mudH (the mudN block plus an insulated hallway from the garage: see buildHall).
 const MUD = { x0: 62, x1: 73, y0: 18, y1: 30.5, plate: 7.7, pitch: 6 / 12 };
-function buildMudroom() {
-  const rs = 'on:mud', m = MUD, b = renoBat(rs, 'f1'), br = renoBat(`${rs}&not:brg`, 'roof'), bd = renoBat(`${rs}&brg`, 'roof');
+const MUDN = { x0: 63, x1: 73, y0: 9.5, y1: 21.9, plate: 7.7, pitch: 6 / 12 };
+const HALL = { y0: 9.5, y1: 17.5, zc: 13.5 };
+function buildMudroom(v) {
+  const N = v === 'N', rs = N ? 'mudN' : 'mudA', m = N ? MUDN : MUD, b = renoBat(rs, 'f1'), br = renoBat(`${rs}&not:brg`, 'roof'), bd = renoBat(`${rs}&brg`, 'roof');
+  const o0 = N ? 18.95 : 21.3, o1 = N ? 21.55 : 26.3, sdx = N ? 0.6 : 0, dy1 = N ? 27.4 : m.y1;
   const rect = [[m.x0, m.y0], [m.x1, m.y0], [m.x1, m.y1], [m.x0, m.y1]];
   const LM = { ...LV.f1, floor: ENTRY, extBottom: H.grade - ENTRY, extTop: m.plate - ENTRY, intTop: m.plate - ENTRY, ceiling: m.plate - ENTRY - 0.1, sill: 3.2, head: 6.9, grille: 'dh', _foot: [], _holes: [] };
-  const room = roleRoom(LM, { name: 'Mudroom (new)', dims: "10'6\" x 12' · lockers + bench · 3 steps up to the laundry", floor: null, wall: 'paint:#eeece6', poly: rect }, 0, 'mud');
+  const room = roleRoom(LM, { name: 'Mudroom (new)', dims: N ? "9'6\" x 12' · lockers + bench · 3 steps up to the laundry" : "10'6\" x 12' · lockers + bench · 3 steps up to the laundry", floor: null, wall: 'paint:#eeece6', poly: rect }, 0, 'mud' + v);
   const wall = (L, w, rooms = [room]) => { CTX.rooms = rooms; CTX.foot = [rect]; buildWall(L, w); CTX.rooms = null; CTX.foot = null; };
   const win = { g: 'dh', red: true, apron: true };
-  wall(LM, [m.x0, m.y0, m.x1, m.y0, 'e', [[65.2, 67.8, 'w', win]], { rs }]);
-  wall(LM, [m.x0, m.y1, m.x0, m.y0, 'e', [[23.0, 25.8, 'x', { hinge: 'lo', into: '+x', style: 'half', color: RED }]], { rs }]);
-  wall(LM, [m.x1, m.y1, m.x0, m.y1, 'e', [[64.0, 66.8, 'x', { hinge: 'hi', into: '-y', style: 'half', color: RED }], [68.6, 71.0, 'w', win]], { rs }]);
-  // the old laundry wall, now inside: a cased opening where the washer and dryer were
-  wall(LV.f1, [73, 30.7, 73, 18.5, 'e', [[21.3, 26.3, 'o', { head: 7.0, cased: true }]], { rs, bottom: ENTRY }], [...LV.f1._rooms, room]);
+  wall(LM, [m.x0, m.y0, m.x1, m.y0, 'e', [[65.2 + sdx, 67.8 + sdx, 'w', win]], { rs }]);
+  if (N) { // west wall: its own door toward the garage, or (with the hallway) only the stub south of the hall
+    wall(LM, [m.x0, m.y1, m.x0, m.y0, 'e', [[HALL.zc - 1.4, HALL.zc + 1.4, 'x', { hinge: 'lo', into: '+x', style: 'half', color: RED }]], { rs: 'mudW' }]);
+    wall(LM, [m.x0, m.y1, m.x0, HALL.y1, 'e', [], { rs: 'mudH' }]);
+  } else wall(LM, [m.x0, m.y1, m.x0, m.y0, 'e', [[23.0, 25.8, 'x', { hinge: 'lo', into: '+x', style: 'half', color: RED }]], { rs }]);
+  wall(LM, [m.x1, m.y1, m.x0, m.y1, 'e', [[64.0 + sdx, 66.8 + sdx, 'x', { hinge: 'hi', into: '-y', style: 'half', color: RED }], [68.6 + sdx, 71.0 + sdx, 'w', win]], { rs }]);
+  // the old laundry wall, now inside: a cased opening where the washer and dryer were (mudN: at the laundry's north-west corner, the window stays)
+  wall(LV.f1, [73, 30.7, 73, 18.5, 'e', N ? [[o0, o1, 'o', { head: 7.0, cased: true }], [22.9, 25.5, 'w', { g: 'dh', sill: 3.7 }]] : [[o0, o1, 'o', { head: 7.0, cased: true }]], { rs, bottom: ENTRY }], [...LV.f1._rooms, room]);
   // slate floor on a slab, the steps up to the laundry
   b.prism({ top: 'slate', side: 'foundation' }, rect, H.grade - 0.3, ENTRY);
   addFloorPoly(rect, [], ENTRY, rs);
-  for (let i = 0; i < 2; i++) { const xb = 72.83 - i * 0.95, xa = xb - 0.95, top = -(i + 1) * 0.6; b.aabox({ def: 'trim', pv: wood('#7a4f2e') }, xa, ENTRY, 21.3, xb, top, 26.3); addFloorRect(xa, 21.3, xb, 26.3, top, rs); }
-  for (const z of [21.2, 26.4]) railing(b, [70.9, z], [72.8, z], ENTRY + 0.4, 0, wood('#5c3b26'), rs, 'hand');
+  for (let i = 0; i < 2; i++) { const xb = 72.83 - i * 0.95, xa = xb - 0.95, top = -(i + 1) * 0.6; b.aabox({ def: 'trim', pv: wood('#7a4f2e') }, xa, ENTRY, o0, xb, top, o1); addFloorRect(xa, o0, xb, o1, top, rs); }
+  for (const z of [o0 - 0.1, o1 + 0.1]) railing(b, [70.9, z], [72.8, z], ENTRY + 0.4, 0, wood('#5c3b26'), rs, 'hand');
   // ceiling, lights
   b.poly('ceiling', rect, m.plate - 0.1, [], true);
-  for (const z of [21, 27.5]) recessed(new Kit(b, rs).at(66.5, z, 0, 0), m.plate - 0.1);
+  for (const z of [m.y0 + 3, m.y1 - 3]) recessed(new Kit(b, rs).at(m.x0 + 4.5, z, 0, 0), m.plate - 0.1);
   // lockers with a bench on the north wall, hooks + boot tray by the driveway door, a closet-depth cabinet
-  { const k = new Kit(b, rs).at(62.4, m.y0 + 0.28, ENTRY, 0); lockers(k, 6.8, 4); }
-  { const k = new Kit(b, rs).at(72.6, 29.2, ENTRY, -90); k.box('rcab', -1.0, 0, 0, 2.4, 7.2, 1.5); for (const [a, c] of [[-0.95, 0.68], [0.72, 2.35]]) { k.box('rcabDoor', a, 0.4, 1.5, c, 7.1, 1.56); k.box('brass', (a + c) / 2 - 0.03, 3.4, 1.56, (a + c) / 2 + 0.03, 4.0, 1.62); } k.solid(-1.0, 0, 2.4, 1.5, 0, 7.2); }
-  { const k = new Kit(b, rs).at(64.9, m.y1 - 0.3, ENTRY, 180); k.box(wood('#6b4a33'), -2.3, 5.2, 0, -0.5, 5.5, 0.1); for (let i = 0; i < 4; i++) k.box('brass', -2.1 + i * 0.5, 5.0, 0.1, -2.0 + i * 0.5, 5.2, 0.3); }
+  { const k = new Kit(b, rs).at(m.x0 + 0.4, m.y0 + 0.28, ENTRY, 0); lockers(k, 6.8, 4); }
+  if (!N) { const k = new Kit(b, rs).at(72.6, 29.2, ENTRY, -90); k.box('rcab', -1.0, 0, 0, 2.4, 7.2, 1.5); for (const [a, c] of [[-0.95, 0.68], [0.72, 2.35]]) { k.box('rcabDoor', a, 0.4, 1.5, c, 7.1, 1.56); k.box('brass', (a + c) / 2 - 0.03, 3.4, 1.56, (a + c) / 2 + 0.03, 4.0, 1.62); } k.solid(-1.0, 0, 2.4, 1.5, 0, 7.2); }
+  if (!N) { const k = new Kit(b, rs).at(64.9, m.y1 - 0.3, ENTRY, 180); k.box(wood('#6b4a33'), -2.3, 5.2, 0, -0.5, 5.5, 0.1); for (let i = 0; i < 4; i++) k.box('brass', -2.1 + i * 0.5, 5.0, 0.1, -2.0 + i * 0.5, 5.2, 0.3); }
   item(new Kit(renoBat(rs + '&furn', 'f1'), rs + '&furn').at(69.6, m.y1 - 1.1, ENTRY, 180), (k) => { k.box('blackMatte', -1.3, 0.02, -0.6, 1.3, 0.1, 0.6); for (const [x, c] of [[-0.8, '#6b4a33'], [0, '#2f3d52'], [0.75, '#7a4f44']]) k.box('col:' + c, x - 0.3, 0.1, -0.45, x + 0.3, 0.8, 0.45); }, null, 'boot tray');
-  item(new Kit(renoBat(rs + '&furn', 'f1'), rs + '&furn').at(66.3, 24.4, ENTRY, 90), (k) => rug(k, 5.5, 3, '#7c6a58', '#4b4038'));
+  item(new Kit(renoBat(rs + '&furn', 'f1'), rs + '&furn').at(m.x0 + 4.3, N ? 16 : 24.4, ENTRY, 90), (k) => rug(k, 5.5, 3, '#7c6a58', '#4b4038'));
   // stoops at the two doors
-  for (const [x0, z0, x1, z1] of [[63.6, m.y1 + 0.25, 67.2, m.y1 + 3.2], [m.x0 - 3.2, 22.6, m.x0 - 0.25, 26.2]]) { b.aabox('floor:paving', x0, H.grade - 0.2, z0, x1, ENTRY - 0.28, z1); addFloorRect(x0, z0, x1, z1, ENTRY - 0.28, rs); }
-  exteriorLantern(new Kit(b, rs).at(m.x0 - 0.27, 26.6, ENTRY, -90), 6.2); exteriorLantern(new Kit(b, rs).at(67.5, m.y1 + 0.27, ENTRY, 0), 6.2);
+  const stoop = (bb, tg, x0, z0, x1, z1) => { bb.aabox('floor:paving', x0, H.grade - 0.2, z0, x1, ENTRY - 0.28, z1); addFloorRect(x0, z0, x1, z1, ENTRY - 0.28, tg); };
+  const bw = N ? renoBat('mudW', 'f1') : b, wz = N ? HALL.zc : 24.4;
+  stoop(b, rs, 63.6 + sdx, m.y1 + 0.25, 67.2 + sdx, m.y1 + 3.2); stoop(bw, N ? 'mudW' : rs, m.x0 - 3.2, wz - 1.8, m.x0 - 0.25, wz + 1.8);
+  exteriorLantern(new Kit(bw, N ? 'mudW' : rs).at(m.x0 - 0.27, wz + 2.2, ENTRY, -90), 6.2); exteriorLantern(new Kit(b, rs).at(67.5 + sdx, m.y1 + 0.27, ENTRY, 0), 6.2);
   for (const [x, z] of [[m.x0, m.y0], [m.x0, m.y1]]) b.aabox('extTrim', x - 0.3, H.grade, z - 0.3, x + 0.3, m.plate, z + 0.3);
   // roof: a small gable matching the house (fish-scale peak) ...
   const E = m.plate + ROOFT, ym = (m.y0 + m.y1) / 2;
@@ -352,44 +366,82 @@ function buildMudroom() {
   // ... or, with the footbridge, a flat roof deck it lands on (the office keeps its door)
   { const top = H.f2 - 0.08;
     for (const [x0, z0, x1, z1] of [[m.x0 - 0.25, m.y0 - 0.25, m.x1 - 0.25, m.y0 + 0.25], [m.x0 - 0.25, m.y1 - 0.25, m.x1 - 0.25, m.y1 + 0.25], [m.x0 - 0.25, m.y0, m.x0 + 0.25, m.y1]]) bd.aabox('siding', x0, m.plate, z0, x1, top - 0.3, z1);
-    bd.aabox({ def: 'extTrim', pv: 'col:#8b8478' }, m.x0 - 0.5, top - 0.3, m.y0 - 0.5, m.x1 - 0.25, top, m.y1 + 0.5);
-    addFloorRect(m.x0 - 0.5, m.y0 - 0.5, m.x1, m.y1 + 0.5, top, `${rs}&brg`);
+    bd.aabox({ def: 'extTrim', pv: 'col:#8b8478' }, m.x0 - 0.5, top - 0.3, m.y0 - 0.5, m.x1 - 0.25, top, dy1 + 0.5);
+    addFloorRect(m.x0 - 0.5, m.y0 - 0.5, m.x1, dy1 + 0.5, top, `${rs}&brg`);
+    if (dy1 > m.y1) { bd.aabox('extTrim', m.x0 - 0.3, H.grade, dy1 - 0.2, m.x0 + 0.2, top - 0.3, dy1 + 0.3); addSolid(V(m.x0 - 0.3, 0, dy1 - 0.2), V(0.5, 0, 0), V(0, 0, 0.5), H.grade, top, `${rs}&brg`); }
     const WR = { rail: 'extTrim', bal: 'extTrim' }, tg = `${rs}&brg`;
     railing(bd, [m.x0 - 0.3, m.y0 - 0.3], [m.x1 - 0.4, m.y0 - 0.3], top, top, WR, tg, 'square', true, 3.0);
-    railing(bd, [m.x0 - 0.3, m.y1 + 0.3], [m.x1 - 0.4, m.y1 + 0.3], top, top, WR, tg, 'square', true, 3.0);
+    railing(bd, [m.x0 - 0.3, dy1 + 0.3], [m.x1 - 0.4, dy1 + 0.3], top, top, WR, tg, 'square', true, 3.0);
     railing(bd, [m.x0 - 0.3, m.y0 - 0.3], [m.x0 - 0.3, 23.0], top, top, WR, tg, 'square', false, 3.0);
-    railing(bd, [m.x0 - 0.3, 26.6], [m.x0 - 0.3, m.y1 + 0.3], top, top, WR, tg, 'square', false, 3.0);
+    railing(bd, [m.x0 - 0.3, 26.6], [m.x0 - 0.3, dy1 + 0.3], top, top, WR, tg, 'square', false, 3.0);
   }
   RENO_ROOMS.push({ rs, level: 'f1', room });
   RENO_LABELS.push(...buildLabels(LM, renoGroup(rs, 'f1'), [room]).map((l) => ((l.userData.rs = rs), (l.userData.level = 'f1'), l)));
 }
 
+
+// ------------------------------------------------------------------ mudroom hallway (garage <-> house, enclosed + insulated)
+// 8 ft wide, in line with the house's north wall, from the garage's east wall to the mudN block: one heated room from the
+// car to the laundry. Bench and lockers down the north side, windows and a door to the courtyard on the south side.
+function buildHall(id) {
+  const g = GAR[id], rs = `mudH&gar:${id}`, m = MUDN, x0 = g.x1, x1 = m.x0, len = x1 - x0, b = renoBat(rs, 'f1'), br = renoBat(rs, 'roof');
+  const rect = [[x0, HALL.y0], [x1, HALL.y0], [x1, HALL.y1], [x0, HALL.y1]];
+  const LM = { ...LV.f1, floor: ENTRY, extBottom: H.grade - ENTRY, extTop: m.plate - ENTRY, intTop: m.plate - ENTRY, ceiling: m.plate - ENTRY - 0.1, sill: 3.2, head: 6.9, grille: 'dh', _foot: [], _holes: [] };
+  const room = roleRoom(LM, { name: 'Mudroom hallway (new)', dims: `${Math.round(len)}' x 8' · heated · bench + lockers`, floor: null, wall: 'paint:#eeece6', poly: rect }, 0, 'hall' + id);
+  const wall = (w) => { CTX.rooms = [room]; CTX.foot = [rect]; buildWall(LM, w); CTX.rooms = null; CTX.foot = null; };
+  const win = { g: 'dh', red: true, apron: true }, nw = Math.max(1, Math.floor(len / 7)), xc = (x0 + x1) / 2;
+  wall([x0, HALL.y0, x1, HALL.y0, 'e', Array.from({ length: nw }, (_, i) => { const c = x0 + (len * (i + 0.5)) / nw; return [c - 1.3, c + 1.3, 'w', { ...win, sill: 4.6 }]; }), { rs }]);
+  const sops = [[xc - 1.4, xc + 1.4, 'x', { hinge: 'hi', into: '-y', style: 'half', color: RED }]];
+  for (const c of [x0 + 2.6, x1 - 2.6]) if (Math.abs(c - xc) > 3.6) sops.push([c - 1.3, c + 1.3, 'w', win]);
+  wall([x1, HALL.y1, x0, HALL.y1, 'e', sops, { rs }]);
+  b.prism({ top: 'slate', side: 'foundation' }, rect, H.grade - 0.3, ENTRY); addFloorPoly(rect, [], ENTRY, rs);
+  b.poly('ceiling', rect, m.plate - 0.1, [], true);
+  for (let i = 0; i < Math.max(2, Math.round(len / 7)); i++) recessed(new Kit(b, rs).at(x0 + (len * (i + 0.5)) / Math.max(2, Math.round(len / 7)), HALL.zc + 0.8, 0, 0), m.plate - 0.1);
+  { const L = Math.min(len - 2, 13.6), k = new Kit(b, rs).at(xc - L / 2, HALL.y0 + 0.28, ENTRY, 0); lockers(k, L, Math.round(L / 1.7)); }
+  item(new Kit(renoBat(rs + '&furn', 'f1'), rs + '&furn').at(xc, HALL.zc + 1.2, ENTRY, 0), (k) => rug(k, Math.min(len - 3, 12), 2.8, '#7c6a58', '#4b4038'));
+  b.aabox('floor:paving', xc - 1.8, H.grade - 0.2, HALL.y1 + 0.25, xc + 1.8, ENTRY - 0.28, HALL.y1 + 3.2); addFloorRect(xc - 1.8, HALL.y1 + 0.25, xc + 1.8, HALL.y1 + 3.2, ENTRY - 0.28, rs);
+  exteriorLantern(new Kit(b, rs).at(xc + 2.2, HALL.y1 + 0.27, ENTRY, 0), 6.2);
+  const E = m.plate + ROOFT;
+  roofMass(br, [[x0 + 0.25, HALL.y0 - 1], [x1 + 0.3, HALL.y0 - 1], [x1 + 0.3, HALL.y1 + 1], [x0 + 0.25, HALL.y1 + 1]], [{ o: [0, HALL.y0], up: [0, 1], h0: E, p: m.pitch }, { o: [0, HALL.y1], up: [0, -1], h0: E, p: m.pitch }], { gutter: false });
+  RENO_ROOMS.push({ rs, level: 'f1', room });
+  RENO_LABELS.push(...buildLabels(LM, renoGroup(rs, 'f1'), [room]).map((l) => ((l.userData.rs = rs), (l.userData.level = 'f1'), l)));
+}
+
 // ------------------------------------------------------------------ breezeway + footbridge (garage <-> mudroom / office)
+// One covered walk: pavers, posts, a small gable roof. `leg` = [x, z] of a door off its line (garage A).
+function breezeway(tag, x0, x1, zc, leg) {
+  const b = renoBat(tag, 'site'), w = 5.6;
+  const walk = [[x0, zc - w / 2 + 0.3], [x1, zc - w / 2 + 0.3], [x1, zc + w / 2 - 0.3], [x0, zc + w / 2 - 0.3]];
+  b.poly('pavers', walk, G + 0.06); addFloorPoly(walk, [], G + 0.06, tag);
+  if (leg) { const [dx, dz] = leg, l2 = [[dx - 2.5, zc], [dx + 2.5, zc], [dx + 2.5, dz - 0.3], [dx - 2.5, dz - 0.3]]; b.poly('pavers', l2, G + 0.06); addFloorPoly(l2, [], G + 0.06, tag); }
+  // posts, beams, a little gable roof with the house's shingles; scroll brackets like the porch
+  const eave = G + 8.4, n = Math.max(1, Math.round((x1 - x0) / 8.5));
+  for (let i = 0; i <= n; i++) for (const s of [-1, 1]) {
+    const x = x0 + 0.4 + ((x1 - x0 - 0.8) * i) / n, z = zc + s * (w / 2 - 0.3);
+    b.aabox('extTrim', x - 0.25, G, z - 0.25, x + 0.25, eave, z + 0.25); b.aabox('extTrim', x - 0.32, G, z - 0.32, x + 0.32, G + 0.7, z + 0.32);
+    for (let j = 0; j < 3; j++) for (const sx of [-1, 1]) if ((sx < 0 && i > 0) || (sx > 0 && i < n)) b.aabox('extTrim', x + sx * (0.25 + j * 0.22) - 0.11, eave - 0.3 - (2 - j) * 0.22, z - 0.05, x + sx * (0.25 + j * 0.22) + 0.11, eave - 0.3, z + 0.05);
+    addSolid(V(x - 0.25, 0, z - 0.25), V(0.5, 0, 0), V(0, 0, 0.5), G, eave, tag);
+  }
+  for (const s of [-1, 1]) b.aabox('extTrim', x0, eave - 0.3, zc + s * (w / 2 - 0.3) - 0.2, x1, eave + 0.25, zc + s * (w / 2 - 0.3) + 0.2);
+  roofMass(b, [[x0 - 0.6, zc - w / 2 - 0.6], [x1 + 0.2, zc - w / 2 - 0.6], [x1 + 0.2, zc + w / 2 + 0.6], [x0 - 0.6, zc + w / 2 + 0.6]], [{ o: [0, zc - w / 2], up: [0, 1], h0: eave + 0.6, p: 8 / 12 }, { o: [0, zc + w / 2], up: [0, -1], h0: eave + 0.6, p: 8 / 12 }], { gutter: false });
+  b.poly('col:#b9c7c4', walk, eave + 0.2, [], true);
+}
+// Routes: rtM = the middle one (garage side door near the drive -> the mudroom's west door, or pavers on to mudN's south
+// door), rtN = along the north side in line with the house's north wall (garages B, C, D: door at y = 13.5).
 function buildLinks() {
-  for (const id of ['A', 'B', 'C']) {
-    const gg = garageGeom(id), tag = `gar:${id}&link:walk|gar:${id}&link:bridge`, b = renoBat(tag, 'site');
-    const [dx, dz] = gg.door, zc = id === 'A' ? 23.6 : dz, x0 = id === 'A' ? dx - 2.5 : dx + 0.3, x1 = MUD.x0 - 0.3, w = 5.6;
-    // paver walk under it (and for garage A a short leg from the garage's side door up to it)
-    const walk = [[x0, zc - w / 2 + 0.3], [x1, zc - w / 2 + 0.3], [x1, zc + w / 2 - 0.3], [x0, zc + w / 2 - 0.3]];
-    b.poly('pavers', walk, G + 0.06); addFloorPoly(walk, [], G + 0.06, tag);
-    if (id === 'A') { const leg = [[dx - 2.5, zc], [dx + 2.5, zc], [dx + 2.5, dz - 0.3], [dx - 2.5, dz - 0.3]]; b.poly('pavers', leg, G + 0.06); addFloorPoly(leg, [], G + 0.06, tag); }
-    // posts, beams, a little gable roof with the house's shingles; scroll brackets like the porch
-    const eave = G + 8.4, n = Math.max(2, Math.round((x1 - x0) / 8.5));
-    for (let i = 0; i <= n; i++) for (const s of [-1, 1]) {
-      const x = x0 + 0.4 + ((x1 - x0 - 0.8) * i) / n, z = zc + s * (w / 2 - 0.3);
-      b.aabox('extTrim', x - 0.25, G, z - 0.25, x + 0.25, eave, z + 0.25); b.aabox('extTrim', x - 0.32, G, z - 0.32, x + 0.32, G + 0.7, z + 0.32);
-      for (let j = 0; j < 3; j++) for (const sx of [-1, 1]) if ((sx < 0 && i > 0) || (sx > 0 && i < n)) b.aabox('extTrim', x + sx * (0.25 + j * 0.22) - 0.11, eave - 0.3 - (2 - j) * 0.22, z - 0.05, x + sx * (0.25 + j * 0.22) + 0.11, eave - 0.3, z + 0.05);
-      addSolid(V(x - 0.25, 0, z - 0.25), V(0.5, 0, 0), V(0, 0, 0.5), G, eave, tag);
-    }
-    for (const s of [-1, 1]) b.aabox('extTrim', x0, eave - 0.3, zc + s * (w / 2 - 0.3) - 0.2, x1, eave + 0.25, zc + s * (w / 2 - 0.3) + 0.2);
-    roofMass(b, [[x0 - 0.6, zc - w / 2 - 0.6], [x1 + 0.2, zc - w / 2 - 0.6], [x1 + 0.2, zc + w / 2 + 0.6], [x0 - 0.6, zc + w / 2 + 0.6]], [{ o: [0, zc - w / 2], up: [0, 1], h0: eave + 0.6, p: 8 / 12 }, { o: [0, zc + w / 2], up: [0, -1], h0: eave + 0.6, p: 8 / 12 }], { gutter: false });
-    b.poly('col:#b9c7c4', [[x0, zc - w / 2 + 0.3], [x1, zc - w / 2 + 0.3], [x1, zc + w / 2 - 0.3], [x0, zc + w / 2 - 0.3]], eave + 0.2, [], true);
+  for (const id of ['A', 'B', 'C', 'D']) {
+    const gg = garageGeom(id), g = GAR[id], tm = `gar:${id}&rtM`;
+    const [dx, dz] = gg.door, zc = id === 'A' ? 23.6 : dz, x0 = id === 'A' ? dx - 2.5 : dx + 0.3, x1 = MUD.x0 - 0.3;
+    breezeway(tm, x0, x1, zc, id === 'A' ? gg.door : null);
+    { const t = `${tm}&mudN`, bp = renoBat(t, 'site'), za = Math.max(zc - 2.5, MUDN.y1 + 0.3), ext = [[x1, za], [67.8, za], [67.8, za + 4.6], [x1, za + 4.6]]; bp.poly('pavers', ext, G + 0.058); addFloorPoly(ext, [], G + 0.058, t); }
     // without the mudroom: a paver path on around the deck to the back entry door
-    { const t2 = `(${tag})`.replace(/[()]/g, ''), bp = renoBat(`gar:${id}&link:walk&off:mud|gar:${id}&link:bridge&off:mud`, 'site');
-      ribbon(bp, 'pavers', [[x1, zc], [64.5, 27], [63.5, 33], [66, 38.2], [70, 40.2]], 4, G + 0.055, `gar:${id}&link:walk&off:mud|gar:${id}&link:bridge&off:mud`); void t2; }
-    // footbridge from the rec room's gable door to the office door: lands on the deck, or on the mudroom's roof deck
+    { const t = `${tm}&off:mud`; ribbon(renoBat(t, 'site'), 'pavers', [[x1, zc], [64.5, 27], [63.5, 33], [66, 38.2], [70, 40.2]], 4, G + 0.055, t); }
     if (id === 'A') continue;
-    for (const [mud, xe] of [['off:mud', DECK.x0], ['on:mud', MUD.x0 - 0.5]]) {
+    breezeway(`gar:${id}&rtN&mudN`, g.x1 + 0.3, MUDN.x0 - 0.3, HALL.zc);
+    breezeway(`gar:${id}&rtN&off:mud`, g.x1 + 0.3, 65.5, HALL.zc);
+    { const t = `gar:${id}&rtN&off:mud`; ribbon(renoBat(t, 'site'), 'pavers', [[65.3, HALL.zc], [64.4, 20], [63.6, 28], [63.8, 34], [66, 38.2], [70, 40.2]], 4, G + 0.055, t); }
+    // footbridge from the rec room's gable door to the office door: lands on the deck, or on the mudroom's roof deck
+    for (const [mud, xe] of [['off:mud', DECK.x0], ['mudA', MUD.x0 - 0.5], ['mudN', MUDN.x0 - 0.5]]) {
       const bt = `gar:${id}&brg&${mud}`, bb = renoBat(bt, 'f2'), [bx, bz] = gg.bridge, a = [bx + 0.25, bz], e = [xe, 24.6], ya = gg.UF - 0.02, ye = H.f2 - 0.08;
       const L = Math.hypot(e[0] - a[0], e[1] - a[1]), ux = (e[0] - a[0]) / L, uz = (e[1] - a[1]) / L, hw = 2.1;
       bb.box({ def: 'extTrim', pv: 'col:#8b8478' }, V(a[0] + uz * hw, ya - 0.7, a[1] - ux * hw), V(e[0] - a[0], ye - ya, e[1] - a[1]), V(0, 0.7, 0), V(-uz * 2 * hw, 0, ux * 2 * hw));
@@ -493,10 +545,17 @@ const ZONES = {
   A: { fire: [45, 12.5, 7.5], fire2: [13.5, 13, 6.5], play: [16, 13.5, 22, 15, 0], play2: [45, 12, 22, 15, 0], perg: [58, 60.6, 13, 9], beds: [[30, 4.2, 0], [40, 4.2, 0]] },
   B: { fire: [53.5, 12, 6.3], fire2: [18, 58.6, 5.4], play: [26, 58.6, 26, 10.5, 0], play2: [53.5, 12, 13, 18, 90], perg: [52, 58.6, 13, 9.5], beds: [[49, 3.6, 0], [58, 3.6, 0]] },
   C: { fire: [49, 12.5, 7.5], fire2: [18, 58.6, 5.4], play: [26, 58.6, 26, 10.5, 0], play2: [49.5, 12, 21, 15, 0], perg: [52, 58.6, 13, 9.5], beds: [[42, 3.6, 0], [51.5, 3.6, 0]] },
+  // garage D sits 10 ft off the mudroom: the yard is the strip south of the drive and the 17 ft behind the garage
+  D: { fire: [51, 58.8, 5.4], fire2: [8.5, 10.5, 5.4], play: [24, 58.6, 26, 10.5, 0], play2: [8.5, 27, 13, 18, 90], perg: [33, 58.6, 13, 9.5], beds: [[6, 20, 0], [6, 26, 0]] },
 };
+// with the walkway (or the hallway) on the north side, the court between garage and house opens south to the drive:
+// the "by the house" pieces move into it
+ZONES.Bn = { ...ZONES.B, fire: [53.5, 29, 6.3], play2: [53.5, 28.5, 13, 18, 90] };
+ZONES.Cn = { ...ZONES.C, fire: [49, 29, 7.5], play2: [49.5, 28.5, 21, 15, 0] };
+const YARD_SETS = [['0', 'gar:0', '0'], ['A', 'gar:A', 'A'], ['B', 'gar:B&not:ncourt', 'B'], ['B', 'gar:B&ncourt', 'Bn'], ['C', 'gar:C&not:ncourt', 'C'], ['C', 'gar:C&ncourt', 'Cn'], ['D', 'gar:D', 'D']];
 function buildYards() {
-  for (const gid of ['0', 'A', 'B', 'C']) {
-    const z = ZONES[gid], gt = `gar:${gid}`;
+  for (const [gid, gt, zk] of YARD_SETS) {
+    const z = ZONES[zk];
     // A: fire pit courtyard near the house, play area in the far part of the yard
     firePitArea(`yard:A&${gt}`, z.fire[0], z.fire[1], z.fire[2]);
     playArea(`yard:A&${gt}`, ...z.play);
@@ -606,10 +665,13 @@ const RECTS = {
   A: { near: [36, 3, 60.5, 21], far: [4, 4, 31, 22], hoop: [47, 57.2, 180] },
   B: { near: [46.5, 3.2, 60.5, 21], far: [3, 53.2, 60, 64.4], hoop: [26, 52.2, 180] },
   C: { near: [38, 3.2, 60.5, 21], far: [3, 53.2, 60, 64.4], hoop: [20, 52.2, 180] },
+  D: { near: [42, 53.2, 60, 64.4], far: [2, 4.5, 15.5, 37], hoop: [35, 52.2, 180] },
 };
+RECTS.Bn = { ...RECTS.B, near: [46.5, 19.5, 60.5, 37.5] };
+RECTS.Cn = { ...RECTS.C, near: [38, 19.5, 60.5, 37.5] };
 function buildYardsMore() {
-  for (const gid of ['0', 'A', 'B', 'C']) {
-    const z = ZONES[gid], r = RECTS[gid], gt = `gar:${gid}`, [fx0, fz0, fx1, fz1] = r.far;
+  for (const [gid, gt, zk] of YARD_SETS) {
+    const z = ZONES[zk], r = RECTS[zk], [fx0, fz0, fx1, fz1] = r.far; void gid;
     // D: dining patio by the house, fire pit out in the yard, open lawn with a goal and cornhole
     diningPatio(`yard:D&${gt}`, r.near);
     firePitArea(`yard:D&${gt}`, z.fire2[0], z.fire2[1], z.fire2[2], z.fire2[2] < 6 ? 4 : 5);
@@ -625,7 +687,7 @@ function buildYardsMore() {
     kitchenGarden(`yard:G&${gt}`, r.near);
     firePitArea(`yard:G&${gt}`, z.fire2[0], z.fire2[1], z.fire2[2], z.fire2[2] < 6 ? 4 : 5);
     { const tag = `yard:G&${gt}`, P = new Plants(); for (let i = 0; i < 3; i++) shadeTree(P, fx0 + (fx1 - fx0) * (0.55 + i * 0.17), fz1 - 3 - (i % 2) * 1.5, { h: 11, R: 4.2, seed: 140 + i, lod: 1, trunk: 3, rt: 0.22, leaders: 3, leaves: ['oval:linden'], card: 1.3, density: 1.5 }); P.build(renoGroup(tag, 'site')); }
-    { const tag = `yard:F&${gt}`, P = new Plants(); for (let i = 0; i < 5; i++) arborvitae(P, r.near[0] - 1.5, r.near[1] + 2 + i * 3.4, 9, 200 + i); P.build(renoGroup(tag, 'site')); }
+    { const tag = `yard:F&${gt}`, P = new Plants(); for (let i = 0; i < Math.min(5, Math.floor((r.near[3] - r.near[1] - 2) / 3.4) + 1); i++) arborvitae(P, r.near[0] - 1.5, r.near[1] + 2 + i * 3.4, 9, 200 + i); P.build(renoGroup(tag, 'site')); }
   }
 }
 
@@ -662,8 +724,9 @@ function buildFront() {
 }
 
 export function buildRenovations() {
-  for (const id of ['A', 'B', 'C']) buildGarage(id);
-  buildMudroom();
+  for (const id of ['A', 'B', 'C', 'D']) buildGarage(id);
+  buildMudroom('A'); buildMudroom('N');
+  for (const id of ['B', 'C', 'D']) buildHall(id);
   buildLinks();
   buildYards();
   buildYardsMore();

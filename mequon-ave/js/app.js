@@ -81,7 +81,7 @@ const lotLines = site.getObjectByName('lotLines');
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const state = {
-  view: 'ext', labels: true, furniture: true, mode: 'orbit', layout: '0', garage: '0', link: '0', yard: '0', drive: 'full', lane: 'solid', surf: 'concrete',
+  view: 'ext', labels: true, furniture: true, mode: 'orbit', layout: '0', garage: '0', link: '0', yard: '0', drive: 'full', lane: 'solid', surf: 'concrete', mudv: '0',
   reno: { mud: false, front: false },
   style: { ...STYLE_PRESETS[DEFAULT_PRESET].values },
   ext: { ...EXT_PRESETS.listed.values },
@@ -155,6 +155,7 @@ const renoSets = [...renos, ...(site.userData.renos || [])];
 const HIDE_LABELS = [];
 // exterior finishes come from the exterior style (exterior.js); the facade renovations pick their matching preset
 function applyReno() {
+  state.reno.mud = state.mudv !== '0';
   applyFinish('drive', { concrete: 'paving', asphalt: 'asphalt', cobble: 'cobble' }[state.surf]);
   for (const g of renoSets) g.visible = activeTag(g.userData.rs);
   document.querySelectorAll('[data-reno]').forEach((el) => { el.checked = !!state.reno[el.dataset.reno]; });
@@ -176,17 +177,29 @@ document.querySelectorAll('[data-reno]').forEach((el) => el.addEventListener('ch
   applyReno();
 }));
 // one switch for the whole suggested plan
-const SUGGESTED = { reno: ['mud', 'front'], garage: 'B', link: 'walk', yard: 'A' };
-const isSuggested = () => Object.keys(state.reno).every((k) => !!state.reno[k] === SUGGESTED.reno.includes(k)) && ['garage', 'link', 'yard'].every((k) => state[k] === SUGGESTED[k]);
+const SUGGESTED = { reno: ['mud', 'front'], garage: 'B', link: 'north', yard: 'A', mudv: 'N' };
+const isSuggested = () => Object.keys(state.reno).every((k) => !!state.reno[k] === SUGGESTED.reno.includes(k)) && ['garage', 'link', 'yard', 'mudv'].every((k) => state[k] === SUGGESTED[k]);
 $('#suggested').addEventListener('change', (e) => {
   for (const k of Object.keys(state.reno)) state.reno[k] = e.target.checked && SUGGESTED.reno.includes(k);
-  for (const k of ['garage', 'link', 'yard']) state[k] = e.target.checked ? SUGGESTED[k] : '0';
+  for (const k of ['garage', 'link', 'yard', 'mudv']) state[k] = e.target.checked ? SUGGESTED[k] : '0';
   applyReno();
   if (e.target.checked && state.mode === 'orbit') { state.view = 'ext'; applyView(); flyTo(PRESETS.yard); }
 });
 // garage / breezeway / yard plan pickers
 document.querySelectorAll('[data-sel]').forEach((r) => r.addEventListener('change', () => {
   state[r.dataset.sel] = r.value;
+  // pieces that only work together: the hallway is the connection (and needs garage B, C or D); the north walkway
+  // lands on the north mudroom, the middle one on the centered mudroom or the north one's south door
+  if (r.dataset.sel === 'mudv') {
+    if (r.value === 'H') { if (!'BCD'.includes(state.garage)) state.garage = 'D'; state.link = '0'; }
+    if (r.value === 'A' && state.link === 'north') state.link = 'walk';
+    if (r.value === 'N' && state.link === 'walk' && 'BCD'.includes(state.garage)) state.link = 'north';
+  }
+  if (r.dataset.sel === 'link' && r.value !== '0') {
+    if (state.mudv === 'H') state.mudv = 'N';
+    if (r.value === 'north' && state.mudv === 'A') state.mudv = 'N';
+  }
+  if (r.dataset.sel === 'garage' && state.mudv === 'H' && !'BCD'.includes(r.value)) state.mudv = 'N';
   applyReno();
   if (state.mode === 'orbit' && r.value !== '0') { state.view = 'ext'; applyView(); flyTo(r.dataset.sel === 'lane' || r.dataset.sel === 'surf' || (r.dataset.sel === 'drive' && state.garage === '0') ? PRESETS.drive : PRESETS.yard); }
 }));
@@ -307,7 +320,17 @@ function activeTag(tag) {
   if (tag.startsWith('not:')) return !activeTag(tag.slice(4));
   if (tag.startsWith('lay:')) return state.layout === tag.slice(4);
   if (/^(gar|link|yard|drv|lane|surf):/.test(tag)) { const [k, v] = tag.split(':'); return state[{ gar: 'garage', link: 'link', yard: 'yard', drv: 'drive', lane: 'lane', surf: 'surf' }[k]] === v; }
-  if (tag === 'brg') return state.link === 'bridge' && (state.garage === 'B' || state.garage === 'C'); // the upper bridge needs a garage on the north side
+  { // derived: mudroom shape, walkway route (see reno.js)
+    const north = 'BCD'.includes(state.garage), mud = !!state.reno.mud, hall = mud && state.mudv === 'H' && north;
+    if (tag === 'mudA') return mud && state.mudv === 'A';
+    if (tag === 'mudN') return mud && state.mudv !== 'A';
+    if (tag === 'mudH') return hall;
+    if (tag === 'mudW') return mud && state.mudv !== 'A' && !hall;
+    if (tag === 'rtN') return north && !hall && state.link === 'north';
+    if (tag === 'rtM') return state.garage !== '0' && !hall && (state.link === 'walk' || state.link === 'bridge' || (state.link === 'north' && state.garage === 'A'));
+    if (tag === 'ndoor' || tag === 'ncourt') return north && (hall || state.link === 'north');
+    if (tag === 'brg') return state.link === 'bridge' && north && !hall; // the upper bridge needs a garage on the north side
+  }
   if (tag === 'anygar') return state.garage !== '0';
   if (tag === 'furn' || tag.endsWith('F')) return state.furniture;
   return true;

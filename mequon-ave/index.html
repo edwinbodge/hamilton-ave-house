@@ -260,24 +260,32 @@
 
     <section>
       <h2>Renovation ideas</h2>
-      <label class="edwin"><input type="checkbox" id="suggested"><span><b>A suggested plan</b><small>Garage B with its breezeway, the mudroom addition, the fire pit courtyard yard plan and the front garden. Turn it on, then swap any piece below.</small></span></label>
+      <label class="edwin"><input type="checkbox" id="suggested"><span><b>A suggested plan</b><small>Garage B, a covered breezeway along the north side, the north mudroom, the fire pit courtyard yard plan and the front garden. Turn it on, then swap any piece below.</small></span></label>
       <h3 style="margin:10px 0 4px;font-size:12px;opacity:.7">Garage (3-car, rec room above)</h3>
       <div class="reno-list">
         <label><input type="radio" name="garage" data-sel="garage" value="0" checked><span><b>Existing garage</b><small>The one-car, story-and-a-half garage at the back, with the drive curving around to it.</small></span></label>
         <label><input type="radio" name="garage" data-sel="garage" value="A"><span><b>A · faces east, at the end of the drive</b><small>36 × 24 ft in the south-west corner. You drive straight in; the three doors face the house. Leaves the whole north half of the back yard open, but the corner spruce comes out.</small></span></label>
         <label><input type="radio" name="garage" data-sel="garage" value="B"><span><b>B · faces south, along the north line</b><small>36 × 26 ft, 3.5 ft off the north line, 18 ft behind the mudroom. Doors face the drive across a 21 ft apron. The east gable looks at the house across a small courtyard.</small></span></label>
         <label><input type="radio" name="garage" data-sel="garage" value="C"><span><b>C · faces south, compact, rear corner</b><small>32 × 24 ft pushed into the north-west corner: the smallest that still takes three doors. About 26 ft of yard between it and the mudroom.</small></span></label>
+        <label><input type="radio" name="garage" data-sel="garage" value="D"><span><b>D · like B, 9 ft closer to the house</b><small>The same 36 × 26 ft garage moved east: 10 ft from the north mudroom, 20 ft from the house. The walk (or hallway) to the house is only 10 ft long, and there are 17 ft of yard behind the garage. The court between garage and house is gone, so the fire pit and play area go south of the drive and behind the garage.</small></span></label>
       </div>
       <p class="muted">Each has two car bays plus a gym / bike bay with the walk-in door, a stair to the rec room, and the house's trim: fish-scale shingles, dentil band, burgundy sashes.</p>
       <h3 style="margin:10px 0 4px;font-size:12px;opacity:.7">Garage to house</h3>
       <div class="reno-list">
         <label><input type="radio" name="link" data-sel="link" value="0" checked><span><b>No connection</b><small>Walk across the yard or the drive.</small></span></label>
         <label><input type="radio" name="link" data-sel="link" value="walk"><span><b>Covered breezeway</b><small>A paver walk under a small gable roof on posts, from the garage's side door to the mudroom's west door. Needs a new garage; best with the mudroom.</small></span></label>
-        <label><input type="radio" name="link" data-sel="link" value="bridge"><span><b>Breezeway + second-story covered walkway</b><small>Adds a roofed walkway at the upper level from the rec room to the primary suite: it comes in at the office door behind the primary bedroom (where the deck door is now). It lands on the deck, or on a roof deck over the mudroom. Garages B and C only.</small></span></label>
+        <label><input type="radio" name="link" data-sel="link" value="north"><span><b>Covered breezeway along the north side</b><small>The same covered walk moved 11 ft north, in line with the house's north wall. The garage's side door moves with it. The court between garage and house then opens south to the drive, and the fire pit and play plans move into it. Lands on the north mudroom. Garages B, C, D.</small></span></label>
+        <label><input type="radio" name="link" data-sel="link" value="bridge"><span><b>Breezeway + second-story covered walkway</b><small>Adds a roofed walkway at the upper level from the rec room to the primary suite: it comes in at the office door behind the primary bedroom (where the deck door is now). It lands on the deck, or on a roof deck over the mudroom. Garages B, C and D; not with the mudroom hallway.</small></span></label>
+      </div>
+      <h3 style="margin:10px 0 4px;font-size:12px;opacity:.7">Mudroom</h3>
+      <div class="reno-list">
+        <label><input type="radio" name="mudv" data-sel="mudv" value="0" checked><span><b>No mudroom</b><small>The tall rear deck stays.</small></span></label>
+        <label><input type="radio" name="mudv" data-sel="mudv" value="A"><span><b>Mudroom, centered on the laundry</b><small>The tall rear deck comes off. An 11 × 12½ ft mudroom goes in its place at ground level, with doors to the drive and toward the garage, lockers and a bench. Three steps lead up through a new opening where the washer and dryer are; they stack in the laundry's corner.</small></span></label>
+        <label><input type="radio" name="mudv" data-sel="mudv" value="N"><span><b>Mudroom, north</b><small>10 × 12½ ft pushed north to line up with the house's north wall. It covers the bath window (the bath then needs a fan; the frosted window could stay as borrowed light). It comes in at the laundry's north-west corner, so the laundry window stays. Doors toward the garage and the drive.</small></span></label>
+        <label><input type="radio" name="mudv" data-sel="mudv" value="H"><span><b>Mudroom hallway to the garage</b><small>The north mudroom plus an insulated, heated hallway 8 ft wide all the way to the garage: bench and lockers down one side, windows and a door to the courtyard on the other. Car to kitchen without going outside. It replaces the breezeway. Garages B, C, D.</small></span></label>
       </div>
       <h3 style="margin:10px 0 4px;font-size:12px;opacity:.7">House</h3>
       <div class="reno-list">
-        <label><input type="checkbox" data-reno="mud"><span><b>Mudroom addition</b><small>The tall rear deck comes off. An 11 × 12½ ft mudroom goes in its place at ground level, with doors to the drive and toward the garage, lockers and a bench. Three steps lead up through a new opening where the washer and dryer are; they stack in the laundry's corner. The office's deck door becomes a window.</small></span></label>
         <label><input type="checkbox" data-reno="front"><span><b>Front garden</b><small>Deeper curved beds with a boxwood hedge and white hydrangeas, columnar evergreens at the corners, a serviceberry in the lawn, brick-paver walk, and a white picket fence with an arbor at the gate. A planted strip along the drive.</small></span></label>
       </div>
       <h3 style="margin:10px 0 4px;font-size:12px;opacity:.7">Driveway at the new garage</h3>
