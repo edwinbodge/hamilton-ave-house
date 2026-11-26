@@ -1948,7 +1948,8 @@ export function buildFixtures(bats) {
     k.box('trim', -2.8, 3.62, 0, 2.8, 3.7, 0.6); k.box('trim', -2.8, 0, 0, 2.8, 3.62, 0.12);
     for (const x of [1.6, 2.1]) { k.cyl('frosted', x, 0.3, 0.17, 0.17, 3.7, 4.15, 10); k.cyl('steel', x, 0.3, 0.12, 0.12, 4.15, 4.2, 8); }
   }, 'washer + dryer');
-  rput('on:mud', 81.3, 18.68, 0, (k) => stackedLaundry(k), 'stacked washer + dryer');
+  rput('on:mud&mlin', 81.3, 18.68, 0, (k) => stackedLaundry(k), 'stacked washer + dryer');
+  rput('mlout', 81.3, 18.68, 0, (k) => shelving(k, 2.4, 1.5, 6.5), 'pantry shelves'); // machines moved out to the mudroom
   const laundryCab = (k, len) => { baseCab(k, 0, len, CREAM); k.box(QUARTZ, 0, 2.92, 0, len, 3.05, 2.06); upperCab(k, 0, len, { ...CREAM, y0: 4.8, y1: 7.9 }); k.solid(0, 0, len, 2.06, 0, 3.05); };
   run('f1', [82.82, 18.9], [82.82, 21.4], [-1, 0], laundryCab, 'laundry cabinets', 'off:mud');
   run('f1', [82.82, 21.4], [82.82, 24.5], [-1, 0], laundryCab, 'laundry cabinets');
@@ -1998,15 +1999,49 @@ export function buildFurniture(bats) {
   // ---- living room (photos 02-04): white slipcovered sofa under the street windows facing west, two taupe velvet
   // barrel chairs opposite, dark coffee table on a faded Persian rug, olive tree in the NE corner, console on the
   // north wall, brass floor lamp + small round tables. No TV. The front door (south) and the openings (west) stay clear
-  place('f1', 106.4, 24, 0, (k) => rug(k, 8, 10, '#b9a595', '#7a5d52'));
-  place('f1', 113.25, 24, -90, (k) => swap(k, { glb: 'Sofa08', w: 7.2, d: 3.2, back: true }, (h) => sofa(h, 7.2, { color: '#f1eee6', cushion: '#f5f2eb', pillows: ['#cbb9a2', '#56606e'] })));
-  for (const y of [21.6, 26.4]) place('f1', 102.3, y, 90, (k) => swap(k, { glb: 'Chair12', w: 2.6 }, (h) => barrelChair(h)), 'armchair');
-  place('f1', 107.1, 24, 90, (k) => swap(k, { glb: 'Table38', w: 4.2, d: 2.0 }, (h) => coffeeTable(h, 4.2, 2.0, '#33261f')));
-  place('f1', 101.9, 24, 0, (k) => stoolTable(k), 'sideTable');
-  place('f1', 112.2, 28.5, 0, (k) => stoolTable(k), 'sideTable');
-  place('f1', 112.6, 29.7, 180, (k) => pharmacyLamp(k), 'floorLamp');
+  // Four layouts (lay:0 as listed, lay:T1-T3 with a TV on the north wall). The room is 14'6" x 16'; the west wall is all
+  // openings and the front door is in the south wall, so the seating either floats or sits on the east (street) wall.
+  const lv = (lay) => { const tag = `lay:${lay}&furn`; return (x, y, rot, fn, label) => { const [lx, lz] = P('f1', x, y); return item(new Kit(renoBat(tag, 'f1'), tag).at(lx, lz, 0, rot), fn, null, label); }; };
+  const WHITE_SOFA = (h) => sofa(h, 7.2, { color: '#f1eee6', cushion: '#f5f2eb', pillows: ['#cbb9a2', '#56606e'] });
+  const tvWall = (L, x) => { L(x, 16.2, 0, (k) => wallTV(k, 65), 'TV'); L(x, 16.2, 0, (k) => mediaConsole(k, 6), 'media console'); };
+  { const L = lv('0');
+    L(106.4, 24, 0, (k) => rug(k, 8, 10, '#b9a595', '#7a5d52'));
+    L(113.25, 24, -90, (k) => swap(k, { glb: 'Sofa08', w: 7.2, d: 3.2, back: true }, WHITE_SOFA));
+    for (const y of [21.6, 26.4]) L(102.3, y, 90, (k) => swap(k, { glb: 'Chair12', w: 2.6 }, (h) => barrelChair(h)), 'armchair');
+    L(107.1, 24, 90, (k) => swap(k, { glb: 'Table38', w: 4.2, d: 2.0 }, (h) => coffeeTable(h, 4.2, 2.0, '#33261f')));
+    L(101.9, 24, 0, (k) => stoolTable(k), 'sideTable');
+    L(112.2, 28.5, 0, (k) => stoolTable(k), 'sideTable');
+    L(112.6, 29.7, 180, (k) => pharmacyLamp(k), 'floorLamp');
+    L(105.3, 16.25, 0, (k) => consoleTable(k, 4.5), 'console'); }
+  { // T1: sofa floats in the middle of the room facing the TV (8 ft back), its back to the front door: a 4 ft entry path
+    // runs behind it from the door to the kitchen. Two chairs on the street wall.
+    const L = lv('T1'); tvWall(L, 106.3);
+    L(106.3, 22.2, 0, (k) => rug(k, 10, 8, '#b9a595', '#7a5d52'));
+    L(106.3, 27.7, 180, (k) => swap(k, { glb: 'Sofa08', w: 7.2, d: 3.2, back: true }, WHITE_SOFA));
+    L(106.3, 21.6, 0, (k) => swap(k, { glb: 'Table38', w: 4.2, d: 2.0 }, (h) => coffeeTable(h, 4.2, 2.0, '#33261f')));
+    for (const [y, r] of [[19.4, face(-1, 0.25)], [22.8, face(-1, -0.25)]]) L(111.7, y, r, (k) => swap(k, { glb: 'Chair12', w: 2.6 }, (h) => barrelChair(h)), 'armchair');
+    L(111.9, 21.1, 0, (k) => stoolTable(k), 'sideTable');
+    L(101.9, 26.3, 0, (k) => stoolTable(k), 'sideTable');
+    L(110.9, 26.6, 180, (k) => pharmacyLamp(k), 'floorLamp'); }
+  { // T2: an L sectional in the south-east corner: one leg under the street windows, the other facing the TV
+    const L = lv('T2'); tvWall(L, 106.3);
+    L(106.2, 22.4, 0, (k) => rug(k, 9, 8.5, '#b9a595', '#7a5d52'));
+    L(113.2, 18.9, -90, (k) => sectional(k, 8.8, 8.4, { color: '#e9e4d9', cushion: '#f0ece3', pillows: ['#cbb9a2', '#56606e'] }), 'sectional');
+    L(106.6, 22.2, 0, (k) => ottoman(k, 3.6, 2.6, '#8a6a4c'), 'ottoman');
+    L(101.6, 22.0, face(1, 0.2), (k) => swap(k, { glb: 'Chair12', w: 2.6 }, (h) => barrelChair(h)), 'armchair');
+    L(103.9, 26.6, 0, (k) => stoolTable(k), 'sideTable');
+    L(103.6, 27.6, 180, (k) => pharmacyLamp(k), 'floorLamp'); }
+  { // T3: the listed arrangement kept (sofa under the street windows), the TV where the console was, the two chairs
+    // moved to the south side facing it. The sofa watches at an angle: better for talking than for movies.
+    const L = lv('T3'); tvWall(L, 105.6);
+    L(106.4, 23.2, 0, (k) => rug(k, 8, 10, '#b9a595', '#7a5d52'));
+    L(113.25, 23, -90, (k) => swap(k, { glb: 'Sofa08', w: 7.2, d: 3.2, back: true }, WHITE_SOFA));
+    for (const [x, y, r] of [[102.6, 26.6, face(0.3, -1)], [106.3, 27.6, face(0, -1)]]) L(x, y, r, (k) => swap(k, { glb: 'Chair12', w: 2.6 }, (h) => barrelChair(h)), 'armchair');
+    L(106.6, 22.6, 90, (k) => swap(k, { glb: 'Table38', w: 4.2, d: 2.0 }, (h) => coffeeTable(h, 4.2, 2.0, '#33261f')));
+    L(104.4, 27.3, 0, (k) => stoolTable(k), 'sideTable');
+    L(112.2, 27.5, 0, (k) => stoolTable(k), 'sideTable');
+    L(112.6, 28.7, 180, (k) => pharmacyLamp(k), 'floorLamp'); }
   place('f1', 111.9, 17.6, 0, (k) => oliveTree(k, 6.8), 'plant');
-  place('f1', 105.3, 16.25, 0, (k) => consoleTable(k, 4.5), 'console');
   place('f1', 110.9, 31.75, 180, (k) => framedArt(k, 1.5, 1.2, 5.9, { bands: LAND }), 'art');
   place('f1', 110.9, 31.75, 180, (k) => framedArt(k, 2.4, 1.5, 4.3, { frame: '#3a2a1e', bands: LAND }), 'art');
   place('f1', 106.7, 33.3, 0, (k) => k.box(fab('#6f6557'), -1.25, -0.1, -0.75, 1.25, -0.06, 0.75), 'doormat');
@@ -2064,7 +2099,7 @@ export function buildFurniture(bats) {
   place('f2', 79.7, 16.0, 90, (k) => rug(k, 4.6, 2.0, '#8a352c', '#3d2a28'));
   place('f2', 74.5, 9.75, 0, (k) => framedArt(k, 1.5, 1.3, 4.4, { frame: '#b08a48', paper: '#2a2a2a', mat: 0.2, bands: [['#d9d6cc', 0, 1]] }), 'art');
 }
-export { exteriorLantern, raisedPanel, car };
+export { exteriorLantern, raisedPanel, car, stackedLaundry, laundrySink, discZ };
 export {
   bed, nightstand, dresser, bench, sofa, armchair, coffeeTable, sideTable, rug, chair, diningTable, roundTable, buffet, plant,
   floorLamp, tableLamp, knob, toilet, vanity, lightBar, wicRun, linenShelves, hangingClothes, recessed, flushDome, globePendant,

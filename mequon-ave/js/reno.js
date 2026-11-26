@@ -16,6 +16,7 @@ import { LV, CTX, renoBat, renoGroup, roleRoom, buildWall, buildLabels, railing,
 import {
   sofa, armchair, coffeeTable, floorLamp, plant, rug, runKit, recessed, flushDome, bed, nightstand, wallTV, mediaConsole, diningTable,
   powerRack, liftBench, dumbbellRack, pelotonBike, rubberFloor, shelving, adirondack, patioChair, exteriorLantern, car, sideTable,
+  stackedLaundry, laundrySink, discZ,
 } from './furnish.js';
 import { Plants, shrub, shadeTree, arborvitae, rounded, ribbon, DRIVE, GROUND_Y as G } from './site.js';
 
@@ -282,7 +283,13 @@ function buildGarage(id) {
   item(at2(uc, 5.9), (k) => wallTV(k, 65));
   item(at2(uc, 5.9), (k) => mediaConsole(k, 6));
   // a daybed corner (a guest room later) and a game table
-  item(at2(Lw - 0.6, 6.6, -90), (k) => bed(k, 'full', { frame: '#6b4a33', duvet: '#e7e2d6', accent: '#6e2a2a' }));
+  // guests: a queen Murphy bed folded up into a cabinet on the gable wall (it drops 7 ft into the room), shelves each side
+  item(at2(Lw - 0.3, 7.3, -90), (k) => {
+    k.box('rcab', -2.75, 0, 0, 2.75, 7.0, 1.45); k.box('rcabDoor', -2.85, 7.0, 0, 2.85, 7.18, 1.55); k.box('blackMatte', -2.75, 0, 0, 2.75, 0.3, 1.3);
+    for (const [x0, x1] of [[-2.7, -0.03], [0.03, 2.7]]) { shaker(k, x0, x1, 0.4, 6.9, 1.45); k.box('black', (x0 + x1) / 2 - 0.4, 5.6, 1.52, (x0 + x1) / 2 + 0.4, 5.66, 1.6); }
+    for (const sx of [-1, 1]) { const a = sx < 0 ? -4.0 : 2.8, b2 = a + 1.2; k.box('rcab', a, 0, 0, b2, 6.4, 0.1); k.box('rcab', a, 0, 0, a + 0.08, 6.4, 1.1); k.box('rcab', b2 - 0.08, 0, 0, b2, 6.4, 1.1); for (const y of [0.3, 1.8, 3.2, 4.6, 6.3]) k.box('rcab', a, y, 0, b2, y + 0.1, 1.1); for (const [y, c] of [[1.9, '#6e2a2a'], [3.3, '#2f3d52'], [4.7, '#c9b08a']]) k.box('col:' + c, a + 0.2, y, 0.2, b2 - 0.3, y + 0.75, 0.85); }
+    k.solid(-4.0, 0, 4.0, 1.5, 0, 7);
+  }, null, 'Murphy bed');
   item(at2(Lw - 7.6, D / 2 + 4.6), (k) => { diningTable(k, 4, 4, { color: '#6b4a33' }); k.solid(-2, -2, 2, 2, 0, 2.5); });
   for (const [du, dv2, r3] of [[-2.9, 0, 90], [2.9, 0, -90], [0, 2.9, 180], [0, -2.9, 0]]) item(at2(Lw - 7.6 + du, D / 2 + 4.6 + dv2, r3), (k) => patioChair(k));
   for (const [u, v] of [[uc - 6, D / 2], [uc + 6, D / 2], [uc, D / 2 + 5], [uc - 12, D / 2], [uc + 12, D / 2]]) if (u > 1 && u < Lw - 1) recessed(new Kit(b2, tag).at(...M(u, v), 0, 0), UF + 8);
@@ -346,7 +353,31 @@ function buildMudroom(v) {
   b.poly('ceiling', rect, m.plate - 0.1, [], true);
   for (const z of [m.y0 + 3, m.y1 - 3]) recessed(new Kit(b, rs).at(m.x0 + 4.5, z, 0, 0), m.plate - 0.1);
   // lockers with a bench on the north wall, hooks + boot tray by the driveway door, a closet-depth cabinet
-  { const k = new Kit(b, rs).at(m.x0 + 0.4, m.y0 + 0.28, ENTRY, 0); lockers(k, 6.8, 4); }
+  if (!N) { const k = new Kit(b, rs).at(m.x0 + 0.4, m.y0 + 0.28, ENTRY, 0); lockers(k, 6.8, 4); }
+  else {
+    // the block nearest the house can take the laundry (ml:N | E | T); the lockers stay unless the machines take their wall
+    { const t = 'mudN&not:ml:N', k = new Kit(renoBat(t, 'f1'), t).at(m.x0 + 0.4, m.y0 + 0.28, ENTRY, 0); lockers(k, 6.8, 4); }
+    const frontLoader = (k, x) => { k.soft('porcelain', x - 1.1, 0.05, 0.1, x + 1.1, 3.1, 2.5, 0.06); discZ(k, 'col:#c9cdd0', x, 1.6, 0.8, 2.5, 2.57, 24); discZ(k, 'col:#1d2227', x, 1.6, 0.62, 2.57, 2.6, 24); k.box('col:#2a2f34', x - 0.9, 2.75, 2.5, x + 0.9, 2.98, 2.53); };
+    const uppers = (k, x0, x1) => { k.box('rcab', x0, 4.9, 0, x1, 7.3, 1.05); const n = Math.max(1, Math.round((x1 - x0) / 1.5)), w = (x1 - x0) / n; for (let i = 0; i < n; i++) { shaker(k, x0 + i * w + 0.02, x0 + (i + 1) * w - 0.02, 4.95, 7.25, 1.05); pull(k, x0 + i * w + (i % 2 ? 0.2 : w - 0.2), 5.35, 1.05, true); } };
+    const lput = (ml, x, y, rot, fn, label) => { const t = `mudN&ml:${ml}`; return item(new Kit(renoBat(t, 'f1'), t).at(x, y, ENTRY, rot), fn, null, label); };
+    // N: front-loaders side by side under a counter on the north wall (below the window), a sink at the house end, a rod above
+    lput('N', m.x0 + 3.2, m.y0 + 0.28, 0, (k) => {
+      frontLoader(k, -1.2); frontLoader(k, 1.2); k.box(wood('#b98d5f'), -2.5, 3.15, 0, 2.5, 3.3, 2.65); k.box('rcab', -2.5, 0, 0, -2.4, 3.15, 2.6); k.box('rcab', 2.4, 0, 0, 2.5, 3.15, 2.6);
+      k.box('steel', -2.3, 6.6, 1.1, 2.3, 6.66, 1.16); for (const [x, c] of [[-1.6, '#e9e5dc'], [-0.9, '#56606e'], [0.6, '#cbb9a2']]) k.box('col:' + c, x, 4.4, 0.8, x + 0.12, 6.6, 1.5);
+      k.solid(-2.5, 0, 2.5, 2.65, 0, 3.3);
+    }, 'washer + dryer');
+    lput('N', m.x0 + 7.0, m.y0 + 0.28, 0, (k) => laundrySink(k), 'laundry sink');
+    // E: the same pair against the house wall, backing onto the bath's plumbing; wall cabinets over, a sink beside; lockers stay
+    lput('E', m.x1 - 0.28, 14.4, -90, (k) => {
+      frontLoader(k, -1.2); frontLoader(k, 1.2); k.box(wood('#b98d5f'), -2.5, 3.15, 0, 2.5, 3.3, 2.65); k.box('rcab', -2.5, 0, 0, -2.4, 3.15, 2.6); k.box('rcab', 2.4, 0, 0, 2.5, 3.15, 2.6);
+      uppers(k, -2.5, 2.5); k.solid(-2.5, 0, 2.5, 2.65, 0, 3.3);
+    }, 'washer + dryer');
+    lput('E', m.x1 - 0.28, 17.85, -90, (k) => laundrySink(k), 'laundry sink');
+    // T: a stacked pair in the corner by the house, a sink and a tall broom cabinet: the smallest footprint; lockers stay
+    lput('T', m.x1 - 0.28, 13.1, -90, (k) => stackedLaundry(k), 'stacked washer + dryer');
+    lput('T', m.x1 - 0.28, 15.5, -90, (k) => laundrySink(k), 'laundry sink');
+    lput('T', m.x1 - 0.28, 17.7, -90, (k) => { k.box('rcab', -0.95, 0, 0, 0.95, 7.2, 1.6); for (const [a2, c2] of [[-0.92, -0.02], [0.02, 0.92]]) { shaker(k, a2, c2, 0.4, 7.1, 1.6); pull(k, a2 < 0 ? c2 - 0.15 : a2 + 0.15, 3.6, 1.6, true); } k.solid(-0.95, 0, 0.95, 1.6, 0, 7.2); }, 'broom cabinet');
+  }
   if (!N) { const k = new Kit(b, rs).at(72.6, 29.2, ENTRY, -90); k.box('rcab', -1.0, 0, 0, 2.4, 7.2, 1.5); for (const [a, c] of [[-0.95, 0.68], [0.72, 2.35]]) { k.box('rcabDoor', a, 0.4, 1.5, c, 7.1, 1.56); k.box('brass', (a + c) / 2 - 0.03, 3.4, 1.56, (a + c) / 2 + 0.03, 4.0, 1.62); } k.solid(-1.0, 0, 2.4, 1.5, 0, 7.2); }
   if (!N) { const k = new Kit(b, rs).at(64.9, m.y1 - 0.3, ENTRY, 180); k.box(wood('#6b4a33'), -2.3, 5.2, 0, -0.5, 5.5, 0.1); for (let i = 0; i < 4; i++) k.box('brass', -2.1 + i * 0.5, 5.0, 0.1, -2.0 + i * 0.5, 5.2, 0.3); }
   item(new Kit(renoBat(rs + '&furn', 'f1'), rs + '&furn').at(69.6, m.y1 - 1.1, ENTRY, 180), (k) => { k.box('blackMatte', -1.3, 0.02, -0.6, 1.3, 0.1, 0.6); for (const [x, c] of [[-0.8, '#6b4a33'], [0, '#2f3d52'], [0.75, '#7a4f44']]) k.box('col:' + c, x - 0.3, 0.1, -0.45, x + 0.3, 0.8, 0.45); }, null, 'boot tray');

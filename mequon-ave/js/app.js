@@ -81,7 +81,7 @@ const lotLines = site.getObjectByName('lotLines');
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const state = {
-  view: 'ext', labels: true, furniture: true, mode: 'orbit', layout: '0', garage: '0', link: '0', yard: '0', drive: 'full', lane: 'solid', surf: 'concrete', mudv: '0',
+  view: 'ext', labels: true, furniture: true, mode: 'orbit', layout: '0', garage: '0', link: '0', yard: '0', drive: 'full', lane: 'solid', surf: 'concrete', mudv: '0', mlaundry: '0',
   reno: { mud: false, front: false },
   style: { ...STYLE_PRESETS[DEFAULT_PRESET].values },
   ext: { ...EXT_PRESETS.listed.values },
@@ -103,6 +103,8 @@ const PRESETS = {
   b: { pos: [93, 58, 60], tgt: [93, -8, 25] },
   yard: { pos: [46, 86, 104], tgt: [52, 0, 30] },
   drive: { pos: [162, 22, 60], tgt: [95, 0, 45] },
+  living: { pos: [106.3, 27, 43], tgt: [106.3, 1, 22.5] },
+  mudroom: { pos: [62, 26, 33], tgt: [64, -1, 15] },
 };
 let tween = null;
 function flyTo(p) {
@@ -177,7 +179,7 @@ document.querySelectorAll('[data-reno]').forEach((el) => el.addEventListener('ch
   applyReno();
 }));
 // one switch for the whole suggested plan
-const SUGGESTED = { reno: ['mud', 'front'], garage: 'B', link: 'north', yard: 'A', mudv: 'N' };
+const SUGGESTED = { reno: ['mud', 'front'], garage: 'D', link: '0', yard: 'A', mudv: 'H' };
 const isSuggested = () => Object.keys(state.reno).every((k) => !!state.reno[k] === SUGGESTED.reno.includes(k)) && ['garage', 'link', 'yard', 'mudv'].every((k) => state[k] === SUGGESTED[k]);
 $('#suggested').addEventListener('change', (e) => {
   for (const k of Object.keys(state.reno)) state.reno[k] = e.target.checked && SUGGESTED.reno.includes(k);
@@ -199,9 +201,11 @@ document.querySelectorAll('[data-sel]').forEach((r) => r.addEventListener('chang
     if (state.mudv === 'H') state.mudv = 'N';
     if (r.value === 'north' && state.mudv === 'A') state.mudv = 'N';
   }
+  if (r.dataset.sel === 'mlaundry' && r.value !== '0' && (state.mudv === '0' || state.mudv === 'A')) state.mudv = 'N';
   if (r.dataset.sel === 'garage' && state.mudv === 'H' && !'BCD'.includes(r.value)) state.mudv = 'N';
   applyReno();
-  if (state.mode === 'orbit' && r.value !== '0') { state.view = 'ext'; applyView(); flyTo(r.dataset.sel === 'lane' || r.dataset.sel === 'surf' || (r.dataset.sel === 'drive' && state.garage === '0') ? PRESETS.drive : PRESETS.yard); }
+  if (state.mode === 'orbit' && (r.dataset.sel === 'layout' || r.dataset.sel === 'mlaundry')) { state.view = 'f1'; applyView(); flyTo(PRESETS[r.dataset.sel === 'layout' ? 'living' : 'mudroom']); }
+  else if (state.mode === 'orbit' && r.value !== '0') { state.view = 'ext'; applyView(); flyTo(r.dataset.sel === 'lane' || r.dataset.sel === 'surf' || (r.dataset.sel === 'drive' && state.garage === '0') ? PRESETS.drive : PRESETS.yard); }
 }));
 function syncExtToFacade() {}
 
@@ -319,9 +323,11 @@ function activeTag(tag) {
   if (tag.startsWith('on:') || tag.startsWith('off:')) { const [st, name] = tag.split(':'); return st === 'on' ? !!state.reno[name] : !state.reno[name]; }
   if (tag.startsWith('not:')) return !activeTag(tag.slice(4));
   if (tag.startsWith('lay:')) return state.layout === tag.slice(4);
-  if (/^(gar|link|yard|drv|lane|surf):/.test(tag)) { const [k, v] = tag.split(':'); return state[{ gar: 'garage', link: 'link', yard: 'yard', drv: 'drive', lane: 'lane', surf: 'surf' }[k]] === v; }
+  if (/^(gar|link|yard|drv|lane|surf|ml):/.test(tag)) { const [k, v] = tag.split(':'); return state[{ gar: 'garage', link: 'link', yard: 'yard', drv: 'drive', lane: 'lane', surf: 'surf', ml: 'mlaundry' }[k]] === v; }
   { // derived: mudroom shape, walkway route (see reno.js)
     const north = 'BCD'.includes(state.garage), mud = !!state.reno.mud, hall = mud && state.mudv === 'H' && north;
+    if (tag === 'mlout') return mud && state.mudv !== 'A' && state.mlaundry !== '0';
+    if (tag === 'mlin') return !(mud && state.mudv !== 'A' && state.mlaundry !== '0');
     if (tag === 'mudA') return mud && state.mudv === 'A';
     if (tag === 'mudN') return mud && state.mudv !== 'A';
     if (tag === 'mudH') return hall;
