@@ -19,7 +19,7 @@ class NoCache(http.server.SimpleHTTPRequestHandler):
     # Creekside editor (local only): each save posts the full edit state here, so the edits you
     # make while walking around land in creekside/edits-capture.json for baking into the defaults.
     def do_POST(self):
-        folder = {"/__creekside-edits": "creekside", "/__susan-edits": "susan-ln"}.get(self.path)
+        folder = {"/__creekside-edits": "creekside", "/__susan-edits": "susan-ln", "/__mequon-edits": "mequon-ave"}.get(self.path)
         if not folder:
             self.send_error(404)
             return

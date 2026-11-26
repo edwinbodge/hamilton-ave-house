@@ -1,6 +1,6 @@
-# House models: Harrison Ave, Creekside Ln, Hamilton Rd and Susan Ln
+# House models: Harrison Ave, Creekside Ln, Hamilton Rd, Susan Ln and Mequon Ave
 
-Four walkable 3D house models; pick between them from the dropdown in the panel header. Harrison Ave is at `/`, Creekside Ln at `/creekside/`, Hamilton Rd at `/hamilton-rd/` and Susan Ln at `/susan-ln/`, each with its own copy of the engine (`js`, `creekside/js`, `hamilton-rd/js`, `susan-ln/js`). Garages hold a true-size Rivian R2 and Acura MDX plus bikes, golf bags and tennis rackets, and the sectional garage doors open like the other doors (`E` in walk mode).
+Five walkable 3D house models; pick between them from the dropdown in the panel header. Harrison Ave is at `/`, Creekside Ln at `/creekside/`, Hamilton Rd at `/hamilton-rd/`, Susan Ln at `/susan-ln/` and Mequon Ave at `/mequon-ave/`, each with its own copy of the engine (`js`, `creekside/js`, `hamilton-rd/js`, `susan-ln/js`, `mequon-ave/js`). Garages hold a true-size Rivian R2 and Acura MDX plus bikes, golf bags and tennis rackets, and the sectional garage doors open like the other doors (`E` in walk mode).
 
 ## Point & click edits (Creekside Ln)
 
@@ -48,3 +48,14 @@ Then open http://localhost:8742.
 - `js/render.js`: sky, sun, shadows, interior lighting, ambient occlusion and the High quality toggle (shared with `creekside/js/render.js`).
 
 Assumptions (ceiling heights, roof pitches, lot placement) are listed in the app under "How this model was made".
+
+## Mequon Ave
+
+An 1890 house in Cedarburg (3 bed, 2 bath, 66 x 132 ft lot), at `/mequon-ave/`. There are no floor plans yet: the outside comes from the county parcel, the listing aerial and photos taken on site; the inside is fitted to the listing photos, its room sizes and a description of the layout. Plan coordinates are feet (x east toward the street, y south, origin at the lot's rear north corner).
+
+Renovation options (`mequon-ave/js/reno.js`):
+
+- Three detached 3-car garages with a rec room above, styled after the house (fish-scale shingles, dentil band, burgundy sashes): A faces east at the end of the drive, B faces south along the north line, C is a compact south-facing one in the rear corner. Each replaces the existing garage and brings its own apron.
+- A mudroom addition where the rear deck is, opening into the laundry.
+- A covered breezeway from the garage to the mudroom, optionally with a footbridge from the rec room to the office.
+- Three back yard plans (fire pit with a Solo Stove and Adirondack chairs, play area, dining pergola, raised beds) that rearrange to fit whichever garage is picked, and a front garden.
