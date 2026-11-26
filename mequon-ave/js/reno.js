@@ -379,6 +379,18 @@ function buildLinks() {
       for (let i = 0; i < steps; i++) { const s0 = (i / steps) * L, s1 = ((i + 1) / steps) * L, q = (s) => [[a[0] + ux * s + uz * hw, a[1] + uz * s - ux * hw], [a[0] + ux * s - uz * hw, a[1] + uz * s + ux * hw]]; const [p0, p1] = q(s0), [p3, p2] = q(s1); addFloorPoly([p0, p1, p2, p3], [], ya + ((ye - ya) * (i + 0.5)) / steps, bt); }
       const WR = { rail: 'extTrim', bal: 'extTrim' };
       for (const s of [-1, 1]) railing(bb, [a[0] + uz * s * (hw - 0.15), a[1] - ux * s * (hw - 0.15)], [e[0] + uz * s * (hw - 0.15), e[1] - ux * s * (hw - 0.15)], ya, ye, WR, bt, 'square', true, 3.0);
+      // covered: posts off the deck, a beam each side and a small gable roof that follows the walkway's slope
+      { const rb = renoBat(bt, 'roof'), Hp = 7.3, np = Math.max(2, Math.round(L / 6.5)), dir = V(e[0] - a[0], ye - ya, e[1] - a[1]);
+        for (const s of [-1, 1]) {
+          const ox = uz * s * (hw - 0.15), oz = -ux * s * (hw - 0.15);
+          for (let i = 0; i <= np; i++) { const f = (i + 0.04 * (i === 0) - 0.04 * (i === np)) / np, x = a[0] + ux * L * f + ox, z = a[1] + uz * L * f + oz, y = ya + (ye - ya) * f; bb.aabox('extTrim', x - 0.17, y, z - 0.17, x + 0.17, y + Hp, z + 0.17); }
+          bb.box('extTrim', V(a[0] + ox - Math.abs(uz) * 0.15, ya + Hp - 0.5, a[1] + oz - Math.abs(ux) * 0.15), dir, V(0, 0.5, 0), V(Math.abs(uz) * 0.3, 0, Math.abs(ux) * 0.3));
+          // one roof slope: from the eave (0.7 ft past the posts) up to the ridge over the centerline
+          const ex = uz * s * (hw + 0.7), ez = -ux * s * (hw + 0.7);
+          rb.box({ def: 'extTrim', pv: 'shingle', nv: 'col:#b9c7c4' }, V(a[0] + ex - ux * 0.4, ya + Hp - 0.25, a[1] + ez - uz * 0.4), dir.clone().multiplyScalar((L + 0.8) / L), V(0, 0.3, 0), V(-ex, 1.9, -ez));
+        }
+        for (const f of [0, 1]) rb.face('scallop', [V(a[0] + ux * L * f + uz * (hw + 0.2), ya + (ye - ya) * f + Hp, a[1] + uz * L * f - ux * (hw + 0.2)), V(a[0] + ux * L * f - uz * (hw + 0.2), ya + (ye - ya) * f + Hp, a[1] + uz * L * f + ux * (hw + 0.2)), V(a[0] + ux * L * f, ya + (ye - ya) * f + Hp + 1.75, a[1] + uz * L * f)], V(f ? ux : -ux, 0, f ? uz : -uz));
+      }
       // two trestle posts under the span
       for (const f of [0.34, 0.68]) for (const s of [-1, 1]) { const x = a[0] + ux * L * f + uz * s * 1.6, z = a[1] + uz * L * f - ux * s * 1.6, top = ya + (ye - ya) * f - 0.7; bb.aabox('extTrim', x - 0.25, G, z - 0.25, x + 0.25, top, z + 0.25); addSolid(V(x - 0.25, 0, z - 0.25), V(0.5, 0, 0), V(0, 0, 0.5), G, top, bt); }
     }
@@ -488,6 +500,117 @@ function buildYards() {
   }
 }
 
+
+// ---- more yard pieces. Each takes a rectangle [x0, z0, x1, z1] and fits itself into it.
+function diningPatio(tag, [x0, z0, x1, z1]) {
+  const b = renoBat(tag, 'site'), ftag = tag + '&furn', fb = renoBat(ftag, 'site'), y = G + 0.12;
+  const w = Math.min(18, x1 - x0), d = Math.min(15, z1 - z0), cx = x1 - w / 2, cz = (z0 + z1) / 2;
+  const poly = rounded([[cx - w / 2, cz - d / 2, 2], [cx + w / 2, cz - d / 2, 2], [cx + w / 2, cz + d / 2, 2], [cx - w / 2, cz + d / 2, 2]]);
+  b.prism({ top: 'pavers', side: 'foundation' }, poly, G - 0.1, y); addFloorPoly(poly, [], y, tag);
+  const t = new Kit(fb, ftag).at(cx - 1.5, cz + 0.5, y, w > d ? 0 : 90);
+  for (const [px, pz, r2] of swap(t, { glb: 'Table03', w: 6.5, d: 3.4, h: 2.5 }, (h) => diningTable(h, 6.5, 3.4, { color: '#6b5a48' }))) { const p = t.P(px, 0, pz); swap(new Kit(fb, ftag).at(p.x, p.z, y, r2), { glb: 'Chair04' }, (h) => patioChair(h)); }
+  // umbrella over the table
+  { const k = new Kit(b, tag).at(cx - 1.5, cz + 0.5, y, 0); k.cyl('col:#3a3a3a', 0, 0, 0.08, 0.08, 0, 8.2, 8); k.cyl('fab:#e9e2d2', 0, 0, 4.6, 0.2, 7.2, 8.4, 8); }
+  // grill station at the edge
+  item(new Kit(fb, ftag).at(cx + w / 2 - 1.4, cz - d / 2 + 2.6, y, -90), (k) => { k.box('col:#2b2b2b', -1.4, 0, -1.0, 1.4, 2.9, 1.0); k.box('steel', -1.3, 2.9, -0.95, 1.3, 3.9, 0.95); k.box('col:#8a6a48', -2.6, 2.75, -0.9, -1.4, 2.9, 0.9); k.box('col:#8a6a48', 1.4, 2.75, -0.9, 2.6, 2.9, 0.9); k.solid(-1.4, -1, 1.4, 1, 0, 3.9); }, null, 'grill');
+  label(tag, 'Dining patio', 'pavers · table for six · grill', cx, cz);
+}
+function spaDeck(tag, [x0, z0, x1, z1]) {
+  const b = renoBat(tag, 'site'), w = Math.min(15, x1 - x0), d = Math.min(15, z1 - z0), cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, y = G + 0.5;
+  const k = new Kit(b, tag).at(cx - w / 2, cz - d / 2, G, 0);
+  k.box({ def: 'cedar', pv: 'col:#a98863' }, 0, 0, 0, w, 0.5, d); addFloorRect(cx - w / 2, cz - d / 2, cx + w / 2, cz + d / 2, y, tag);
+  // hot tub (7 ft square) sunk half into the deck's corner
+  k.box('col:#5a4a3c', 0.8, 0.5, d - 7.8, 7.8, 3.0, d - 0.8); k.box('col:#e9e6df', 1.0, 3.0, d - 7.6, 7.6, 3.1, d - 1.0); k.box('col:#4f9fb3', 1.5, 3.02, d - 7.1, 7.1, 3.14, d - 1.5);
+  k.solid(0.8, d - 7.8, 7.8, d - 0.8, 0, 3.1);
+  for (let i = 0; i < 2; i++) k.box('cedar', 7.8, 0.5, d - 5.5, 8.8 + i * 0.9, 1.3 + (1 - i) * 0.8, d - 3.0);
+  // barrel sauna (6 ft across, 7 ft long) with a glass door end
+  const sx = w - 7.6, R = 3.2, oct = [...Array(14)].map((_, i) => [3.6 + Math.cos((i / 14) * Math.PI * 2) * R, 0.5 + R + 0.25 + Math.sin((i / 14) * Math.PI * 2) * R]);
+  k.prof('cedar', oct, sx, sx + 7, 'col:#8a6a48'); k.box('col:#2f3a3d', sx - 0.04, 1.0, 2.6, sx, 6.2, 4.6);
+  for (const x of [sx + 1.2, sx + 5.8]) k.box('col:#4a3a2c', x - 0.25, 0.5, 1.2, x + 0.25, 1.3, 6.0);
+  k.solid(sx, 0.5, sx + 7, 6.9, 0, 7.5);
+  // slatted privacy screen on the two outer sides, string of planters
+  for (let yy = 1.0; yy < 6.6; yy += 0.5) { k.box('cedar', 0, yy, d - 0.15, w, yy + 0.32, d); k.box('cedar', 0, yy, 0, 0.15, yy + 0.32, d); }
+  for (const [xx, zz] of [[0.07, 0], [0.07, d], [w, d], [w / 2, d]]) k.cbox('col:#4a3a2c', xx, zz === d ? d - 0.07 : 0.07, 0.3, 0.3, 0.5, 6.9);
+  k.solid(0, d - 0.2, w, d, 0, 6.6); k.solid(0, 0, 0.2, d, 0, 6.6);
+  label(tag, 'Hot tub + sauna', 'cedar deck · barrel sauna · privacy screen', cx, cz);
+}
+function bocce(tag, [x0, z0, x1, z1]) { // court along the rectangle's long side
+  const b = renoBat(tag, 'site'), long = x1 - x0 >= z1 - z0, len = Math.min(48, (long ? x1 - x0 : z1 - z0) - 1), wd = 9, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+  const k = new Kit(b, tag).at(cx, cz, G, long ? 0 : 90);
+  k.box('cedar', -len / 2 - 0.4, 0, -wd / 2 - 0.4, len / 2 + 0.4, 0.55, wd / 2 + 0.4); k.box('col:#c9bfa6', -len / 2, 0.3, -wd / 2, len / 2, 0.56, wd / 2);
+  for (const [bx, bz, c] of [[len * 0.3, 0.6, '#b33a2f'], [len * 0.33, -1.1, '#b33a2f'], [len * 0.27, 1.8, '#2f5a8b'], [len * 0.36, 0.2, '#2f5a8b'], [len * 0.31, -0.2, '#f1efe9']]) k.cyl('col:' + c, bx, bz, c === '#f1efe9' ? 0.08 : 0.18, 0.02, 0.56, c === '#f1efe9' ? 0.72 : 0.92, 10);
+  { const p = k.P(0, 0, 0), a = k.P(-len / 2 - 0.4, 0, -wd / 2 - 0.4), c2 = k.P(len / 2 + 0.4, 0, wd / 2 + 0.4); addFloorRect(Math.min(a.x, c2.x), Math.min(a.z, c2.z), Math.max(a.x, c2.x), Math.max(a.z, c2.z), G + 0.56, tag); void p; }
+  // a bench at one end
+  k.box('cedar', -len / 2 - 3.2, 1.3, -2.5, -len / 2 - 1.8, 1.5, 2.5); for (const z of [-2.2, 2.2]) k.box('col:#4a3a2c', -len / 2 - 3.1, 0, z - 0.15, -len / 2 - 1.9, 1.3, z + 0.15); k.solid(-len / 2 - 3.2, -2.5, -len / 2 - 1.8, 2.5, 0, 1.5);
+  label(tag, 'Bocce court', `${Math.round(len)} × ${wd} ft · crushed stone`, cx, cz);
+}
+function hoop(tag, x, z, rot) { // basketball hoop on the edge of the apron, backboard facing local +z
+  const b = renoBat(tag, 'site'), k = new Kit(b, tag).at(x, z, G, rot);
+  k.cbox('col:#2b2b2b', 0, -1.2, 0.5, 0.5, 0, 10.6); k.box('col:#2b2b2b', -0.2, 9.9, -1.2, 0.2, 10.3, 2.0);
+  k.box('col:#f4f4f1', -3, 9.0, 2.0, 3, 12.5, 2.12); k.box('col:#c8452f', -1, 9.6, 2.12, 1, 11.1, 2.14); k.box('col:#f4f4f1', -0.9, 9.7, 2.13, 0.9, 11.0, 2.15);
+  k.cyl('col:#d8642a', 0, 2.95, 0.78, 0.78, 10.0, 10.06, 16, 1, false); k.cyl('col:#f1efe9', 0, 2.95, 0.74, 0.5, 8.7, 10.0, 12, 1, false);
+  k.solid(-0.3, -1.5, 0.3, -0.9, 0, 10.6);
+  // painted key on the concrete
+  for (const [x0, z0, x1, z1] of [[-6, 2.2, -5.8, 17], [5.8, 2.2, 6, 17], [-6, 16.8, 6, 17]]) k.box('col:#f1efe9', x0, 0.045, z0, x1, 0.055, z1);
+  label(tag, 'Hoop', 'on the apron', k.P(0, 0, 9).x, k.P(0, 0, 9).z);
+}
+function kitchenGarden(tag, [x0, z0, x1, z1]) {
+  const b = renoBat(tag, 'site'), w = x1 - x0, d = z1 - z0, cols = Math.max(2, Math.min(3, Math.floor((w - 9) / 5))), rows = Math.max(1, Math.min(3, Math.floor(d / 6)));
+  b.poly('col:#b3aa98', [[x0, z0], [x1 - 9.5, z0], [x1 - 9.5, z1], [x0, z1]], G + 0.06);
+  for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) {
+    const k = new Kit(b, tag).at(x0 + 2.6 + i * ((w - 12) / Math.max(1, cols - 1) || 0), z0 + 2.6 + j * ((d - 5.2) / Math.max(1, rows - 1) || 0), G, 90);
+    k.box('cedar', -2.2, 0, -1.6, 2.2, 1.3, 1.6); k.box('col:#4a3628', -2.05, 1.0, -1.45, 2.05, 1.2, 1.45);
+    for (let q = 0; q < 6; q++) k.cyl(['col:#4c7a3a', 'col:#6a8f3c', 'col:#3f6a33'][(i + j + q) % 3], -1.6 + (q % 3) * 1.6, q < 3 ? -0.7 : 0.7, 0.42, 0.15, 1.2, 1.8 + ((i + q) % 3) * 0.35, 6);
+    k.solid(-2.2, -1.6, 2.2, 1.6, 0, 1.3);
+  }
+  // small greenhouse (8 x 10) at the house end
+  { const k = new Kit(b, tag).at(x1 - 4.5, (z0 + z1) / 2, G, 0), gw = 4, gl = Math.min(5, d / 2 - 0.5);
+    k.box('foundation', -gw, 0, -gl, gw, 0.5, gl);
+    for (const [a, c, e, f] of [[-gw, -gl, -gw + 0.12, gl], [gw - 0.12, -gl, gw, gl], [-gw, -gl, gw, -gl + 0.12], [-gw, gl - 0.12, gw, gl]]) k.box('glass', a, 0.5, c, e, 6.5, f);
+    for (const xx of [-gw, gw - 0.15]) for (let zz = -gl; zz <= gl; zz += gl / 2) k.box('extTrim', xx, 0.5, zz - 0.08, xx + 0.15, 6.5, zz + 0.08);
+    k.prof('glass', [[-gl, 6.5], [gl, 6.5], [gl, 6.62], [-gl, 6.62]], -gw, gw);
+    for (const sg of [-1, 1]) b.box('glass', k.P(sg * gw, 6.5, -gl), k.ez().multiplyScalar(2 * gl), V(0, 0.08, 0), k.ex().multiplyScalar(-sg * gw).add(V(0, 2.6, 0)));
+    for (const zz of [-gl, gl - 0.12]) k.prof('extTrim', [[zz, 6.5], [zz + 0.12, 6.5], [zz + 0.12, 6.6], [zz, 6.6]], -gw, gw);
+    k.box('extTrim', -0.1, 9.0, -gl, 0.1, 9.2, gl);
+    k.box('extTrim', -1.3, 0.5, gl - 0.02, 1.3, 6.4, gl + 0.06); k.box('glass', -1.1, 0.7, gl + 0.02, 1.1, 6.2, gl + 0.08);
+    k.solid(-gw, -gl, gw, gl, 0, 6.5); }
+  label(tag, 'Kitchen garden', 'raised beds · greenhouse · fruit trees', (x0 + x1) / 2 - 4, (z0 + z1) / 2);
+}
+function lawnGames(tag, x, z, rot) {
+  const b = renoBat(tag, 'site'), k = new Kit(b, tag).at(x, z, G, rot);
+  for (const xx of [-6, 6]) k.cbox('extTrim', xx, 0, 0.25, 0.25, 0, 6.5); k.box('extTrim', -6, 6.3, -0.12, 6, 6.55, 0.12);
+  for (const xx of [-6, 6]) b.box('extTrim', k.P(xx - 0.1, 0, -4), k.ez().multiplyScalar(4).add(V(0, 6.4, 0)), V(0, 0.15, 0), k.ex().multiplyScalar(0.2));
+  for (const [cx2, cz2] of [[-3, 14], [3, 14]]) { b.box('wood:#d9c9a8', k.P(cx2 - 1, 0.25, cz2 - 2), k.ex().multiplyScalar(2), V(0, 0.12, 0), k.ez().multiplyScalar(4).add(V(0, 0.75, 0))); }
+}
+// rectangles per garage: `near` = the yard by the back of the house, `far` = the other open part; hoop = [x, z, rot]
+const RECTS = {
+  0: { near: [40, 3, 60.5, 20], far: [5, 46, 44, 64], hoop: [70, 52.3, 180] },
+  A: { near: [36, 3, 60.5, 21], far: [4, 4, 31, 22], hoop: [47, 57.2, 180] },
+  B: { near: [46.5, 3.2, 60.5, 21], far: [3, 53.2, 60, 64.4], hoop: [26, 52.2, 180] },
+  C: { near: [38, 3.2, 60.5, 21], far: [3, 53.2, 60, 64.4], hoop: [20, 52.2, 180] },
+};
+function buildYardsMore() {
+  for (const gid of ['0', 'A', 'B', 'C']) {
+    const z = ZONES[gid], r = RECTS[gid], gt = `gar:${gid}`, [fx0, fz0, fx1, fz1] = r.far;
+    // D: dining patio by the house, fire pit out in the yard, open lawn with a goal and cornhole
+    diningPatio(`yard:D&${gt}`, r.near);
+    firePitArea(`yard:D&${gt}`, z.fire2[0], z.fire2[1], z.fire2[2], z.fire2[2] < 6 ? 4 : 5);
+    if (fx1 - fx0 > 30) lawnGames(`yard:D&${gt}`, fx1 - 9, (fz0 + fz1) / 2, 90);
+    // E: game yard: hoop on the apron, bocce court, fire pit by the house
+    hoop(`yard:E&${gt}`, ...r.hoop);
+    bocce(`yard:E&${gt}`, fx1 - fx0 >= fz1 - fz0 ? [fx0, (fz0 + fz1) / 2 - 5, fx1, (fz0 + fz1) / 2 + 5] : r.far);
+    firePitArea(`yard:E&${gt}`, z.fire[0], z.fire[1], z.fire[2]);
+    // F: spa retreat: hot tub + barrel sauna on a deck by the house, fire pit in the far corner
+    spaDeck(`yard:F&${gt}`, r.near);
+    firePitArea(`yard:F&${gt}`, z.fire2[0], z.fire2[1], z.fire2[2], z.fire2[2] < 6 ? 4 : 5);
+    // G: kitchen garden: beds on gravel + greenhouse by the house, fruit trees, fire pit in the far corner
+    kitchenGarden(`yard:G&${gt}`, r.near);
+    firePitArea(`yard:G&${gt}`, z.fire2[0], z.fire2[1], z.fire2[2], z.fire2[2] < 6 ? 4 : 5);
+    { const tag = `yard:G&${gt}`, P = new Plants(); for (let i = 0; i < 3; i++) shadeTree(P, fx0 + (fx1 - fx0) * (0.55 + i * 0.17), fz1 - 3 - (i % 2) * 1.5, { h: 11, R: 4.2, seed: 140 + i, lod: 1, trunk: 3, rt: 0.22, leaders: 3, leaves: ['oval:linden'], card: 1.3, density: 1.5 }); P.build(renoGroup(tag, 'site')); }
+    { const tag = `yard:F&${gt}`, P = new Plants(); for (let i = 0; i < 5; i++) arborvitae(P, r.near[0] - 1.5, r.near[1] + 2 + i * 3.4, 9, 200 + i); P.build(renoGroup(tag, 'site')); }
+  }
+}
+
 // ------------------------------------------------------------------ front yard
 function buildFront() {
   const rs = 'on:front', b = renoBat(rs, 'site'), grp = renoGroup(rs, 'site');
@@ -525,6 +648,7 @@ export function buildRenovations() {
   buildMudroom();
   buildLinks();
   buildYards();
+  buildYardsMore();
   buildFront();
 }
 export { shaker, pendant, orb, linearPendant };
