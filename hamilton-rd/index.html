@@ -127,6 +127,14 @@
     #panel-toggle { left: auto; right: 8px; top: 8px; }
     body.collapsed #panel-toggle { left: auto; }
   }
+
+/* phones and tablets: the walk-through needs a keyboard and mouse, so the button is off there */
+.walk-mobile { display: none; }
+@media (hover: none) and (pointer: coarse) {
+  #btn-walk { opacity: 0.45; pointer-events: none; }
+  #btn-walk + p { display: none; }
+  .walk-mobile { display: block; }
+}
 </style>
 <script type="importmap">
 { "imports": {
@@ -166,6 +174,7 @@
       <h2>Walk through</h2>
       <button class="btn primary" id="btn-walk">Walk through at eye level</button>
       <p class="muted">Starts on the front walk. <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to move, mouse to look, <kbd>Shift</kbd> to hurry, <kbd>E</kbd> to open or close the door in front of you, <kbd>Esc</kbd> to pause. Stairs work, including both basement stairs and the deck stair down to the walk-out.</p>
+      <p class="muted walk-mobile">The walk-through needs a keyboard and mouse, so it is turned off on phones and tablets. Open this page on a computer to walk around.</p>
     </section>
 
     <section>
@@ -294,6 +303,9 @@
   </div>
 </div>
 
+<script>
+if (matchMedia('(hover: none) and (pointer: coarse)').matches) { const b = document.getElementById('btn-walk'); b.disabled = true; b.setAttribute('aria-disabled', 'true'); }
+</script>
 <script type="module" src="js/app.js"></script>
 </body>
 </html>

@@ -189,6 +189,14 @@
   #edit-pop .ep-foot button:disabled { opacity: .4; cursor: default; }
   #edit-hint { position: fixed; z-index: 40; left: 50%; bottom: 84px; transform: translateX(-50%); background: rgba(20,20,20,.75); color: #fff; padding: 7px 14px; border-radius: 999px; font-size: 13px; max-width: calc(100vw - 32px); }
   @media (max-width: 520px) { #edit-pop { width: calc(100vw - 32px); left: 16px !important; } }
+
+/* phones and tablets: the walk-through needs a keyboard and mouse, so the button is off there */
+.walk-mobile { display: none; }
+@media (hover: none) and (pointer: coarse) {
+  #btn-walk { opacity: 0.45; pointer-events: none; }
+  #btn-walk + p { display: none; }
+  .walk-mobile { display: block; }
+}
 </style>
 <script type="importmap">
 { "imports": {
@@ -228,6 +236,7 @@
       <h2>Walk through</h2>
       <button class="btn primary" id="btn-walk">Walk through at eye level</button>
       <p class="muted">Starts on the front walk. <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to move, mouse to look, <kbd>Shift</kbd> to hurry, <kbd>E</kbd> to open or close the door in front of you, <kbd>Esc</kbd> to pause. Stairs work.</p>
+      <p class="muted walk-mobile">The walk-through needs a keyboard and mouse, so it is turned off on phones and tablets. Open this page on a computer to walk around.</p>
     </section>
 
     <section>
@@ -403,6 +412,9 @@
   </div>
 </div>
 
+<script>
+if (matchMedia('(hover: none) and (pointer: coarse)').matches) { const b = document.getElementById('btn-walk'); b.disabled = true; b.setAttribute('aria-disabled', 'true'); }
+</script>
 <script type="module" src="js/app.js"></script>
 </body>
 </html>
