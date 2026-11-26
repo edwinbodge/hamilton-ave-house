@@ -81,7 +81,7 @@ const lotLines = site.getObjectByName('lotLines');
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const state = {
-  view: 'ext', labels: true, furniture: true, mode: 'orbit', layout: '0', garage: '0', link: '0', yard: '0',
+  view: 'ext', labels: true, furniture: true, mode: 'orbit', layout: '0', garage: '0', link: '0', yard: '0', drive: 'full', lane: 'solid', surf: 'concrete',
   reno: { mud: false, front: false },
   style: { ...STYLE_PRESETS[DEFAULT_PRESET].values },
   ext: { ...EXT_PRESETS.listed.values },
@@ -102,6 +102,7 @@ const PRESETS = {
   f1: { pos: [93, 70, 64], tgt: [93, 0, 25] },
   b: { pos: [93, 58, 60], tgt: [93, -8, 25] },
   yard: { pos: [46, 86, 104], tgt: [52, 0, 30] },
+  drive: { pos: [162, 22, 60], tgt: [95, 0, 45] },
 };
 let tween = null;
 function flyTo(p) {
@@ -154,6 +155,7 @@ const renoSets = [...renos, ...(site.userData.renos || [])];
 const HIDE_LABELS = [];
 // exterior finishes come from the exterior style (exterior.js); the facade renovations pick their matching preset
 function applyReno() {
+  applyFinish('drive', { concrete: 'paving', asphalt: 'asphalt', cobble: 'cobble' }[state.surf]);
   for (const g of renoSets) g.visible = activeTag(g.userData.rs);
   document.querySelectorAll('[data-reno]').forEach((el) => { el.checked = !!state.reno[el.dataset.reno]; });
   document.querySelectorAll('[data-sel]').forEach((r) => { r.checked = r.value === state[r.dataset.sel]; });
@@ -186,7 +188,7 @@ $('#suggested').addEventListener('change', (e) => {
 document.querySelectorAll('[data-sel]').forEach((r) => r.addEventListener('change', () => {
   state[r.dataset.sel] = r.value;
   applyReno();
-  if (state.mode === 'orbit' && r.value !== '0') { state.view = 'ext'; applyView(); flyTo(PRESETS.yard); }
+  if (state.mode === 'orbit' && r.value !== '0') { state.view = 'ext'; applyView(); flyTo(r.dataset.sel === 'lane' || r.dataset.sel === 'surf' || (r.dataset.sel === 'drive' && state.garage === '0') ? PRESETS.drive : PRESETS.yard); }
 }));
 function syncExtToFacade() {}
 
@@ -304,7 +306,7 @@ function activeTag(tag) {
   if (tag.startsWith('on:') || tag.startsWith('off:')) { const [st, name] = tag.split(':'); return st === 'on' ? !!state.reno[name] : !state.reno[name]; }
   if (tag.startsWith('not:')) return !activeTag(tag.slice(4));
   if (tag.startsWith('lay:')) return state.layout === tag.slice(4);
-  if (/^(gar|link|yard):/.test(tag)) { const [k, v] = tag.split(':'); return state[{ gar: 'garage', link: 'link', yard: 'yard' }[k]] === v; }
+  if (/^(gar|link|yard|drv|lane|surf):/.test(tag)) { const [k, v] = tag.split(':'); return state[{ gar: 'garage', link: 'link', yard: 'yard', drv: 'drive', lane: 'lane', surf: 'surf' }[k]] === v; }
   if (tag === 'brg') return state.link === 'bridge' && (state.garage === 'B' || state.garage === 'C'); // the upper bridge needs a garage on the north side
   if (tag === 'anygar') return state.garage !== '0';
   if (tag === 'furn' || tag.endsWith('F')) return state.furniture;

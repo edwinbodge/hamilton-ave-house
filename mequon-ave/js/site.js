@@ -707,10 +707,20 @@ export function buildSite() {
   }
   // driveway: curb cut, past the porch and along the south wall to the back entry (photos 0552, 0566-0568)
   const D = DRIVE;
-  const drive = rounded([[sx0, D.north + 0.2], [sx0, D.south + 3.2], [sx0 - 1.2, D.south + 3.2, 1], [STREET.walk1 + 2, D.south + 0.6, 2], [100, D.south], [D.rear, D.south], [D.rear, 38.75], [112.5, 38.75], [117.5, D.north + 1.2, 2], [sx0 - 1.2, D.north + 1.2, 1]]);
-  bat.poly('paving', drive, G + 0.04);
-  addFloorPoly(drive, [], G + 0.04, 'site');
-  for (let x = D.rear + 9; x < sx0 - 4; x += 9.5) bat.aabox('col:#aaa69e', x - 0.04, G + 0.041, 39.4, x + 0.04, G + 0.046, D.south - 0.2);
+  // The street end (curb cut, terrace, across the public walk) is the city's and stays concrete. The private part takes the
+  // chosen surface ('drive' finish) and comes two ways: a solid lane, or two wheel strips with grass between (lane:strips)
+  // from the public walk back to a solid pad beside the house.
+  const wx = STREET.walk0, sAt = (x) => D.south + (0.6 * (x - 100)) / (STREET.walk1 + 2 - 100), PAD = 90;
+  const cut = rounded([[sx0, D.north + 0.2], [sx0, D.south + 3.2], [sx0 - 1.2, D.south + 3.2, 1], [STREET.walk1 + 2, D.south + 0.6, 2], [wx, sAt(wx)], [wx, D.north + 1.2], [sx0 - 1.2, D.north + 1.2, 1]]);
+  bat.poly('paving', cut, G + 0.04);
+  const whole = rounded([[wx, sAt(wx)], [100, D.south], [D.rear, D.south], [D.rear, 38.75], [112.5, 38.75], [117.5, D.north + 1.2, 2], [wx, D.north + 1.2]]);
+  addFloorPoly(cut, [], G + 0.04, 'site'); addFloorPoly(whole, [], G + 0.04, 'site');
+  bat.poly('drive', [[PAD, D.south], [D.rear, D.south], [D.rear, 38.75], [PAD, 38.75]], G + 0.04);
+  const solid = tagged('lane:solid'), strips = tagged('lane:strips'), jointsA = tagged('surf:concrete'), jointsB = tagged('surf:concrete&lane:solid');
+  solid.b.poly('drive', rounded([[wx, sAt(wx)], [100, D.south], [PAD, D.south], [PAD, 38.75], [112.5, 38.75], [117.5, D.north + 1.2, 2], [wx, D.north + 1.2]]), G + 0.04);
+  for (const s of [-1, 1]) { const zc = 45.3 + s * 2.65; strips.b.poly('drive', [[PAD, zc - 1.35], [wx, zc - 1.35 + 0.45], [wx, zc + 1.35 + 0.45], [PAD, zc + 1.35]], G + 0.04); }
+  for (let x = D.rear + 9; x < sx0 - 4; x += 9.5) if (x < wx) (x < PAD ? jointsA : jointsB).b.aabox('col:#aaa69e', x - 0.04, G + 0.041, 39.4, x + 0.04, G + 0.046, D.south - 0.2);
+  solid.done(); strips.done(); jointsA.done(); jointsB.done();
   // front walk: from the porch steps out to the public walk (photos 01, 0552)
   ribbon(bat, 'paving', [[113.4, 35.4], [118, 35.5], [126, 36.6], [STREET.walk0 + 0.2, 37.3]], 4.2, G + 0.045);
   // planting bed along the street gable and the north side (photo 01: young boxwoods in dark mulch, hydrangeas at the corner)
@@ -740,8 +750,8 @@ export function buildSite() {
   // the drive's rear leg: curves northwest behind the house to the old garage (photos 0571, 0574-0577), and its pad
   const og = OLD_GARAGE;
   { const pts = curve([[D.rear + 0.5, 44.9], [58, 43.6], [47, 36], [37, 24], [28, 15.5], [og.x1 + 0.2, 12.3]], 26);
-    ribbon(oldYard.b, 'paving', pts, 10.5, G + 0.04, 'gar:0');
-    const pad = [[og.x1, og.y0 - 0.5], [og.x1 + 9, og.y0 + 1], [og.x1 + 9, og.y1 + 2.5], [og.x1, og.y1 + 0.5]]; oldYard.b.poly('paving', pad, G + 0.042); addFloorPoly(pad, [], G + 0.042, 'gar:0');
+    ribbon(oldYard.b, 'drive', pts, 10.5, G + 0.04, 'gar:0');
+    const pad = [[og.x1, og.y0 - 0.5], [og.x1 + 9, og.y0 + 1], [og.x1 + 9, og.y1 + 2.5], [og.x1, og.y1 + 0.5]]; oldYard.b.poly('drive', pad, G + 0.042); addFloorPoly(pad, [], G + 0.042, 'gar:0');
     // red-mulch bed under the Japanese maple, in the bend of the drive
     oldYard.b.poly('mulch', rounded([[22, 21, 3], [36, 23, 4], [39, 33, 4], [27, 34, 4], [20, 28, 3]]), G + 0.05); }
   // the existing garage: 1.5-story gable, light gray lap siding, one overhead door in the east gable end (photos 20, 0577, 0583)

@@ -253,13 +253,19 @@ function buildGarage(id) {
   const at1 = (u, v, r2 = 0) => { const [x, z] = M(u, v); return new Kit(F1b, ftag).at(x, z, GF, rot + r2); };
   const at2 = (u, v, r2 = 0) => { const [x, z] = M(u, v); return new Kit(F2b, ftag).at(x, z, UF, rot + r2); };
   const bay = (i) => gap + 4.75 + i * (9.5 + gap);
-  item(at1(bay(0) + 0.5, D - 9.6), (k) => { car(k, '#5a6b5a'); k.solid(-3.05, -7.8, 3.05, 7.8, 0, 4.6); }, null, 'car');
-  item(at1(bay(1), D - 9.6), (k) => { car(k, '#2b2f36'); k.solid(-3.05, -7.8, 3.05, 7.8, 0, 4.6); }, null, 'car');
-  item(at1(bay(2) - 0.3, D / 2 + 1.5), (k) => rubberFloor(k, 10, D - 9));
-  item(at1(bay(2) + 0.6, 0.45), (k) => powerRack(k));
-  item(at1(bay(2) - 3.2, D / 2 + 2, 180), (k) => pelotonBike(k));
+  // drive to all three doors or to the back pair: cars in bays 0-1, gym in the house-side bay. Drive to the front pair
+  // (drv:near): cars in bays 1-2, the gym moves to the far bay beside the stair.
+  for (const [dt, near] of [['not:drv:near', false], ['drv:near', true]]) {
+    const vt = `${tag}&furn&${dt}`, Fv = renoBat(vt, 'f1'), av = (u, v, r2 = 0) => { const [x, z] = M(u, v); return new Kit(Fv, vt).at(x, z, GF, rot + r2); };
+    const c0 = near ? bay(1) + 0.3 : bay(0) + 0.5, c1 = near ? bay(2) - 0.3 : bay(1), gy = near ? bay(0) + 1.5 : bay(2);
+    item(av(c0, D - 9.6), (k) => { car(k, '#5a6b5a'); k.solid(-3.05, -7.8, 3.05, 7.8, 0, 4.6); }, null, 'car');
+    item(av(c1, D - 9.6), (k) => { car(k, '#2b2f36'); k.solid(-3.05, -7.8, 3.05, 7.8, 0, 4.6); }, null, 'car');
+    item(av(near ? gy : gy - 0.3, D / 2 + 1.5), (k) => rubberFloor(k, near ? 7.4 : 10, D - 9));
+    item(av(gy + (near ? 0.4 : 0.6), 0.45), (k) => powerRack(k));
+    item(av(near ? gy + 2.4 : gy - 3.2, D / 2 + 2, 180), (k) => pelotonBike(k));
+    item(av(gy + (near ? 0.4 : 0.6), 6.5), (k) => liftBench(k));
+  }
   item(at1(Lw - 0.5, D / 2 - 3, -90), (k) => dumbbellRack(k, 5));
-  item(at1(bay(2) + 0.6, 6.5), (k) => liftBench(k));
   item(at1(bay(1), 0.45), (k) => shelving(k, 7, 1.6, 6.5));
   // bikes hung on the gym bay's back wall, a mower-and-bins corner
   for (const du of [-4.2, -2.9]) { const k = at1(bay(2) + du, 0.5); k.box('col:#2f3d52', -0.08, 2.2, 0, 0.08, 5.6, 0.12); for (const y of [2.5, 5.0]) k.cyl('black', 0, 1.2, 1.1, 1.1, y - 0.06, y + 0.06, 16); k.box('col:#b33a2f', -0.05, 3.4, 0.6, 0.05, 4.2, 1.8); }
@@ -280,10 +286,22 @@ function buildGarage(id) {
   for (const u of [bay(0), bay(1), bay(2)]) flushDome(new Kit(b1, tag).at(...M(u, D / 2), 0, 0), UF - 0.5);
   // ---- apron: concrete from the drive's end to the three doors
   const sb = renoBat(tag, 'site');
-  const apron = id === 'A' ? rounded([[DRIVE.rear + 0.2, 38.75], [DRIVE.rear + 0.2, DRIVE.south], [44, 55.5, 6], [g.x1, g.y1 - 0.6], [g.x1, g.y0 + 0.6], [44, 33.5, 6]])
-    : rounded([[DRIVE.rear + 0.2, 38.75], [DRIVE.rear + 0.2, DRIVE.south], [g.x0 - 1.2, DRIVE.south], [g.x0 - 1.2, g.y1], [g.x1 + 1.2, g.y1], [g.x1 + 4.5, 38.75, 5]]);
-  sb.poly('paving', apron, G + 0.04);
-  addFloorPoly(apron, [], G + 0.04, tag);
+  // Three layouts (drv:full | near | far): the drive reaches all three doors, or only the pair nearer the house (bays 1-2),
+  // or only the far pair (bays 0-1). The bay left out opens onto a small paver patio instead.
+  const R0 = DRIVE.rear + 0.2, cutU = (n) => (n + 0.5) * gap + n * 9.5, S = g.face === 'S';
+  for (const [lay, u0, u1] of [['full', -1.2, Lw + 1.2], ['near', cutU(1) - 0.8, Lw + 1.2], ['far', -1.2, cutU(2) + 0.8]]) {
+    const dt = `${tag}&drv:${lay}`, db = renoBat(dt, 'site');
+    let apron;
+    if (S) { const xa = g.x0 + u0, xb = g.x0 + u1; apron = rounded([[R0, 38.75], [R0, DRIVE.south], [xa + (lay === 'near' ? 6 : 0), DRIVE.south, lay === 'near' ? 3 : 0], [xa, 43, lay === 'near' ? 4 : 0], [xa, g.y1], [xb, g.y1], [xb + 3.3, 38.75, 5]]); }
+    else { const ya = Math.max(g.y0 + 0.6, g.y1 - u1), yb = Math.min(g.y1 - 0.6, g.y1 - u0); apron = rounded([[R0, 38.75], [R0, DRIVE.south], ...(yb > DRIVE.south + 1 ? [[44, Math.min(55.5, yb), 6]] : []), [g.x1, yb], [g.x1, ya], ...(ya < 38 ? [[44, Math.max(33.5, ya), 6]] : [])]); }
+    db.poly('drive', apron, G + 0.04);
+    addFloorPoly(apron, [], G + 0.04, dt);
+    if (lay === 'full') continue;
+    const i = lay === 'near' ? 0 : 2, c = M(bay(i), D), pd = 9, hw = 5.6;
+    const patio = [[-hw, 0.1], [hw, 0.1], [hw, pd], [-hw, pd]].map(([a, v]) => [c[0] + dU[0] * a + dV[0] * v, c[1] + dU[1] * a + dV[1] * v]);
+    db.poly('pavers', patio, G + 0.05); addFloorPoly(patio, [], G + 0.05, dt);
+    { const P = new Plants(); for (const a of [-hw - 1.2, hw + 1.2]) if ((lay === 'near') === (a < 0)) for (const v of [2, 5, 8]) shrub(P, c[0] + dU[0] * a + dV[0] * v, c[1] + dU[1] * a + dV[1] * v, 2.6, 2.0, "shrub", 300 + v); P.build(renoGroup(dt, 'site')); }
+  }
   // labels + walk-mode room names
   for (const [L, rooms, lv] of [[L1, rooms1, 'f1'], [L2, rooms2, 'f2']]) {
     for (const rm of rooms) RENO_ROOMS.push({ rs: tag, level: lv, room: rm });

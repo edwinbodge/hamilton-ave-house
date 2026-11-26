@@ -37,7 +37,7 @@ export const ORIGIN = {
   fpBrick: 'stone', mantel: '#5b4332', mantelPanel: '#6a4e3b', stairCarpet: '#c9c2b6', island: '#f2f0eb',
   // exterior
   siding: 'lap:#7d7971', brickExt: 'stone', extTrim: '#f4f2ec', winExt: '#f4f2ec', shingle: 'shingle', garageDoor: '#f2f0ea',
-  frontDoor: '#f2f0ea', shake: 'shake:#a99a84', gutter: '#f4f2ec', winTrim: '#f4f2ec', scallop: 'scallop:#f4f2ec', sashAccent: '#6e2a2a',
+  frontDoor: '#f2f0ea', shake: 'shake:#a99a84', gutter: '#f4f2ec', winTrim: '#f4f2ec', scallop: 'scallop:#f4f2ec', sashAccent: '#6e2a2a', drive: 'paving',
   // remodel finishes (kitchen / bath / mudroom remodels keep these unless a style overrides them)
   rcab: '#ece9e2', rcabDoor: '#f0ede6', rcabPanel: '#e6e2da', rcounter: 'marble', rsplash: 'subway:#f3f1ec',
 };
@@ -47,7 +47,7 @@ function roughFor(key, spec) {
   if (key === 'counter' || key === 'vanityTop' || key === 'rcounter') return /marble|plank|laminate/.test(spec) ? 0.35 : 0.25;
   if (key === 'backsplash' || key === 'rsplash') return 0.3;
   if (key === 'backsplash') return 0.3;
-  if (key.startsWith('W:') || key === 'fpBrick' || key === 'siding' || key === 'brickExt' || key === 'shake' || key === 'scallop') return /blackMarble/.test(spec) ? 0.25 : 0.9;
+  if (key.startsWith('W:') || key === 'fpBrick' || key === 'siding' || key === 'brickExt' || key === 'shake' || key === 'scallop' || key === 'drive') return /blackMarble/.test(spec) ? 0.25 : 0.9;
   if (key === 'shingle') return 0.95;
   return 0.45;
 }

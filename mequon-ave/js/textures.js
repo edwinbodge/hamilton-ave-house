@@ -588,6 +588,32 @@ export function tex(name) {
         }
       }, kind === 'marble' ? [4, 4] : [2, 2], { bump: 3 });
       break;
+    case 'cobble': // granite setts (Belgian block) in running courses across the drive: grays with a few tan and rose stones
+      t = canvasTex(512, 512, (g, w, h, H, Rf) => {
+        g.fillStyle = '#4b4944'; g.fillRect(0, 0, w, h);
+        const hg = H(30), rg = Rf(255), cw = 64;
+        const rr = (c, x, y, a, b, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + a, y, x + a, y + b, r); c.arcTo(x + a, y + b, x, y + b, r); c.arcTo(x, y + b, x, y, r); c.arcTo(x, y, x + a, y, r); c.closePath(); c.fill(); };
+        for (let col = 0; col < w / cw; col++) {
+          let y = -rnd() * 90;
+          while (y < h) {
+            const len = R(78, 118), q = rnd(), hue = q < 0.14 ? R(24, 36) : q < 0.2 ? R(10, 18) : q < 0.6 ? R(30, 60) : R(200, 220), sat = q < 0.2 ? R(8, 15) : R(2, 5), lum = R(44, 62);
+            const c = `hsl(${hue},${sat}%,${lum}%)`, c2 = `hsla(${hue},${sat}%,${lum + 9}%,0.55)`, hv = 150 + rnd() * 60, in1 = R(3, 5), rad = R(9, 15);
+            wrapDraw(w, h, col * cw, y, (xx, yy) => {
+              g.fillStyle = c; rr(g, xx + in1, yy + in1, cw - 2 * in1, len - 2 * in1, rad);
+              g.fillStyle = c2; rr(g, xx + in1 + 7, yy + in1 + 7, cw - 2 * in1 - 14, len - 2 * in1 - 14, rad);
+              hg.fillStyle = gray(hv - 45); rr(hg, xx + in1, yy + in1, cw - 2 * in1, len - 2 * in1, rad);
+              hg.fillStyle = gray(hv); rr(hg, xx + in1 + 6, yy + in1 + 6, cw - 2 * in1 - 12, len - 2 * in1 - 12, rad);
+              hg.fillStyle = gray(hv + 22); rr(hg, xx + in1 + 13, yy + in1 + 13, cw - 2 * in1 - 26, len - 2 * in1 - 26, rad);
+              rg.fillStyle = gray(190 + rnd() * 50); rr(rg, xx + in1, yy + in1, cw - 2 * in1, len - 2 * in1, rad);
+            });
+            y += len;
+          }
+        }
+        mottle(g, w, h, 50, 20, 90, 0.07);
+        noise(g, w, h, 26000, 0.1, 1);
+        noise(hg, w, h, 9000, 0.18, 2);
+      }, [4, 4], { bump: 3.2, normalScale: 1 });
+      break;
     case 'pavers': // bluestone-look rectangular pavers in a running ashlar pattern
       t = canvasTex(512, 512, (g, w, h, H, Rf) => {
         g.fillStyle = '#6f6c66'; g.fillRect(0, 0, w, h);
