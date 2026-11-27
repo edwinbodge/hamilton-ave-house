@@ -588,6 +588,13 @@ export function tex(name) {
         }
       }, kind === 'marble' ? [4, 4] : [2, 2], { bump: 3 });
       break;
+    case 'seam': // standing-seam metal roofing, charcoal, 16" panels (seams run up the slope)
+      t = canvasTex(512, 512, (g, w, h, H) => {
+        g.fillStyle = '#2f3237'; g.fillRect(0, 0, w, h);
+        const hg = H(40);
+        for (let i = 0; i < 3; i++) { const x = ((i + 0.5) * w) / 3; g.fillStyle = '#454a51'; g.fillRect(x - 5, 0, 4, h); g.fillStyle = '#17191c'; g.fillRect(x - 1, 0, 5, h); hg.fillStyle = '#ffffff'; hg.fillRect(x - 4, 0, 7, h); }
+      }, [4, 4], { bump: 3 });
+      break;
     case 'cobble': // granite setts (Belgian block) in running courses across the drive: grays with a few tan and rose stones
       t = canvasTex(512, 512, (g, w, h, H, Rf) => {
         g.fillStyle = '#4b4944'; g.fillRect(0, 0, w, h);

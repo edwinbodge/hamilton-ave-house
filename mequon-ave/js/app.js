@@ -327,8 +327,7 @@ function activeTag(tag) {
   if (/^(gar|link|yard|drv|lane|surf|ml|gd|gr):/.test(tag)) { const [k, v] = tag.split(':'); return state[{ gar: 'garage', link: 'link', yard: 'yard', drv: 'drive', lane: 'lane', surf: 'surf', ml: 'mlaundry', gd: 'gdoors', gr: 'groof' }[k]] === v; }
   { // derived: mudroom shape, walkway route (see reno.js)
     const north = 'BCD'.includes(state.garage), mud = !!state.reno.mud, hall = mud && state.mudv === 'H' && north;
-    if (tag === 'grGP') return 'GP'.includes(state.groof);
-    if (tag === 'grFB') return 'FB'.includes(state.groof);
+    if (tag === 'grPFB') return 'PFB'.includes(state.groof);
     if (tag === 'mlout') return mud && state.mudv !== 'A' && state.mlaundry !== '0';
     if (tag === 'mlin') return !(mud && state.mudv !== 'A' && state.mlaundry !== '0');
     if (tag === 'mudA') return mud && state.mudv === 'A';
