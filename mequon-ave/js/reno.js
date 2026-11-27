@@ -255,13 +255,15 @@ function buildGarage(id) {
     W(L2, rooms2, Lw, D / 2 + 2, Lw, D / 2 - 2, [[0.9, 3.5, 'x', walk(into(-1, 0))]], { ...slope, rs: `${t}&brg` });
   };
   const sideWin = [[6.6, 9.2, 'w', win]];
-  // ---- gable version
-  {
+  // ---- gable versions: gr:G = the house's steep gable with a small cross gable over the rec room's desk;
+  // gr:H = the same roof with a tall center gable that comes up to the main ridge, like the house's street gable
+  for (const [tG, uc, cg] of [[`${tag}&gr:G`, bu / 2, 7], [`${tag}&gr:H`, Lw / 2, D / 2]]) {
+    const b2G = renoBat(tG, 'f2'), brG = renoBat(tG, 'roof'), krG = new Kit(brG, tG).at(o[0], o[1], 0, rot), big = cg > 10;
     const rs = tG, hm = kn + pg * (D / 2 - 2), vf = D - (8 - kn) / pg;
     W(L2, rooms2, Lw, 0, 0, 0, [], { rs });
     W(L2, rooms2, 0, D, uc - cg, D, [], { rs });
-    W(L2, rooms2, uc - cg, D, uc, D, [[cg - 3.1, cg - 0.6, 'w', win]], { slope: [K, K + pg * cg], rs });
-    W(L2, rooms2, uc, D, uc + cg, D, [[0.6, 3.1, 'w', win]], { slope: [K + pg * cg, K], rs });
+    W(L2, rooms2, uc - cg, D, uc, D, [...(big ? [[cg - 6.2, cg - 3.7, 'w', win]] : []), [cg - 3.1, cg - 0.6, 'w', win]], { slope: [K, K + pg * cg], rs });
+    W(L2, rooms2, uc, D, uc + cg, D, [[0.6, 3.1, 'w', win], ...(big ? [[3.7, 6.2, 'w', win]] : [])], { slope: [K + pg * cg, K], rs });
     W(L2, rooms2, uc + cg, D, Lw, D, [], { rs });
     W(L2, rooms2, 0, 0, 0, D / 2 - 2, sideWin, { slope: [K, UF + hm], rs });
     W(L2, rooms2, 0, D / 2 - 2, 0, D / 2 + 2, [], { top: hm, rs });
@@ -294,7 +296,7 @@ function buildGarage(id) {
     dentilBand(b2G, M(Lw, 0), M(0, 0), K - 0.5, neg(dV), { dent: false, cap: false });
     gablePeak(brG, M(0, 0), M(0, D), neg(dU), K, pg, UF + 7.4);
     gablePeak(brG, M(Lw, D), M(Lw, 0), dU, K, pg, UF + 7.4);
-    gablePeak(brG, M(uc - cg, D), M(uc + cg, D), dV, K, pg, UF + 6.55, false);
+    gablePeak(brG, M(uc - cg, D), M(uc + cg, D), dV, K, pg, big ? UF + 7.4 : UF + 6.55, big);
     for (const [u, v] of [[uc - 7, D / 2], [uc + 7, D / 2], [uc, D / 2 + 5], [uc, D / 2 - 5], [Lw - 4.5, D / 2 + 0.6]]) recessed(new Kit(b2G, tG).at(...M(u, v), 0, 0), UF + 8);
     recessed(new Kit(b2G, tG).at(...M(bu + 4, vb + 3), 0, 0), UF + 8);
   }
