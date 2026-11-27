@@ -316,13 +316,13 @@ function buildGarage(id) {
     dentilBand(b2S, M(Lw, 0), M(0, 0), Sh(0) - 0.55, neg(dV), { dent: false, cap: false });
     for (const [u, v] of [[uc - 7, D / 2], [uc + 7, D / 2], [uc, D / 2 + 5], [uc, D / 2 - 5], [Lw - 4.5, D / 2 + 0.6], [bu + 4, vb + 3]]) recessed(new Kit(b2S, tS).at(...M(u, v), 0, 0), Sh(v) - 0.03);
   }
-  // ---- gable-and-wing versions (gr:P | gr:F | gr:B). One massing for all three: a front gable over the two car bays
-  // (9/12, ridge running front to back) and a lower wing over the gym room whose ridge runs the other way and dies
-  // into it. 7'2" side walls, flat ceiling at 9'6". P = shingles + a metal porch roof across the doors; F = standing-seam
-  // metal + a timber truss in the peak; B = F + a balcony over the gym room's door.
+  // ---- gable-and-wing versions (gr:P | gr:F). One massing for both: a front gable over the two car bays
+  // (12/12, ridge running front to back) and a lower wing over the gym room whose ridge runs the other way and dies
+  // into it. 7'2" side walls, flat ceiling at 9'6". P = shingles; F = standing-seam metal + a timber truss
+  // in the peak.
   {
     const tX = `${tag}&grPFB`, tM = `${tX}&not:gr:P`, rs = tX, b2X = renoBat(tX, 'f2'), brX = renoBat(tX, 'roof'), krX = new Kit(brX, tX).at(o[0], o[1], 0, rot);
-    const kx = 7.2, pa = 9 / 12, pw = 6 / 12, cap = 9.5, rc = cw / 2, KX = UF + kx, pkA = KX + pa * rc, uV = cw - (pw / pa) * (D / 2), vx = (pw / pa) * OV, FO = 1.6, TIM = wood('#b9814f');
+    const kx = 7.2, pa = 12 / 12, pw = 7 / 12, cap = 9.5, rc = cw / 2, KX = UF + kx, pkA = KX + pa * rc, uV = cw - (pw / pa) * (D / 2), vx = (pw / pa) * OV, FO = 1.6, TIM = wood('#b9814f');
     const hA = (u) => kx + pa * Math.min(u, cw - u), hB = (v) => kx + pw * Math.min(v, D - v), hR = (u, v) => (u <= rc ? hA(u) : Math.max(hA(u), hB(v)));
     const tallW = { g: 'dh', red: true, apron: true, sill: 2.2, head: 7.0 }, hm = kx + pw * (D / 2 - 2), vf = D - (cap - kx) / pw;
     W(L2, rooms2, 0, 0, 0, D, [...sideWin, [D / 2 + 3.8, D / 2 + 6.4, 'w', win]], { top: kx, rs });
@@ -332,8 +332,7 @@ function buildGarage(id) {
     W(L2, rooms2, 0, D, rc, D, [[rc - 6.2, rc - 3.4, 'w', tallW], [rc - 3.0, rc - 0.2, 'w', tallW]], { slope: [KX, pkA], rs });
     W(L2, rooms2, rc, D, cw, D, [[0.2, 3.0, 'w', tallW], [3.4, 6.2, 'w', tallW]], { slope: [pkA, KX], rs });
     const cR = (cw + bu) / 2 - cw, cBt = (bu + Lw) / 2 - cw;
-    W(L2, rooms2, cw, D, Lw, D, [[cR - 1.3, cR + 1.3, 'w', win], [cBt - 1.3, cBt + 1.3, 'w', win]], { top: kx, rs: `${tX}&not:gr:B` });
-    W(L2, rooms2, cw, D, Lw, D, [[cR - 1.4, cR + 1.4, 'x', walk(into(0, -1))], [cBt - 1.3, cBt + 1.3, 'w', win]], { top: kx, rs: `${tag}&gr:B` });
+    W(L2, rooms2, cw, D, Lw, D, [[cR - 1.3, cR + 1.3, 'w', win], [cBt - 1.3, cBt + 1.3, 'w', win]], { top: kx, rs });
     W(L2, rooms2, Lw, D, Lw, D / 2 + 2, [], { slope: [KX, UF + hm], rs });
     eastMid(tX, { top: hm });
     W(L2, rooms2, Lw, D / 2 - 2, Lw, 0, [], { slope: [UF + hm, KX], rs });
@@ -368,24 +367,11 @@ function buildGarage(id) {
     gableFill(brX, M(Lw, D / 2 - 2), M(Lw, D / 2 + 2), () => UF + hm, (x, y) => wf(x, y) - ROOFT - 0.02, 'siding', 8, 'white');
     for (const [u, v] of [[0, 0], [Lw, 0], [Lw, D], [0, D], [cw, D]]) { const [x, z] = M(u, v); b2X.aabox('extTrim', x - 0.3, UF, z - 0.3, x + 0.3, KX, z + 0.3); }
     for (const [u, v] of [[uc - 7, D / 2], [uc + 7, D / 2], [uc, D / 2 + 5], [uc, D / 2 - 5], [Lw - 4.5, D / 2 + 0.6], [bu + 4, vb + 3]]) recessed(new Kit(b2X, tX).at(...M(u, v), 0, 0), UF + gc(u, v) - 0.03);
-    // P: a metal porch roof on posts across the doors
-    { const tP = `${tag}&gr:P`, bP = renoBat(tP, 'f1'), kP = new Kit(bP, tP).at(o[0], o[1], 0, rot), pd = 5.5;
-      roofMass(bP, [M(-0.7, D + 0.25), M(Lw + 0.7, D + 0.25), M(Lw + 0.7, D + pd + 0.6), M(-0.7, D + pd + 0.6)], [{ o: M(0, D + pd + 0.6), up: neg(dV), h0: UF - 0.95, p: 0.36 }], { key: 'seam', skip: [0], gutter: false });
-      kP.box('extTrim', 0, UF - 1.95, D + pd - 0.3, Lw, UF - 1.2, D + pd + 0.3);
-      for (const u of [0.4, cw + 0.6, Lw - 0.4]) { kP.box('extTrim', u - 0.35, G, D + pd - 0.35, u + 0.35, UF - 1.95, D + pd + 0.35); kP.box('extTrim', u - 0.45, G, D + pd - 0.45, u + 0.45, G + 0.9, D + pd + 0.45); kP.solid(u - 0.35, D + pd - 0.35, u + 0.35, D + pd + 0.35, G, UF - 1.2); } }
     // F, B: timber truss in the front gable's peak: tie beam, king post, two braces
-    { const bT = renoBat(tM, 'roof'), tp = (u, y, off = 0.3) => { const [x, z] = M(u, D); return V(x + dV[0] * off, y, z + dV[1] * off); }, yT = pkA - 4.4, wT = 4.4 / pa - 0.9, dp = V(dV[0] * 0.45, 0, dV[1] * 0.45), al = (d) => V(dU[0] * d, 0, dU[1] * d);
+    { const bT = renoBat(tM, 'roof'), tp = (u, y, off = 0.3) => { const [x, z] = M(u, D); return V(x + dV[0] * off, y, z + dV[1] * off); }, yT = pkA - 5.6, wT = 5.6 / pa - 0.9, dp = V(dV[0] * 0.45, 0, dV[1] * 0.45), al = (d) => V(dU[0] * d, 0, dU[1] * d);
       bT.box(TIM, tp(rc - wT, yT), al(2 * wT), V(0, 0.6, 0), dp);
-      bT.box(TIM, tp(rc - 0.3, yT + 0.6), al(0.6), V(0, 3.2, 0), dp);
-      for (const sgn of [-1, 1]) bT.box(TIM, tp(rc + sgn * 4.2, yT + 0.6), V(dU[0] * -sgn * 3.9, 2.2, dU[1] * -sgn * 3.9), V(0, 0.5, 0), dp); }
-    // B: a balcony over the gym room's door, on two timber posts, with a door from the rec room
-    { const tB = `${tag}&gr:B`, bB = renoBat(tB, 'f2'), kB = new Kit(bB, tB).at(o[0], o[1], 0, rot), bd = 6.5, top = UF - 0.1, u0 = cw + 0.3;
-      kB.box({ def: 'cedar', pv: 'col:#a98863' }, u0, top - 0.45, D + 0.25, Lw, top, D + bd); addFloorRect(...aabb(u0, D + 0.25, Lw, D + bd), top, tB);
-      kB.box(TIM, u0, top - 1.3, D + bd - 0.75, Lw, top - 0.45, D + bd - 0.15);
-      for (const u of [u0 + 0.35, Lw - 0.35]) { kB.box(TIM, u - 0.35, G, D + bd - 0.8, u + 0.35, top - 1.3, D + bd - 0.1); kB.solid(u - 0.35, D + bd - 0.8, u + 0.35, D + bd - 0.1, G, top); }
-      railing(bB, M(u0 + 0.1, D + bd - 0.1), M(Lw - 0.1, D + bd - 0.1), top, top, 'black', tB, 'iron', true, 3.2);
-      for (const u of [u0 + 0.1, Lw - 0.1]) railing(bB, M(u, D + 0.35), M(u, D + bd - 0.1), top, top, 'black', tB, 'iron', false, 3.2);
-    }
+      bT.box(TIM, tp(rc - 0.3, yT + 0.6), al(0.6), V(0, 4.3, 0), dp);
+      for (const sgn of [-1, 1]) bT.box(TIM, tp(rc + sgn * 3.6, yT + 0.6), V(dU[0] * -sgn * 3.3, 3.0, dU[1] * -sgn * 3.3), V(0, 0.5, 0), dp); }
   }
   // lanterns on the door wall
   { const [x, z] = M(cw + 0.9, D); exteriorLantern(new Kit(b1, tag).at(x + dV[0] * 0.27, z + dV[1] * 0.27, GF, rot), 6.6); }
