@@ -194,16 +194,19 @@ document.querySelectorAll('[data-sel]').forEach((r) => r.addEventListener('chang
   // pieces that only work together: the hallway is the connection (and needs garage B, C or D); the north walkway
   // lands on the north mudroom, the middle one on the centered mudroom or the north one's south door
   if (r.dataset.sel === 'mudv') {
-    if (r.value === 'H') { if (!'BCD'.includes(state.garage)) state.garage = 'D'; state.link = '0'; }
+    if (r.value === 'H') { if (!'BCDE'.includes(state.garage)) state.garage = 'D'; state.link = '0'; }
+    else if (state.garage === 'E') state.garage = 'D'; // garage E only exists joined onto the mudroom
     if (r.value === 'A' && state.link === 'north') state.link = 'walk';
     if (r.value === 'N' && state.link === 'walk' && 'BCD'.includes(state.garage)) state.link = 'north';
   }
   if (r.dataset.sel === 'link' && r.value !== '0') {
+    if (state.garage === 'E') state.garage = 'D';
     if (state.mudv === 'H') state.mudv = 'N';
     if (r.value === 'north' && state.mudv === 'A') state.mudv = 'N';
   }
   if (r.dataset.sel === 'mlaundry' && r.value !== '0' && (state.mudv === '0' || state.mudv === 'A')) state.mudv = 'N';
-  if (r.dataset.sel === 'garage' && state.mudv === 'H' && !'BCD'.includes(r.value)) state.mudv = 'N';
+  if (r.dataset.sel === 'garage' && r.value === 'E') { state.mudv = 'H'; state.link = '0'; }
+  if (r.dataset.sel === 'garage' && state.mudv === 'H' && !'BCDE'.includes(r.value)) state.mudv = 'N';
   applyReno();
   if (state.mode === 'orbit' && (r.dataset.sel === 'layout' || r.dataset.sel === 'mlaundry')) { state.view = 'f1'; applyView(); flyTo(PRESETS[r.dataset.sel === 'layout' ? 'living' : 'mudroom']); }
   else if (state.mode === 'orbit' && r.value !== '0') { state.view = 'ext'; applyView(); flyTo(r.dataset.sel === 'lane' || r.dataset.sel === 'surf' || (r.dataset.sel === 'drive' && state.garage === '0') ? PRESETS.drive : PRESETS.yard); }
@@ -326,7 +329,7 @@ function activeTag(tag) {
   if (tag.startsWith('lay:')) return state.layout === tag.slice(4);
   if (/^(gar|link|yard|drv|lane|surf|ml|gd|gr):/.test(tag)) { const [k, v] = tag.split(':'); return state[{ gar: 'garage', link: 'link', yard: 'yard', drv: 'drive', lane: 'lane', surf: 'surf', ml: 'mlaundry', gd: 'gdoors', gr: 'groof' }[k]] === v; }
   { // derived: mudroom shape, walkway route (see reno.js)
-    const north = 'BCD'.includes(state.garage), mud = !!state.reno.mud, hall = mud && state.mudv === 'H' && north;
+    const north = 'BCDE'.includes(state.garage), mud = !!state.reno.mud, hall = mud && state.mudv === 'H' && north;
     if (tag === 'grPFB') return 'PF'.includes(state.groof);
     if (tag === 'mlout') return mud && state.mudv !== 'A' && state.mlaundry !== '0';
     if (tag === 'mlin') return !(mud && state.mudv !== 'A' && state.mlaundry !== '0');

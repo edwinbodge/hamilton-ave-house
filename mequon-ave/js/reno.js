@@ -160,6 +160,9 @@ export const GAR = {
   B: { x0: 4, x1: 44, y0: 3.5, y1: 29.5, face: 'S', label: 'B · faces south, along the north line', dims: "40' x 26'" },
   C: { x0: 3.5, x1: 39.5, y0: 3.5, y1: 27.5, face: 'S', label: 'C · faces south, compact, rear corner', dims: "36' x 24'" },
   D: { x0: 13, x1: 53, y0: 3.5, y1: 29.5, face: 'S', label: 'D · like B, 9 ft closer to the house', dims: "40' x 26'" },
+  // E: counted as part of the house (Rs-5 / Rs-6 yards for a principal building): 25 ft off the rear line, 4 ft off the
+  // north line, and joined straight onto the north mudroom block (no hallway between)
+  E: { x0: 25, x1: 63, y0: 4, y1: 30, face: 'S', label: 'E · attached, inside the 25 ft rear setback', dims: "38' x 26'" },
 };
 const NDOOR = 11.2; // the door toward the house on the north route: this far from the garage's back wall (y = 14.7)
 const garageGeom = (id) => {
@@ -400,7 +403,8 @@ function buildGarage(id) {
   item(at1(gx, 6.5), (k) => liftBench(k));
   item(at1(cw + 0.5, 4.2, 90), (k) => dumbbellRack(k, 5));
   item(at1(gcn + 1.5, D - 4.2, 180), (k) => pelotonBike(k));
-  for (const dv of [0, 1.3, 2.6]) { const k = at1(Lw - 0.5, NDOOR + 3.6 + dv, -90); k.box('col:#2f3d52', -0.08, 2.2, 0, 0.08, 5.6, 0.12); for (const y of [2.5, 5.0]) k.cyl('black', 0, 1.2, 1.1, 1.1, y - 0.06, y + 0.06, 16); k.box('col:' + ['#b33a2f', '#2f6f8b', '#d9a441'][Math.round(dv / 1.3)], -0.05, 3.4, 0.6, 0.05, 4.2, 1.8); }
+  if (id === 'E') { const k = new Kit(b1, tag).at(...M(Lw - 0.28, NDOOR + 2.1), GF, rot - 90); lockers(k, 6.8, 4); } // no hallway: the cubbies and bench go just inside the garage door
+  else for (const dv of [0, 1.3, 2.6]) { const k = at1(Lw - 0.5, NDOOR + 3.6 + dv, -90); k.box('col:#2f3d52', -0.08, 2.2, 0, 0.08, 5.6, 0.12); for (const y of [2.5, 5.0]) k.cyl('black', 0, 1.2, 1.1, 1.1, y - 0.06, y + 0.06, 16); k.box('col:' + ['#b33a2f', '#2f6f8b', '#d9a441'][Math.round(dv / 1.3)], -0.05, 3.4, 0.6, 0.05, 4.2, 1.8); }
   item(at1(cw + 0.45, D - 6.8, 90), (k) => shelving(k, 7, 1.6, 6.5), null, 'toy shelves');
   item(at1(cw + 4.2, D - 3.2, 20), (k) => { // a wagon, a ball bin, a ride-on
     k.box('col:#b33a2f', -1.5, 0.7, -0.75, 1.5, 1.5, 0.75); k.box('col:#8f2d25', -1.4, 0.9, -0.65, 1.4, 1.52, 0.65); for (const [x, z] of [[-1.1, -0.85], [1.1, -0.85], [-1.1, 0.85], [1.1, 0.85]]) discZ(k, 'black', x, 0.4, 0.4, z - 0.08, z + 0.08, 12); k.box('black', 1.5, 1.0, -0.04, 2.6, 1.08, 0.04);
@@ -436,7 +440,7 @@ function buildGarage(id) {
   for (const [lay, u1] of [['full', Lw + 1.2], ['far', cw + 0.9]]) {
     const dt = `${tag}&drv:${lay}`, db = renoBat(dt, 'site'), u0 = -1.2;
     let apron;
-    if (S) { const xa = g.x0 + u0, xb = g.x0 + u1; apron = rounded([[R0, 38.75], [R0, DRIVE.south], [xa, DRIVE.south], [xa, 43], [xa, g.y1], [xb, g.y1], [xb + 3.3, 38.75, 5]]); }
+    if (S) { const xa = g.x0 + u0, xb = g.x0 + u1; apron = rounded([[R0, 38.75], [R0, DRIVE.south], [xa, DRIVE.south], [xa, 43], [xa, g.y1], [xb, g.y1], [Math.min(xb + 3.3, R0 - 0.1), 38.75, 5]]); }
     else { const ya = Math.max(g.y0 + 0.6, g.y1 - u1), yb = Math.min(g.y1 - 0.6, g.y1 - u0); apron = rounded([[R0, 38.75], [R0, DRIVE.south], ...(yb > DRIVE.south + 1 ? [[44, Math.min(55.5, yb), 6]] : []), [g.x1, yb], [g.x1, ya], ...(ya < 38 ? [[44, Math.max(33.5, ya), 6]] : [])]); }
     db.poly('drive', apron, G + 0.04);
     addFloorPoly(apron, [], G + 0.04, dt);
@@ -473,7 +477,7 @@ function buildMudroom(v) {
   wall(LM, [m.x0, m.y0, m.x1, m.y0, 'e', [[65.2 + sdx, 67.8 + sdx, 'w', win]], { rs }]);
   if (N) { // west wall: its own door toward the garage, or (with the hallway) only the stub south of the hall
     wall(LM, [m.x0, m.y1, m.x0, m.y0, 'e', [[HALL.door - 1.4, HALL.door + 1.4, 'x', { hinge: 'lo', into: '+x', style: 'half', color: RED }]], { rs: 'mudW' }]);
-    wall(LM, [m.x0, m.y1, m.x0, HALL.y1, 'e', [], { rs: 'mudH' }]);
+    wall(LM, [m.x0, m.y1, m.x0, HALL.y1, 'e', [], { rs: 'mudH&not:gar:E' }]);
   } else wall(LM, [m.x0, m.y1, m.x0, m.y0, 'e', [[23.0, 25.8, 'x', { hinge: 'lo', into: '+x', style: 'half', color: RED }]], { rs }]);
   wall(LM, [m.x1, m.y1, m.x0, m.y1, 'e', [[64.0 + sdx, 66.8 + sdx, 'x', { hinge: 'hi', into: '-y', style: 'half', color: RED }], [68.6 + sdx, 71.0 + sdx, 'w', win]], { rs }]);
   // the old laundry wall, now inside: a cased opening where the washer and dryer were (mudN: at the laundry's north-west corner, the window stays)
@@ -550,6 +554,8 @@ function buildMudroom(v) {
 // car to the laundry. Bench and lockers down the north side, windows and a door to the courtyard on the south side.
 function buildHall(id) {
   const g = GAR[id], rs = `mudH&gar:${id}`, m = MUDN, x0 = g.x1, x1 = m.x0, len = x1 - x0, b = renoBat(rs, 'f1'), br = renoBat(rs, 'roof');
+  const none = len < 1; // garage E meets the block directly
+  if (!none) {
   const rect = [[x0, HALL.y0], [x1, HALL.y0], [x1, HALL.y1], [x0, HALL.y1]];
   const LM = { ...LV.f1, floor: ENTRY, extBottom: H.grade - ENTRY, extTop: m.plate - ENTRY, intTop: m.plate - ENTRY, ceiling: m.plate - ENTRY - 0.1, sill: 3.2, head: 6.9, grille: 'dh', _foot: [], _holes: [] };
   const room = roleRoom(LM, { name: 'Mudroom hallway (new)', dims: `${Math.round(len)}' x 8' · heated · bench + lockers`, floor: null, wall: 'paint:#eeece6', poly: rect }, 0, 'hall' + id);
@@ -564,19 +570,20 @@ function buildHall(id) {
   for (let i = 0; i < Math.max(2, Math.round(len / 7)); i++) recessed(new Kit(b, rs).at(x0 + (len * (i + 0.5)) / Math.max(2, Math.round(len / 7)), HALL.zc + 0.8, 0, 0), m.plate - 0.1);
   { const L = Math.min(len - 2, 13.6), k = new Kit(b, rs).at(xc - L / 2, HALL.y0 + 0.28, ENTRY, 0); lockers(k, L, Math.round(L / 1.7)); }
   item(new Kit(renoBat(rs + '&furn', 'f1'), rs + '&furn').at(xc, HALL.zc + 1.2, ENTRY, 0), (k) => rug(k, Math.min(len - 3, 12), 2.8, '#7c6a58', '#4b4038'));
+  RENO_ROOMS.push({ rs, level: 'f1', room });
+  RENO_LABELS.push(...buildLabels(LM, renoGroup(rs, 'f1'), [room]).map((l) => ((l.userData.rs = rs), (l.userData.level = 'f1'), l)));
+  }
   // roof: one gable from the garage to the house (the hall's ridge carries on over the block), and a cross gable of the
   // same height over the block's south end, so the door to the drive sits under its own gable
   const E = m.plate + ROOFT, xe = m.x1 - 0.25, pc = 2 * m.pitch * (HALL.y1 - HALL.zc) / (m.x1 - m.x0);
   const slopes = [{ o: [0, HALL.y0], up: [0, 1], h0: E, p: m.pitch }, { o: [0, HALL.y1], up: [0, -1], h0: E, p: m.pitch }];
-  const main = roofMass(br, [[x0 + 0.25, HALL.y0 - 1], [m.x0, HALL.y0 - 1], [m.x0, HALL.y1 + 1], [x0 + 0.25, HALL.y1 + 1]], slopes, { gutter: false, skip: [1, 3] });
+  const main = none ? (x, y) => E + m.pitch * Math.min(y - HALL.y0, HALL.y1 - y) : roofMass(br, [[x0 + 0.25, HALL.y0 - 1], [m.x0, HALL.y0 - 1], [m.x0, HALL.y1 + 1], [x0 + 0.25, HALL.y1 + 1]], slopes, { gutter: false, skip: [1, 3] });
   roofMass(br, [[m.x0, HALL.y0 - 1], [xe, HALL.y0 - 1], [xe, HALL.y1 + 1], [m.x0, HALL.y1 + 1]], slopes, { gutter: false, skip: [1, 2, 3] });
-  const cross = roofMass(br, [[m.x0, HALL.zc], [xe, HALL.zc], [xe, m.y1 + 1], [m.x0 - 1, m.y1 + 1], [m.x0 - 1, HALL.y1 + 1], [m.x0, HALL.y1 + 1]], [{ o: [m.x0, 0], up: [1, 0], h0: E, p: pc }, { o: [m.x1, 0], up: [-1, 0], h0: E, p: pc }], { gutter: false, skip: [0, 1, 4, 5] });
+  const cross = roofMass(br, none ? [[m.x0, HALL.zc], [xe, HALL.zc], [xe, m.y1 + 1], [m.x0 + 0.25, m.y1 + 1], [m.x0 + 0.25, HALL.y1 + 1], [m.x0 + 0.26, HALL.y1 + 1]] : [[m.x0, HALL.zc], [xe, HALL.zc], [xe, m.y1 + 1], [m.x0 - 1, m.y1 + 1], [m.x0 - 1, HALL.y1 + 1], [m.x0, HALL.y1 + 1]], [{ o: [m.x0, 0], up: [1, 0], h0: E, p: pc }, { o: [m.x1, 0], up: [-1, 0], h0: E, p: pc }], { gutter: false, skip: [0, 1, 4, 5] });
   const hf = (x, y) => (y <= HALL.zc ? main(x, y) : Math.max(main(x, y), cross(x, y)));
   gableFill(br, [m.x0, m.y1], [m.x1, m.y1], () => m.plate, (x, y) => cross(x, y) - ROOFT - 0.02, 'siding', 24, 'white');
   gablePeak(br, [m.x1, m.y1], [m.x0, m.y1], [0, 1], m.plate, pc, m.plate + 0.55, false);
   gableFill(br, [m.x1 - 0.27, m.y0], [m.x1 - 0.27, m.y1], (x, y) => hf(x, y) - 0.4, () => H.f2 - 0.3, 'siding', 24);
-  RENO_ROOMS.push({ rs, level: 'f1', room });
-  RENO_LABELS.push(...buildLabels(LM, renoGroup(rs, 'f1'), [room]).map((l) => ((l.userData.rs = rs), (l.userData.level = 'f1'), l)));
 }
 
 // ------------------------------------------------------------------ breezeway + footbridge (garage <-> mudroom / office)
@@ -722,9 +729,10 @@ const ZONES = {
 };
 // with the walkway (or the hallway) on the north side, the court between garage and house opens south to the drive:
 // the "by the house" pieces move into it
+ZONES.E = { fire: [12, 40, 6.3], fire2: [12, 14, 6.3], play: [12, 16, 20, 15, 0], play2: [12, 41, 20, 14, 0], perg: [14, 58.6, 13, 9.5], beds: [[6, 4.2, 0], [16, 4.2, 0]] };
 ZONES.Bn = { ...ZONES.B, fire: [53.5, 29, 6.3], play2: [53.5, 28.5, 13, 18, 90] };
 ZONES.Cn = { ...ZONES.C, fire: [50.5, 29, 7.2], play2: [51, 28.5, 18, 15, 0] };
-const YARD_SETS = [['0', 'gar:0', '0'], ['A', 'gar:A', 'A'], ['B', 'gar:B&not:ncourt', 'B'], ['B', 'gar:B&ncourt', 'Bn'], ['C', 'gar:C&not:ncourt', 'C'], ['C', 'gar:C&ncourt', 'Cn'], ['D', 'gar:D', 'D']];
+const YARD_SETS = [['0', 'gar:0', '0'], ['A', 'gar:A', 'A'], ['B', 'gar:B&not:ncourt', 'B'], ['B', 'gar:B&ncourt', 'Bn'], ['C', 'gar:C&not:ncourt', 'C'], ['C', 'gar:C&ncourt', 'Cn'], ['D', 'gar:D', 'D'], ['E', 'gar:E', 'E']];
 function buildYards() {
   for (const [gid, gt, zk] of YARD_SETS) {
     const z = ZONES[zk];
@@ -839,6 +847,7 @@ const RECTS = {
   C: { near: [41.5, 3.2, 60.5, 21], far: [3, 53.2, 60, 64.4], hoop: [20, 52.2, 180] },
   D: { near: [42, 53.2, 60, 64.4], far: [2, 4.5, 11.5, 37], hoop: [30, 52.2, 180] },
 };
+RECTS.E = { near: [3, 32, 22, 50], far: [3, 4.5, 23, 28], hoop: [44, 52.2, 180] };
 RECTS.Bn = { ...RECTS.B, near: [46.5, 19.5, 60.5, 37.5] };
 RECTS.Cn = { ...RECTS.C, near: [41.5, 19.5, 60.5, 37.5] };
 function buildYardsMore() {
@@ -896,9 +905,9 @@ function buildFront() {
 }
 
 export function buildRenovations() {
-  for (const id of ['A', 'B', 'C', 'D']) buildGarage(id);
+  for (const id of ['A', 'B', 'C', 'D', 'E']) buildGarage(id);
   buildMudroom('A'); buildMudroom('N');
-  for (const id of ['B', 'C', 'D']) buildHall(id);
+  for (const id of ['B', 'C', 'D', 'E']) buildHall(id);
   buildLinks();
   buildYards();
   buildYardsMore();
