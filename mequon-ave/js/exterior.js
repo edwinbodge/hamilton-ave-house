@@ -13,7 +13,7 @@ export const EXT_CONTROLS = [
   { id: 'sashAccent', label: 'Accent (old sashes, front door)', options: [[RED, 'Burgundy (as listed)'], ['#8b2e2a', 'Brick red'], ['#2f4a3a', 'Forest green'], ['#2f3d52', 'Navy'], [BLACK, 'Black'], [WHITE, 'White'], ['#c9a44a', 'Ochre']] },
   { id: 'winExt', label: 'Newer sashes', options: [[WHITE, 'White (as listed)'], ['#e6dfcf', 'Almond'], [BLACK, 'Black'], [BRONZE, 'Dark bronze'], [RED, 'Burgundy']] },
   { id: 'shingle', label: 'Roof', options: [['shingle', 'Weathered gray (as listed)'], ['shingleDark', 'Charcoal'], ['shingleBrown', 'Brown'], ['shingleSlate', 'Slate blue-gray']] },
-  { id: 'garageDoor', label: 'Garage doors', options: [['#f2f0ea', 'White carriage'], [RED, 'Burgundy'], ['#7d7971', 'Match the siding'], ['#1f2022', 'Black'], ['plank:#a66d3c', 'Cedar'], ['#5b3b2a', 'Walnut brown']] },
+  { id: 'garageDoor', label: 'Garage doors', options: [['#f2f0ea', 'White carriage'], [RED, 'Burgundy'], ['#7d7971', 'Match the siding'], ['#3a3835', 'Charcoal brown'], ['#1f2022', 'Black'], ['plank:#a66d3c', 'Cedar'], ['#5b3b2a', 'Walnut brown']] },
   { id: 'gutter', label: 'Gutters', options: [[WHITE, 'White (as listed)'], [CREAM, 'Cream'], [BLACK, 'Black'], [BRONZE, 'Dark bronze']] },
 ];
 const LISTED = { siding: 'lap:#7d7971', scallop: 'scallop:#f4f2ec', extTrim: WHITE, winTrim: WHITE, sashAccent: RED, winExt: WHITE, shingle: 'shingle', garageDoor: '#f2f0ea', gutter: WHITE };

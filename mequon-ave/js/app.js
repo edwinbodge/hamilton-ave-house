@@ -185,6 +185,8 @@ const isSuggested = () => Object.keys(state.reno).every((k) => !!state.reno[k] =
 $('#suggested').addEventListener('change', (e) => {
   for (const k of Object.keys(state.reno)) state.reno[k] = e.target.checked && SUGGESTED.reno.includes(k);
   for (const k of Object.keys(SUGG_OFF)) state[k] = e.target.checked ? SUGGESTED[k] : SUGG_OFF[k];
+  // the plan's garage doors are dark (they recede, so the gable reads first); off puts the listed white back
+  state.ext.garageDoor = e.target.checked ? '#3a3835' : EXT_PRESETS.listed.values.garageDoor; applyExterior(state.ext); renderExt();
   applyReno();
   if (e.target.checked && state.mode === 'orbit') { state.view = 'ext'; applyView(); flyTo(PRESETS.yard); }
 });

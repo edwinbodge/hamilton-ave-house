@@ -271,8 +271,8 @@ function buildGarage(id) {
     const rs = tG, hm = kn + pg * (D / 2 - 2), vf = D - (8 - kn) / pg;
     W(L2, rooms2, Lw, 0, 0, 0, [], { rs });
     W(L2, rooms2, 0, D, uc - cg, D, [], { rs });
-    W(L2, rooms2, uc - cg, D, uc, D, [...(big ? [[cg - 6.2, cg - 3.7, 'w', win]] : []), [cg - 3.1, cg - 0.6, 'w', win]], { slope: [K, K + pg * cg], rs });
-    W(L2, rooms2, uc, D, uc + cg, D, [[0.6, 3.1, 'w', win], ...(big ? [[3.7, 6.2, 'w', win]] : [])], { slope: [K + pg * cg, K], rs });
+    W(L2, rooms2, uc - cg, D, uc, D, big ? [[cg - 5.75, cg - 3.15, 'w', win], [cg - 2.8, cg - 0.2, 'w', win]] : [[cg - 3.1, cg - 0.6, 'w', win]], { slope: [K, K + pg * cg], rs });
+    W(L2, rooms2, uc, D, uc + cg, D, big ? [[0.2, 2.8, 'w', win], [3.15, 5.75, 'w', win]] : [[0.6, 3.1, 'w', win]], { slope: [K + pg * cg, K], rs });
     W(L2, rooms2, uc + cg, D, Lw, D, [], { rs });
     W(L2, rooms2, 0, 0, 0, D / 2 - 2, sideWin, { slope: [K, UF + hm], rs });
     W(L2, rooms2, 0, D / 2 - 2, 0, D / 2 + 2, [], { top: hm, rs });
