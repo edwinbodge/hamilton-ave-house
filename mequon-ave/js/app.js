@@ -81,7 +81,7 @@ const lotLines = site.getObjectByName('lotLines');
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const state = {
-  view: 'ext', labels: true, furniture: true, mode: 'orbit', layout: '0', garage: '0', link: '0', yard: '0', drive: 'full', lane: 'solid', surf: 'concrete', mudv: '0', mlaundry: '0',
+  view: 'ext', labels: true, furniture: true, mode: 'orbit', layout: '0', garage: '0', link: '0', yard: '0', drive: 'full', lane: 'solid', surf: 'concrete', mudv: '0', mlaundry: '0', gdoors: '2', groof: 'S',
   reno: { mud: false, front: false },
   style: { ...STYLE_PRESETS[DEFAULT_PRESET].values },
   ext: { ...EXT_PRESETS.listed.values },
@@ -179,11 +179,12 @@ document.querySelectorAll('[data-reno]').forEach((el) => el.addEventListener('ch
   applyReno();
 }));
 // one switch for the whole suggested plan
-const SUGGESTED = { reno: ['mud', 'front'], garage: 'D', link: '0', yard: 'A', mudv: 'H' };
-const isSuggested = () => Object.keys(state.reno).every((k) => !!state.reno[k] === SUGGESTED.reno.includes(k)) && ['garage', 'link', 'yard', 'mudv'].every((k) => state[k] === SUGGESTED[k]);
+const SUGGESTED = { reno: ['mud', 'front'], garage: 'D', link: '0', yard: 'A', mudv: 'H', mlaundry: 'N', layout: 'T2', drive: 'far', gdoors: '2', groof: 'S' };
+const SUGG_OFF = { garage: '0', link: '0', yard: '0', mudv: '0', mlaundry: '0', layout: '0', drive: 'full', gdoors: '2', groof: 'S' };
+const isSuggested = () => Object.keys(state.reno).every((k) => !!state.reno[k] === SUGGESTED.reno.includes(k)) && Object.keys(SUGG_OFF).every((k) => state[k] === SUGGESTED[k]);
 $('#suggested').addEventListener('change', (e) => {
   for (const k of Object.keys(state.reno)) state.reno[k] = e.target.checked && SUGGESTED.reno.includes(k);
-  for (const k of ['garage', 'link', 'yard', 'mudv']) state[k] = e.target.checked ? SUGGESTED[k] : '0';
+  for (const k of Object.keys(SUGG_OFF)) state[k] = e.target.checked ? SUGGESTED[k] : SUGG_OFF[k];
   applyReno();
   if (e.target.checked && state.mode === 'orbit') { state.view = 'ext'; applyView(); flyTo(PRESETS.yard); }
 });
@@ -323,7 +324,7 @@ function activeTag(tag) {
   if (tag.startsWith('on:') || tag.startsWith('off:')) { const [st, name] = tag.split(':'); return st === 'on' ? !!state.reno[name] : !state.reno[name]; }
   if (tag.startsWith('not:')) return !activeTag(tag.slice(4));
   if (tag.startsWith('lay:')) return state.layout === tag.slice(4);
-  if (/^(gar|link|yard|drv|lane|surf|ml):/.test(tag)) { const [k, v] = tag.split(':'); return state[{ gar: 'garage', link: 'link', yard: 'yard', drv: 'drive', lane: 'lane', surf: 'surf', ml: 'mlaundry' }[k]] === v; }
+  if (/^(gar|link|yard|drv|lane|surf|ml|gd|gr):/.test(tag)) { const [k, v] = tag.split(':'); return state[{ gar: 'garage', link: 'link', yard: 'yard', drv: 'drive', lane: 'lane', surf: 'surf', ml: 'mlaundry', gd: 'gdoors', gr: 'groof' }[k]] === v; }
   { // derived: mudroom shape, walkway route (see reno.js)
     const north = 'BCD'.includes(state.garage), mud = !!state.reno.mud, hall = mud && state.mudv === 'H' && north;
     if (tag === 'mlout') return mud && state.mudv !== 'A' && state.mlaundry !== '0';

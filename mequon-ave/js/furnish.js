@@ -2099,7 +2099,7 @@ export function buildFurniture(bats) {
   place('f2', 79.7, 16.0, 90, (k) => rug(k, 4.6, 2.0, '#8a352c', '#3d2a28'));
   place('f2', 74.5, 9.75, 0, (k) => framedArt(k, 1.5, 1.3, 4.4, { frame: '#b08a48', paper: '#2a2a2a', mat: 0.2, bands: [['#d9d6cc', 0, 1]] }), 'art');
 }
-export { exteriorLantern, raisedPanel, car, stackedLaundry, laundrySink, discZ };
+export { exteriorLantern, raisedPanel, car, stackedLaundry, laundrySink, discZ, ottoman };
 export {
   bed, nightstand, dresser, bench, sofa, armchair, coffeeTable, sideTable, rug, chair, diningTable, roundTable, buffet, plant,
   floorLamp, tableLamp, knob, toilet, vanity, lightBar, wicRun, linenShelves, hangingClothes, recessed, flushDome, globePendant,
