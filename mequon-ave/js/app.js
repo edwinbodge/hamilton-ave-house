@@ -179,7 +179,7 @@ document.querySelectorAll('[data-reno]').forEach((el) => el.addEventListener('ch
   applyReno();
 }));
 // one switch for the whole suggested plan
-const SUGGESTED = { reno: ['mud', 'front'], garage: 'D', link: '0', yard: 'A', mudv: 'H', mlaundry: 'N', layout: 'T2', drive: 'full', gdoors: 'W', groof: 'H' };
+const SUGGESTED = { reno: ['mud', 'front'], garage: 'E', link: '0', yard: 'A', mudv: 'H', mlaundry: 'N', layout: 'T2', drive: 'full', gdoors: 'W', groof: 'H' };
 const SUGG_OFF = { garage: '0', link: '0', yard: '0', mudv: '0', mlaundry: '0', layout: '0', drive: 'full', gdoors: 'W', groof: 'H' };
 const isSuggested = () => Object.keys(state.reno).every((k) => !!state.reno[k] === SUGGESTED.reno.includes(k)) && Object.keys(SUGG_OFF).every((k) => state[k] === SUGGESTED[k]);
 $('#suggested').addEventListener('change', (e) => {
