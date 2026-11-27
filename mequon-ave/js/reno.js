@@ -288,7 +288,13 @@ function buildGarage(id) {
       flush();
     }
     const E = K + ROOFT;
-    const main = roofMass(brG, [M(-OV, -OV), M(Lw + OV, -OV), M(Lw + OV, D + OV), M(-OV, D + OV)], [{ o: M(0, 0), up: dV, h0: E, p: pg }, { o: M(0, D), up: neg(dV), h0: E, p: pg }]);
+    // main roof: the south slope is cut away under the cross gable (along its two valleys) so no eave runs across its windows
+    const plN = { o: M(0, 0), up: dV, h0: E, p: pg }, plS = { o: M(0, D), up: neg(dV), h0: E, p: pg };
+    const nf = roofMass(brG, [M(-OV, -OV), M(Lw + OV, -OV), M(Lw + OV, D / 2), M(-OV, D / 2)], [plN], { skip: [2] });
+    const sf = roofMass(brG, big ? [M(-OV, D / 2), M(uc, D / 2), M(uc - cg - OV, D + OV), M(-OV, D + OV)] : [M(-OV, D / 2), M(uc, D / 2), M(uc, D - cg), M(uc - cg - OV, D + OV), M(-OV, D + OV)], [plS], { skip: big ? [0, 1] : [0, 1, 2] });
+    roofMass(brG, big ? [M(uc, D / 2), M(Lw + OV, D / 2), M(Lw + OV, D + OV), M(uc + cg + OV, D + OV)] : [M(uc, D / 2), M(Lw + OV, D / 2), M(Lw + OV, D + OV), M(uc + cg + OV, D + OV), M(uc, D - cg)], [plS], { skip: big ? [0, 3] : [0, 3, 4] });
+    krG.box('shingle', -OV, E + pg * (D / 2) - 0.06, D / 2 - 0.3, Lw + OV, E + pg * (D / 2) + 0.08, D / 2 + 0.3);
+    const main = (x, y) => Math.min(nf(x, y), sf(x, y));
     roofMass(brG, [M(uc - cg - OV, D / 2), M(uc + cg + OV, D / 2), M(uc + cg + OV, D + OV), M(uc - cg - OV, D + OV)], [{ o: M(uc - cg, 0), up: dU, h0: E, p: pg }, { o: M(uc + cg, 0), up: neg(dU), h0: E, p: pg }], { skip: [0] });
     for (const u of [0, Lw]) gableFill(brG, M(u, D / 2 - 2), M(u, D / 2 + 2), () => UF + hm, (x, y) => main(x, y) - ROOFT - 0.02, 'siding', 8, 'white');
     for (const [u, v] of [[0, 0], [Lw, 0], [Lw, D], [0, D]]) { const [x, z] = M(u, v); b2G.aabox('extTrim', x - 0.3, UF, z - 0.3, x + 0.3, K, z + 0.3); }
