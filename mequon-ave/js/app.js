@@ -81,7 +81,7 @@ const lotLines = site.getObjectByName('lotLines');
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const state = {
-  view: 'ext', labels: true, furniture: true, mode: 'orbit', layout: '0', garage: '0', link: '0', yard: '0', drive: 'full', lane: 'solid', surf: 'concrete', mudv: '0', mlaundry: '0', gdoors: '2', groof: 'S',
+  view: 'ext', labels: true, furniture: true, mode: 'orbit', layout: '0', garage: '0', link: '0', yard: '0', drive: 'full', lane: 'solid', surf: 'concrete', mudv: '0', mlaundry: '0', gdoors: 'W', groof: 'S',
   reno: { mud: false, front: false },
   style: { ...STYLE_PRESETS[DEFAULT_PRESET].values },
   ext: { ...EXT_PRESETS.listed.values },
@@ -179,8 +179,8 @@ document.querySelectorAll('[data-reno]').forEach((el) => el.addEventListener('ch
   applyReno();
 }));
 // one switch for the whole suggested plan
-const SUGGESTED = { reno: ['mud', 'front'], garage: 'D', link: '0', yard: 'A', mudv: 'H', mlaundry: 'N', layout: 'T2', drive: 'far', gdoors: '2', groof: 'S' };
-const SUGG_OFF = { garage: '0', link: '0', yard: '0', mudv: '0', mlaundry: '0', layout: '0', drive: 'full', gdoors: '2', groof: 'S' };
+const SUGGESTED = { reno: ['mud', 'front'], garage: 'D', link: '0', yard: 'A', mudv: 'H', mlaundry: 'N', layout: 'T2', drive: 'full', gdoors: 'W', groof: 'S' };
+const SUGG_OFF = { garage: '0', link: '0', yard: '0', mudv: '0', mlaundry: '0', layout: '0', drive: 'full', gdoors: 'W', groof: 'S' };
 const isSuggested = () => Object.keys(state.reno).every((k) => !!state.reno[k] === SUGGESTED.reno.includes(k)) && Object.keys(SUGG_OFF).every((k) => state[k] === SUGGESTED[k]);
 $('#suggested').addEventListener('change', (e) => {
   for (const k of Object.keys(state.reno)) state.reno[k] = e.target.checked && SUGGESTED.reno.includes(k);
