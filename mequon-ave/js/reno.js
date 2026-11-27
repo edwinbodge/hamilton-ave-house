@@ -408,15 +408,15 @@ function buildGarage(id) {
   if (!narrow) item(at1(gx, 0.45), (k) => powerRack(k));
   if (!narrow) item(at1(gx, 6.5), (k) => liftBench(k));
   if (!narrow) item(at1(cw + 0.5, 4.2, 90), (k) => dumbbellRack(k, 5));
-  item(at1(gcn + 1.5, D - 4.2, 180), (k) => pelotonBike(k));
+  if (!narrow) item(at1(gcn + 1.5, D - 4.2, 180), (k) => pelotonBike(k));
   if (joined) { const k = new Kit(b1, tag).at(...M(Lw - 0.28, NDOOR + 2.1), GF, rot - 90); lockers(k, 6.8, 4); } // no hallway: the cubbies and bench go just inside the garage door
   else for (const dv of [0, 1.3, 2.6]) { const k = at1(Lw - 0.5, NDOOR + 3.6 + dv, -90); k.box('col:#2f3d52', -0.08, 2.2, 0, 0.08, 5.6, 0.12); for (const y of [2.5, 5.0]) k.cyl('black', 0, 1.2, 1.1, 1.1, y - 0.06, y + 0.06, 16); k.box('col:' + ['#b33a2f', '#2f6f8b', '#d9a441'][Math.round(dv / 1.3)], -0.05, 3.4, 0.6, 0.05, 4.2, 1.8); }
-  item(at1(cw + 0.45, D - 6.8, 90), (k) => shelving(k, 7, 1.6, 6.5), null, 'toy shelves');
-  item(at1(cw + 4.2, D - 3.2, 20), (k) => { // a wagon, a ball bin, a ride-on
+  if (!narrow) item(at1(cw + 0.45, D - 6.8, 90), (k) => shelving(k, 7, 1.6, 6.5), null, 'toy shelves');
+  if (!narrow) item(at1(cw + 4.2, D - 3.2, 20), (k) => { // a wagon, a ball bin, a ride-on
     k.box('col:#b33a2f', -1.5, 0.7, -0.75, 1.5, 1.5, 0.75); k.box('col:#8f2d25', -1.4, 0.9, -0.65, 1.4, 1.52, 0.65); for (const [x, z] of [[-1.1, -0.85], [1.1, -0.85], [-1.1, 0.85], [1.1, 0.85]]) discZ(k, 'black', x, 0.4, 0.4, z - 0.08, z + 0.08, 12); k.box('black', 1.5, 1.0, -0.04, 2.6, 1.08, 0.04);
     k.solid(-1.5, -0.85, 1.5, 0.85, 0, 1.5);
   }, null, 'wagon');
-  item(at1(cw + 1.4, D - 1.6, 0), (k) => { k.box('col:#9aa0a3', -1.1, 0, -0.9, 1.1, 2.2, 0.9); k.box('col:#22262a', -1.0, 0.1, -0.8, 1.0, 2.22, 0.8); for (const [x, z, c2] of [[-0.45, -0.3, '#d8642a'], [0.4, 0.25, '#f1efe9'], [0.35, -0.4, '#3b7f4a'], [-0.4, 0.4, '#d9a441']]) k.cyl('col:' + c2, x, z, 0.42, 0.3, 1.9, 2.6, 10); k.solid(-1.1, -0.9, 1.1, 0.9, 0, 2.3); }, null, 'ball bin');
+  if (!narrow) item(at1(cw + 1.4, D - 1.6, 0), (k) => { k.box('col:#9aa0a3', -1.1, 0, -0.9, 1.1, 2.2, 0.9); k.box('col:#22262a', -1.0, 0.1, -0.8, 1.0, 2.22, 0.8); for (const [x, z, c2] of [[-0.45, -0.3, '#d8642a'], [0.4, 0.25, '#f1efe9'], [0.35, -0.4, '#3b7f4a'], [-0.4, 0.4, '#d9a441']]) k.cyl('col:' + c2, x, z, 0.42, 0.3, 1.9, 2.6, 10); k.solid(-1.1, -0.9, 1.1, 0.9, 0, 2.3); }, null, 'ball bin');
   for (const [u, v] of [[m0 + dw / 2, D / 2], [m0 + dw * 1.5 + 1, D / 2], ...(narrow ? [] : [[gx, 6]]), [gcn, D - 6]]) flushDome(new Kit(b1, tag).at(...M(u, v), 0, 0), UF - 0.5);
   // rec room: the TV on the far gable wall, a 12 x 9 ft sectional facing it, a desk under the south windows, a Murphy
   // bed on the bath wall, a game table by the stair
